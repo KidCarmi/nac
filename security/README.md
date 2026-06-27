@@ -51,4 +51,11 @@ Before tagging a release, confirm:
 - [ ] AuthN/AuthZ tests cover new routes (deny-by-default verified).
 - [ ] New inputs validated and bounded; error paths return RFC 7807, not detail.
 - [ ] Audit events emitted for new state-changing actions.
-- [ ] `govulncheck ./...` reviewed (recommended in CI).
+- [ ] `govulncheck ./...` clean (enforced in CI and as a release gate).
+- [ ] Code-scanning (SARIF) findings triaged in the Security tab: gosec,
+      CodeQL, OSV, Trivy, Grype, Checkov, kube-linter, Scorecard.
+- [ ] No secrets introduced (gitleaks clean; allowlist only for documented,
+      non-functional placeholders).
+- [ ] OpenAPI changes are non-breaking (oasdiff) or intentionally versioned.
+- [ ] Release artifacts are signed and attested (Cosign + SLSA provenance);
+      see [CI/CD & Supply-Chain Security](../docs/operations/ci-cd.md).

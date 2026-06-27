@@ -1,0 +1,20 @@
+# Spectral ruleset for linting the OpenAPI 3.1 contract.
+# Extends the built-in OpenAPI ruleset and tightens a few rules to enterprise
+# expectations (every operation documented, described, and tagged).
+extends: ["spectral:oas"]
+
+rules:
+  # Operation hygiene.
+  operation-description: warn
+  operation-tags: error
+  operation-operationId: off          # we rely on method+path, not operationIds
+  operation-success-response: error
+  info-contact: off
+  info-description: error
+  oas3-api-servers: warn
+  # Discourage undocumented 2xx-only specs.
+  operation-2xx-response: error
+  # Keep schemas referenced rather than inlined where reused.
+  oas3-unused-component: warn
+  # Tag definitions must exist.
+  openapi-tags: warn

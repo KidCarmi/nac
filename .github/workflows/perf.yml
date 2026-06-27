@@ -1,0 +1,67 @@
+name: Performance
+
+on:
+  pull_request:
+    paths:
+      - "internal/access/**"
+      - "internal/**/*.go"
+      - ".github/workflows/perf.yml"
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.25"
+  # benchstat flags a change as significant below this p-value.
+  BENCH_COUNT: "6"
+
+jobs:
+  benchmark-regression:
+    name: Benchmark regression (benchstat)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Benchmark PR
+        run: go test -run=NONE -bench=. -benchmem -count="${BENCH_COUNT}" ./internal/access/... | tee new.txt
+
+      - name: Benchmark base
+        run: |
+          git checkout --quiet "origin/${{ github.base_ref }}"
+          go test -run=NONE -bench=. -benchmem -count="${BENCH_COUNT}" ./internal/access/... | tee old.txt
+          git checkout --quiet -
+
+      - name: Compare and gate
+        run: |
+          benchstat old.txt new.txt | tee benchstat.txt
+          # Fail if any benchmark's median time regressed by more than 20%.
+          # benchstat prints a percentage delta column; we parse increases.
+          python3 - <<'PY'
+          import re, sys
+          rows = open("benchstat.txt").read().splitlines()
+          worst = 0.0
+          for line in rows:
+              m = re.search(r'([+-]\d+(?:\.\d+)?)%', line)
+              if m:
+                  delta = float(m.group(1))
+                  worst = max(worst, delta)
+          print(f"worst regression: {worst:.1f}%")
+          if worst > 20.0:
+              print("::error::benchmark regression exceeds 20% threshold")
+              sys.exit(1)
+          PY
+
+      - name: Upload benchstat report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchstat
+          path: benchstat.txt

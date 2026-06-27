@@ -34,6 +34,7 @@ relevant docs in the same change (see the
 - [Backup Strategy](operations/backup-strategy.md) · [Disaster Recovery](operations/disaster-recovery.md)
 - [Incident Response](operations/incident-response.md)
 - [Testing Strategy](operations/testing-strategy.md)
+- [CI/CD & Supply-Chain Security](operations/ci-cd.md)
 - [Release Process](operations/release-process.md)
 
 ## Runbooks

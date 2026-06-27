@@ -35,6 +35,11 @@ infrastructure product.
   liveness/readiness probes, graceful shutdown, embedded migrations.
 - **Kubernetes-ready** — distroless non-root image, HPA, PDB, hardened
   securityContext, 12-factor configuration.
+- **Hardened CI/CD** — coverage gate, Go fuzzing, benchmark-regression gate,
+  multi-version migration validation, govulncheck/OSV/CodeQL/Trivy/Grype,
+  gitleaks, Checkov/kube-linter, OpenAPI breaking-change detection, OWASP ZAP
+  DAST, and signed, SBOM-attested, SLSA-provenanced reproducible releases. See
+  [CI/CD & Supply-Chain Security](docs/operations/ci-cd.md).
 
 ## Architecture at a glance
 
@@ -137,6 +142,7 @@ Start at the **[Documentation Index](docs/README.md)**. Key entry points:
 - [Database Design & ERD](docs/database/schema.md)
 - [Administrator Guide](docs/guides/administrator.md) · [Developer Guide](docs/guides/developer.md) · [User Manual](docs/guides/user-manual.md)
 - [Runbooks](runbooks/README.md) · [Observability](docs/operations/observability.md)
+- [CI/CD & Supply-Chain Security](docs/operations/ci-cd.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## Contributing

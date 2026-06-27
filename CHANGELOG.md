@@ -29,5 +29,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   PostgreSQL, and container build.
 - **Documentation**: architecture, threat model, database design, runbooks,
   guides, ADRs, and OpenAPI 3.1 specification.
+- **Hardened CI/CD pipeline** extending the correctness baseline with:
+  - Coverage enforcement (minimum threshold via `scripts/check-coverage.sh`).
+  - Go fuzz tests (`FuzzNormalizeMAC`, `FuzzTokenParse`, `FuzzVerifyPassword`,
+    `FuzzEvaluateBody`) run on every PR.
+  - Benchmark-regression gate (`BenchmarkEvaluate` + benchstat, 20% threshold).
+  - Migration validation across PostgreSQL 15/16/17 (clean, idempotent,
+    down/up) via `scripts/validate-migrations.sh`.
+  - Dependency & vulnerability scanning: govulncheck, OSV-Scanner, Dependabot.
+  - Static security analysis: gosec and CodeQL (security-and-quality), SARIF.
+  - Secret scanning: gitleaks (with `.gitleaks.toml` allowlist).
+  - Container & filesystem scanning: Trivy and Grype.
+  - IaC/Kubernetes validation: Checkov, kube-linter, kube-score.
+  - OpenAPI linting (Spectral) and breaking-change detection (oasdiff).
+  - DAST: OWASP ZAP API scan against a live Compose stack.
+  - OSSF Scorecard with SARIF reporting.
+  - Supply-chain release pipeline: reproducible builds, SPDX SBOMs, Cosign
+    keyless image signing, and SLSA build-provenance + SBOM attestations.
 
 [Unreleased]: https://github.com/kidcarmi/nac/commits/main

@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Go module dependencies.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "go"]
+    groups:
+      # Group patch/minor bumps to reduce PR noise; majors stay individual.
+      go-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used by the pipeline — pin and keep current for supply-chain.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]
+
+  # Base images referenced in the Dockerfile.
+  - package-ecosystem: docker
+    directory: "/deployments/docker"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "docker"]

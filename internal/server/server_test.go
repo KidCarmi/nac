@@ -102,7 +102,7 @@ type harness struct {
 	operator  *domain.Operator
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t testing.TB) *harness {
 	t.Helper()
 	pwHash, err := auth.HashPassword("s3cret-password")
 	if err != nil {

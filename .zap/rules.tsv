@@ -1,0 +1,10 @@
+# OWASP ZAP alert tuning for the NAC JSON API.
+# Format: <pluginId>	<action: WARN|IGNORE|FAIL>	<comment>
+# These suppress alerts that are not applicable to a stateless JSON API that
+# terminates TLS at the ingress and serves no HTML. Review periodically.
+10096	IGNORE	Timestamp disclosure (version/build metadata is intentional on /version)
+10027	IGNORE	Information disclosure - suspicious comments (false positives in JSON)
+10015	IGNORE	Re-examine Cache-control (API sets Cache-Control: no-store globally)
+10020	IGNORE	Anti-clickjacking (X-Frame-Options: DENY is already set; no HTML served)
+10021	IGNORE	X-Content-Type-Options (nosniff is set globally)
+90004	IGNORE	HSTS handled by the TLS-terminating ingress, not the app

@@ -1,0 +1,53 @@
+name: Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "internal/storage/postgres/**"
+      - "scripts/validate-migrations.sh"
+      - ".github/workflows/migrations.yml"
+  pull_request:
+    paths:
+      - "internal/storage/postgres/**"
+      - "scripts/validate-migrations.sh"
+      - ".github/workflows/migrations.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate migrations (PostgreSQL ${{ matrix.pg }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["15", "16", "17"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.pg }}-alpine
+        env:
+          POSTGRES_USER: nac
+          POSTGRES_PASSWORD: nac
+          POSTGRES_DB: nac
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nac"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: Install psql client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Validate migrations (clean, idempotent, down/up)
+        env:
+          NAC_DB_DSN: postgres://nac:nac@localhost:5432/nac?sslmode=disable
+        run: ./scripts/validate-migrations.sh

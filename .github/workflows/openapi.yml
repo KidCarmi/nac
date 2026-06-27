@@ -1,0 +1,50 @@
+name: OpenAPI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/openapi/**"
+      - ".github/workflows/openapi.yml"
+      - ".spectral.yaml"
+  pull_request:
+    paths:
+      - "api/openapi/**"
+      - ".github/workflows/openapi.yml"
+      - ".spectral.yaml"
+
+permissions:
+  contents: read
+
+env:
+  SPEC: api/openapi/openapi.yaml
+
+jobs:
+  lint:
+    name: Spectral lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint OpenAPI spec
+        run: npx --yes @stoplight/spectral-cli@6 lint "$SPEC" --ruleset .spectral.yaml --fail-severity error
+
+  breaking-changes:
+    name: Breaking-change detection (oasdiff)
+    runs-on: ubuntu-latest
+    # Only meaningful on PRs, where a base revision exists to diff against.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch base spec
+        run: |
+          git show "origin/${{ github.base_ref }}:${SPEC}" > base-openapi.yaml 2>/dev/null \
+            || { echo "no base spec (new file); skipping"; echo "SKIP=1" >> "$GITHUB_ENV"; }
+      - name: Detect breaking changes
+        if: env.SKIP != '1'
+        uses: oasdiff/oasdiff-action/breaking@v0.0.21
+        with:
+          base: base-openapi.yaml
+          revision: ${{ env.SPEC }}
+          fail-on: ERR

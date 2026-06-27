@@ -1,0 +1,38 @@
+# Gitleaks configuration for secret scanning.
+#
+# We extend the upstream default ruleset and add a narrow allowlist for the
+# intentional, non-functional placeholder values committed to this repository
+# (example env files, development-only compose secrets, and a documented dummy
+# password hash used to make the login path constant-work). Real secrets must
+# never be committed; see docs/operations/secrets-management.md.
+
+title = "nac gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional placeholders and development-only fixtures"
+
+paths = [
+  '''\.env\.example$''',
+  '''deployments/compose/docker-compose\.yml$''',
+  '''deployments/kubernetes/config\.yaml$''',
+  '''docs/.*''',
+  '''runbooks/.*''',
+]
+
+regexes = [
+  # Documented dummy Argon2id hash (handlers_auth.go) — not a credential.
+  '''\$argon2id\$v=19\$m=65536,t=3,p=2\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+''',
+  # Clearly-marked development-only signing key / service token placeholders.
+  '''dev-insecure-signing-key-change-me-now!*''',
+  '''dev-service-token-change-me-please-1234''',
+  '''CHANGEME[-A-Za-z0-9]*''',
+  '''replace-with-a-[0-9+A-Za-z-]+''',
+]
+
+# Test signing keys are deterministic non-secrets used only in unit tests.
+stopwords = [
+  "0123456789abcdef0123456789abcdef",
+]

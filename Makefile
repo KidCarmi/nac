@@ -44,6 +44,33 @@ test-integration: ## Run integration tests against TEST_DSN
 cover: test ## Show total test coverage
 	$(GO) tool cover -func=coverage.out | tail -1
 
+MIN_COVERAGE ?= 60
+.PHONY: cover-gate
+cover-gate: ## Enforce the minimum coverage threshold (MIN_COVERAGE)
+	$(GO) test -coverprofile=coverage.out ./...
+	./scripts/check-coverage.sh $(MIN_COVERAGE) coverage.out
+
+FUZZTIME ?= 30s
+.PHONY: fuzz
+fuzz: ## Run all fuzz targets briefly (FUZZTIME)
+	$(GO) test -run=NONE -fuzz=FuzzNormalizeMAC -fuzztime=$(FUZZTIME) ./pkg/validation/
+	$(GO) test -run=NONE -fuzz=FuzzTokenParse -fuzztime=$(FUZZTIME) ./internal/auth/
+	$(GO) test -run=NONE -fuzz=FuzzVerifyPassword -fuzztime=$(FUZZTIME) ./internal/auth/
+	$(GO) test -run=NONE -fuzz=FuzzEvaluateBody -fuzztime=$(FUZZTIME) ./internal/server/
+
+.PHONY: bench
+bench: ## Run benchmarks
+	$(GO) test -run=NONE -bench=. -benchmem ./internal/access/...
+
+.PHONY: vuln
+vuln: ## Run govulncheck (installs it if missing)
+	@command -v govulncheck >/dev/null 2>&1 || $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
+
+.PHONY: validate-migrations
+validate-migrations: ## Validate migrations against TEST_DSN (clean/idempotent/down-up)
+	NAC_DB_DSN="$(TEST_DSN)" ./scripts/validate-migrations.sh
+
 .PHONY: lint
 lint: ## Run golangci-lint
 	golangci-lint run ./...

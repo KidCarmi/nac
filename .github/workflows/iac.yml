@@ -1,0 +1,77 @@
+name: IaC & Kubernetes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deployments/**"
+      - ".github/workflows/iac.yml"
+  pull_request:
+    paths:
+      - "deployments/**"
+      - ".github/workflows/iac.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  checkov:
+    name: Checkov (IaC misconfig)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: deployments
+          framework: kubernetes,dockerfile
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          soft_fail: true
+      - name: Upload Checkov SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
+  kube-linter:
+    name: kube-linter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run kube-linter
+        uses: stackrox/kube-linter-action@v1.0.5
+        id: kubelinter
+        continue-on-error: true
+        with:
+          directory: deployments/kubernetes
+          format: sarif
+          output-file: kube-linter.sarif
+      - name: Upload kube-linter SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: kube-linter.sarif
+          category: kube-linter
+
+  kube-score:
+    name: kube-score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run kube-score
+        run: |
+          curl -sSL "https://github.com/zegl/kube-score/releases/download/v1.18.0/kube-score_1.18.0_linux_amd64.tar.gz" \
+            | tar -xz kube-score
+          ./kube-score score \
+            deployments/kubernetes/deployment.yaml \
+            deployments/kubernetes/service.yaml \
+            deployments/kubernetes/config.yaml \
+            --output-format ci

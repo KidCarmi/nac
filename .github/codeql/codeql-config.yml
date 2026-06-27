@@ -1,0 +1,10 @@
+name: "nac CodeQL config"
+
+# Use the security-and-quality query suite for deeper coverage than the
+# default suite.
+queries:
+  - uses: security-and-quality
+
+paths-ignore:
+  - "web"          # placeholder, no source yet
+  - "**/*_test.go" # test files are not shipped

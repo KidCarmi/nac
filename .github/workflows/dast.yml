@@ -1,0 +1,61 @@
+name: DAST
+
+on:
+  pull_request:
+    paths:
+      - "internal/server/**"
+      - "api/openapi/**"
+      - "cmd/**"
+      - ".github/workflows/dast.yml"
+  schedule:
+    - cron: "9 3 * * 3"
+
+permissions:
+  contents: read
+
+jobs:
+  zap-api-scan:
+    name: OWASP ZAP API scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack
+        run: |
+          docker compose -f deployments/compose/docker-compose.yml up -d --build
+          echo "waiting for readiness..."
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/readyz >/dev/null 2>&1; then
+              echo "ready after ${i}s"; break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/readyz
+
+      - name: Run ZAP API scan
+        # --network host lets the ZAP container reach the app on localhost.
+        # The OpenAPI spec drives the scan so every documented endpoint is
+        # exercised. Findings are advisory here (-I) and uploaded as artifacts;
+        # tune/triage via .zap/rules.tsv.
+        run: |
+          mkdir -p zap-out
+          docker run --network host -v "$PWD:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+            -t http://localhost:8080/openapi.yaml -f openapi \
+            -c .zap/rules.tsv -I \
+            -r zap-out/report.html -J zap-out/report.json -w zap-out/report.md || true
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-out/
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose -f deployments/compose/docker-compose.yml logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f deployments/compose/docker-compose.yml down -v

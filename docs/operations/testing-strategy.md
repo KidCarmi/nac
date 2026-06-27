@@ -94,19 +94,45 @@ and hermetic.
   (unknown operators, default DENY, alg-none rejection, RBAC denials).
 - Treat the engine's correctness branches as non-negotiable coverage: every
   decision rule and every fail-closed path should have an explicit test.
+- **Enforced gate:** the `test` job runs `scripts/check-coverage.sh`, failing
+  the build if total statement coverage drops below `MIN_COVERAGE` (currently
+  60%). The threshold is ratcheted **up, never down**. Run locally with
+  `make cover-gate`.
+
+## Fuzz testing
+
+Go native fuzzing protects the parsers on the trust boundary. Targets:
+`FuzzNormalizeMAC` (`pkg/validation`), `FuzzTokenParse` and
+`FuzzVerifyPassword` (`internal/auth`), and `FuzzEvaluateBody`
+(`internal/server`, asserts the API never returns 5xx for arbitrary bodies).
+CI runs each for 60s per PR; discovered crashers are uploaded and become seed
+corpus. Run locally with `make fuzz` (`FUZZTIME=30s` by default).
+
+## Performance regression
+
+`BenchmarkEvaluate` measures the decision hot path. The `perf.yml` workflow
+compares the PR against the base branch with **benchstat** and fails on a
+median regression over 20%. Run locally with `make bench`.
 
 ## CI mapping
 
-The pipeline in `.github/workflows/ci.yml` maps directly onto this strategy:
+The pipeline maps directly onto this strategy (see
+[CI/CD & Supply-Chain Security](ci-cd.md) for the full picture):
 
-| CI job | What it runs |
+| CI job (`ci.yml`) | What it runs |
 |--------|--------------|
 | **verify** | `make check`, `go vet`, and `golangci-lint` |
-| **test** | Unit tests with `-race` and coverage |
+| **test** | Unit tests with `-race`, coverage, and the **coverage gate** |
+| **fuzz** | Each fuzz target for 60s (matrix) |
 | **integration** | Integration tests against a PostgreSQL **service container** |
-| **docker** | Builds the container image |
+| **build-image** | Builds the container image |
 
-Linting is configured in `.golangci.yml` and enables `errcheck`, `govet`,
+Additional workflows extend the gate: `security.yml` (govulncheck, OSV, gosec,
+gitleaks, Trivy, Grype), `codeql.yml`, `migrations.yml` (PostgreSQL 15/16/17),
+`perf.yml`, `openapi.yml`, `iac.yml`, `dast.yml`, `scorecard.yml`, and
+`release.yml` (signed, attested, reproducible releases).
+
+Linting is configured in `.golangci.yml` (v2) and enables `errcheck`, `govet`,
 `ineffassign`, `staticcheck`, `unused`, `gofmt`, `goimports`, `misspell`,
 `bodyclose`, `errorlint`, and `gosec`. Notably `gosec` (security) and
 `bodyclose` (resource-leak) run on every change, so security and
