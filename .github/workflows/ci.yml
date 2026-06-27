@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  verify:
+    name: Lint, vet, format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Verify tidy & formatting
+        run: make check
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Run unit tests
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nac
+          POSTGRES_PASSWORD: nac
+          POSTGRES_DB: nac
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nac"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Run integration tests
+        env:
+          NAC_TEST_DB_DSN: postgres://nac:nac@localhost:5432/nac?sslmode=disable
+        run: go test -tags=integration ./test/integration/...
+
+  docker:
+    name: Build image
+    runs-on: ubuntu-latest
+    needs: [verify, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container image
+        run: |
+          docker build -f deployments/docker/Dockerfile \
+            --build-arg VERSION="ci-${GITHUB_SHA::8}" \
+            --build-arg COMMIT="${GITHUB_SHA::8}" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -t nac/nacd:ci .

@@ -1,0 +1,31 @@
+# golangci-lint v2 configuration for the NAC platform.
+# Conservative, signal-over-noise linter set appropriate for production Go.
+version: "2"
+
+run:
+  timeout: 5m
+
+# The v2 standard set (errcheck, govet, ineffassign, staticcheck, unused) is
+# enabled by default; we add security- and correctness-focused linters on top.
+linters:
+  enable:
+    - bodyclose   # unclosed HTTP response bodies
+    - errorlint   # correct error wrapping/comparison
+    - gosec       # security issues
+    - misspell    # common misspellings
+  exclusions:
+    rules:
+      # Test files may use weaker randomness and ignore some errors.
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/kidcarmi/nac

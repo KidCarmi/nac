@@ -1,0 +1,22 @@
+# Binaries
+/bin/
+*.exe
+nacd
+
+# Test & coverage artifacts
+coverage.out
+coverage.html
+*.test
+
+# Local environment / secrets — never commit real secrets
+.env
+.env.local
+*.local
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Go build cache (when set locally)
+/.gocache/

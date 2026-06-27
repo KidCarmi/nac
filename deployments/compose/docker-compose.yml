@@ -1,0 +1,58 @@
+# Local development and integration-test stack.
+#
+#   docker compose -f deployments/compose/docker-compose.yml up --build
+#
+# Secrets here are development-only and intentionally weak; never reuse them.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nac
+      POSTGRES_PASSWORD: nac
+      POSTGRES_DB: nac
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nac"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nacd:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NAC_ENV: development
+      NAC_HTTP_ADDR: ":8080"
+      NAC_DB_DSN: "postgres://nac:nac@postgres:5432/nac?sslmode=disable"
+      NAC_REDIS_ADDR: "redis:6379"
+      NAC_JWT_SIGNING_KEY: "dev-insecure-signing-key-change-me-now!!"
+      NAC_SERVICE_TOKEN: "dev-service-token-change-me-please-1234"
+      NAC_LOG_LEVEL: "info"
+      NAC_LOG_FORMAT: "json"
+      NAC_BOOTSTRAP_ADMIN_EMAIL: "admin@nac.local"
+      NAC_BOOTSTRAP_ADMIN_PASSWORD: "ChangeMe123!"
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata: {}

@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: NAC Platform API
+  version: "1.0.0"
+  description: |
+    REST API for the enterprise Network Access Control (NAC) platform.
+
+    ## Authentication
+    - **Operator endpoints** use a bearer JWT obtained from `POST /api/v1/auth/login`.
+    - **The access-evaluation endpoint** (`POST /api/v1/access/evaluate`) is
+      called by trusted network enforcement points and authenticates with a
+      static service token presented as a bearer token.
+
+    ## Errors
+    All errors are returned as RFC 7807 `application/problem+json` documents.
+  license:
+    name: Apache-2.0
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: System
+  - name: Authentication
+  - name: Endpoints
+  - name: Policies
+  - name: Access
+  - name: Audit
+paths:
+  /healthz:
+    get:
+      tags: [System]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200": { description: Service is alive }
+  /readyz:
+    get:
+      tags: [System]
+      summary: Readiness probe
+      security: []
+      responses:
+        "200": { description: Service is ready }
+        "503": { description: A critical dependency is unavailable }
+  /version:
+    get:
+      tags: [System]
+      summary: Build metadata
+      security: []
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Version" }
+  /metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics
+      security: []
+      responses:
+        "200": { description: Prometheus exposition format }
+  /openapi.yaml:
+    get:
+      tags: [System]
+      summary: This OpenAPI document
+      security: []
+      responses:
+        "200": { description: The OpenAPI specification }
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate an operator and obtain a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authentication succeeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/endpoints:
+    get:
+      tags: [Endpoints]
+      summary: List endpoints
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: access_status, in: query, schema: { $ref: "#/components/schemas/AccessStatus" } }
+        - { name: q, in: query, schema: { type: string }, description: MAC or hostname prefix }
+      responses:
+        "200":
+          description: A page of endpoints
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EndpointList" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [Endpoints]
+      summary: Create an endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EndpointInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Endpoint" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/endpoints/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Endpoints]
+      summary: Get an endpoint
+      responses:
+        "200":
+          description: The endpoint
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Endpoint" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [Endpoints]
+      summary: Update an endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EndpointInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Endpoint" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [Endpoints]
+      summary: Delete an endpoint
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/policies:
+    get:
+      tags: [Policies]
+      summary: List policies
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: A page of policies
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyList" }
+    post:
+      tags: [Policies]
+      summary: Create a policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/v1/policies/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Policies]
+      summary: Get a policy
+      responses:
+        "200":
+          description: The policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [Policies]
+      summary: Update a policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Policy" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [Policies]
+      summary: Delete a policy
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/access/evaluate:
+    post:
+      tags: [Access]
+      summary: Evaluate an access request (enforcement-point facing)
+      security:
+        - serviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluateRequest" }
+      responses:
+        "200":
+          description: The access decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessDecision" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/audit:
+    get:
+      tags: [Audit]
+      summary: List audit events
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: A page of audit events
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditList" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Static service token for network enforcement points.
+  security:
+    - bearerAuth: []
+  responses:
+    Problem:
+      description: RFC 7807 problem document
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Version:
+      type: object
+      properties:
+        version: { type: string }
+        commit: { type: string }
+        build_date: { type: string }
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: object
+          additionalProperties: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        expires_at: { type: string, format: date-time }
+        role: { $ref: "#/components/schemas/Role" }
+    Role:
+      type: string
+      enum: [admin, operator, viewer]
+    AccessStatus:
+      type: string
+      enum: [unknown, authorized, quarantined, denied]
+    PostureStatus:
+      type: string
+      enum: [unknown, compliant, at_risk, noncompliant]
+    PolicyAction:
+      type: string
+      enum: [allow, deny, quarantine]
+    MatchOperator:
+      type: string
+      enum: [eq, ne, in, exists]
+    Attributes:
+      type: object
+      additionalProperties: { type: string }
+    Endpoint:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        mac: { type: string }
+        ip: { type: string }
+        hostname: { type: string }
+        device_type: { type: string }
+        access_status: { $ref: "#/components/schemas/AccessStatus" }
+        posture: { $ref: "#/components/schemas/PostureStatus" }
+        attributes: { $ref: "#/components/schemas/Attributes" }
+        last_seen: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    EndpointInput:
+      type: object
+      required: [mac]
+      properties:
+        mac: { type: string, examples: ["aa:bb:cc:dd:ee:ff"] }
+        ip: { type: string }
+        hostname: { type: string }
+        device_type: { type: string }
+        posture: { $ref: "#/components/schemas/PostureStatus" }
+        access_status: { $ref: "#/components/schemas/AccessStatus" }
+        attributes: { $ref: "#/components/schemas/Attributes" }
+    EndpointList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Endpoint" }
+        page: { $ref: "#/components/schemas/PageMeta" }
+    Condition:
+      type: object
+      required: [field, operator]
+      properties:
+        field: { type: string }
+        operator: { $ref: "#/components/schemas/MatchOperator" }
+        values:
+          type: array
+          items: { type: string }
+    Policy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        conditions:
+          type: array
+          items: { $ref: "#/components/schemas/Condition" }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+        segment: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PolicyInput:
+      type: object
+      required: [name, action]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        priority: { type: integer, minimum: 0 }
+        enabled: { type: boolean }
+        conditions:
+          type: array
+          items: { $ref: "#/components/schemas/Condition" }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+        segment: { type: string }
+    PolicyList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Policy" }
+        page: { $ref: "#/components/schemas/PageMeta" }
+    EvaluateRequest:
+      type: object
+      required: [mac]
+      properties:
+        mac: { type: string }
+        ip: { type: string }
+        posture: { $ref: "#/components/schemas/PostureStatus" }
+        attributes: { $ref: "#/components/schemas/Attributes" }
+    AccessDecision:
+      type: object
+      properties:
+        endpoint: { type: string }
+        status: { $ref: "#/components/schemas/AccessStatus" }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+        segment: { type: string }
+        matched_policy_id: { type: string, format: uuid }
+        reason: { type: string }
+        evaluated_at: { type: string, format: date-time }
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        occurred_at: { type: string, format: date-time }
+        actor_id: { type: string, format: uuid }
+        actor_email: { type: string }
+        action: { type: string }
+        resource_type: { type: string }
+        resource_id: { type: string }
+        outcome: { type: string }
+        request_id: { type: string }
+        remote_addr: { type: string }
+        metadata: { $ref: "#/components/schemas/Attributes" }
+    AuditList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+        page: { $ref: "#/components/schemas/PageMeta" }
+    PageMeta:
+      type: object
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        count: { type: integer }
+security:
+  - bearerAuth: []

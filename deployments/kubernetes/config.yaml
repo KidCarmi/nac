@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nacd-config
+  namespace: nac
+data:
+  NAC_ENV: "production"
+  NAC_HTTP_ADDR: ":8080"
+  NAC_LOG_LEVEL: "info"
+  NAC_LOG_FORMAT: "json"
+  NAC_DEFAULT_ACTION: "deny"
+  NAC_HTTP_RATE_LIMIT_PER_MIN: "600"
+  NAC_DB_MAX_CONNS: "20"
+  NAC_REDIS_TTL: "30s"
+---
+# Template only. DO NOT commit real secret values. In production, populate this
+# Secret from your secrets manager (e.g. External Secrets Operator, Vault Agent,
+# or sealed-secrets). See docs/security/secrets-management.md.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nacd-secrets
+  namespace: nac
+type: Opaque
+stringData:
+  NAC_DB_DSN: "postgres://nac:CHANGEME@postgres:5432/nac?sslmode=require"
+  NAC_REDIS_ADDR: "redis:6379"
+  NAC_REDIS_PASSWORD: "CHANGEME"
+  NAC_JWT_SIGNING_KEY: "CHANGEME-generate-with-openssl-rand-base64-48"
+  NAC_SERVICE_TOKEN: "CHANGEME-generate-with-openssl-rand-hex-32"

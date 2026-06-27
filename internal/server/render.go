@@ -1,0 +1,91 @@
+package server
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+
+	"github.com/kidcarmi/nac/internal/domain"
+	"github.com/kidcarmi/nac/internal/observability"
+	"github.com/kidcarmi/nac/pkg/problem"
+	"github.com/kidcarmi/nac/pkg/validation"
+)
+
+// writeJSON serializes v as JSON with the given status. Encoding errors are
+// logged but cannot be recovered once the header is written.
+func writeJSON(w http.ResponseWriter, r *http.Request, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	if v == nil {
+		return
+	}
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		observability.LoggerFrom(r.Context()).Error("failed to encode response", "error", err)
+	}
+}
+
+// decodeJSON strictly decodes the request body into dst. It rejects unknown
+// fields (catching client typos and smuggled fields) and trailing data, and
+// relies on the caller having wrapped the body with http.MaxBytesReader.
+func decodeJSON(r *http.Request, dst any) error {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		return err
+	}
+	// Ensure there is no trailing content after the first JSON value.
+	if dec.More() {
+		return errors.New("request body must contain a single JSON object")
+	}
+	return nil
+}
+
+// writeProblem maps a Go error to an RFC 7807 problem response. Domain
+// sentinels map to specific status codes; everything else becomes a generic
+// 500 with no internal detail leaked to the client (the detail is logged).
+func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
+	instance := requestIDFrom(r)
+	log := observability.LoggerFrom(r.Context())
+
+	switch {
+	case errors.Is(err, domain.ErrInvalidInput) || errors.Is(err, validation.ErrValidation):
+		p := problem.New(http.StatusUnprocessableEntity, "Validation failed", "One or more fields are invalid.").
+			WithInstance(instance)
+		if ve := new(validation.Errors); errors.As(err, &ve) {
+			p.WithErrors(ve.Fields())
+		}
+		p.Write(w)
+	case errors.Is(err, domain.ErrNotFound):
+		problem.New(http.StatusNotFound, "Not found", "The requested resource does not exist.").
+			WithInstance(instance).Write(w)
+	case errors.Is(err, domain.ErrConflict):
+		problem.New(http.StatusConflict, "Conflict", err.Error()).
+			WithInstance(instance).Write(w)
+	case errors.Is(err, domain.ErrUnauthorized):
+		problem.New(http.StatusUnauthorized, "Unauthorized", "Authentication is required.").
+			WithInstance(instance).Write(w)
+	case errors.Is(err, domain.ErrForbidden):
+		problem.New(http.StatusForbidden, "Forbidden", "You do not have permission to perform this action.").
+			WithInstance(instance).Write(w)
+	default:
+		// Unexpected: log the real error, return an opaque message.
+		log.Error("unhandled error", "error", err, "path", r.URL.Path)
+		problem.New(http.StatusInternalServerError, "Internal server error", "An unexpected error occurred.").
+			WithInstance(instance).Write(w)
+	}
+}
+
+// badRequest writes a 400 for malformed requests (e.g. unparseable JSON).
+func badRequest(w http.ResponseWriter, r *http.Request, detail string) {
+	problem.New(http.StatusBadRequest, "Bad request", detail).
+		WithInstance(requestIDFrom(r)).Write(w)
+}
+
+// drainAndClose ensures the request body is fully consumed so the connection
+// can be reused, then closed.
+func drainAndClose(rc io.ReadCloser) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(rc, 1<<16))
+	_ = rc.Close()
+}
