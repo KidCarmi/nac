@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### After pilot-rc6 (next candidate)
+### pilot-rc7 (supersedes pilot-rc6 `cf89206`, which was never qualified)
 - `install.sh` restarts nacd. Re-running it on an active installation used
   `enable --now`, which left the old nacd process running the previous
   binary and console certificate. The installer now also fails unless the

@@ -90,7 +90,7 @@
   - **`pilot-rc1` (`fe7c981`) and `pilot-rc2` (`c121a95`) lose the override**
     when the switch sends accounting Stop before re-authenticating: the
     endpoint is re-authorized by policy (ASTRA, rc2, accounting enabled).
-    Fixed in `pilot-rc6`, which also closes the variants found in review of
+    Fixed in `pilot-rc6` and later (`pilot-rc7` is the candidate), which also closes the variants found in review of
     `pilot-rc3` (a failed attempt between the Stop and the valid login),
     `pilot-rc4` (a replacement briefly stored without the override) and
     `pilot-rc5` (a rejected and a valid exchange racing to create the
