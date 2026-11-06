@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -90,4 +91,25 @@ func VerifyPassword(password, encoded string) (bool, error) {
 	keyLen := uint32(len(want)) //nolint:gosec // len(want) is bounded to [1,1024] by the guard above
 	got := argon2.IDKey([]byte(password), salt, p.iterations, p.memoryKiB, p.parallelism, keyLen)
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
+}
+
+// Password policy for operator accounts.
+const (
+	MinPasswordLength = 12
+	MaxPasswordLength = 256
+)
+
+// ValidateNewPassword enforces the operator password policy. It returns a
+// human-readable reason, or "" when the password is acceptable.
+func ValidateNewPassword(password, email string) string {
+	n := utf8.RuneCountInString(password)
+	switch {
+	case n < MinPasswordLength:
+		return fmt.Sprintf("the new password must be at least %d characters", MinPasswordLength)
+	case n > MaxPasswordLength:
+		return fmt.Sprintf("the new password must be at most %d characters", MaxPasswordLength)
+	case strings.EqualFold(strings.TrimSpace(password), strings.TrimSpace(email)):
+		return "the new password must not be the account email"
+	}
+	return ""
 }

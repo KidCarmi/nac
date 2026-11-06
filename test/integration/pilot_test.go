@@ -59,7 +59,7 @@ type harness struct {
 	cancel context.CancelFunc
 }
 
-func start(t *testing.T, dir string) *harness {
+func startNoLogin(t *testing.T, dir string) *harness {
 	t.Helper()
 	t.Setenv("NAC_DB_DSN", dsn(t))
 	t.Setenv("NAC_BOOTSTRAP_ADMIN_EMAIL", adminEmail)
@@ -82,7 +82,12 @@ func start(t *testing.T, dir string) *harness {
 		t.Fatalf("app: %v", err)
 	}
 	a.StartBackground(ctx)
-	h := &harness{t: t, app: a, srv: httptest.NewServer(a.Handler()), cancel: cancel}
+	return &harness{t: t, app: a, srv: httptest.NewServer(a.Handler()), cancel: cancel}
+}
+
+func start(t *testing.T, dir string) *harness {
+	t.Helper()
+	h := startNoLogin(t, dir)
 	var login struct{ Token string }
 	h.do("POST", "/api/v1/auth/login", map[string]string{"email": adminEmail, "password": adminPass}, 200, &login, false)
 	h.token = login.Token

@@ -53,6 +53,10 @@ func (s *Server) buildHandler() http.Handler {
 		return s.requireOperator(s.requirePermission(perm, h))
 	}
 
+	// Self-service for any authenticated operator (no extra permission).
+	mux.Handle("GET /api/v1/auth/me", s.requireOperator(http.HandlerFunc(s.handleMe)))
+	mux.Handle("POST /api/v1/auth/password", s.requireOperator(http.HandlerFunc(s.handlePasswordChange)))
+
 	mux.Handle("POST /api/v1/endpoints", authed(auth.PermEndpointWrite, s.handleCreateEndpoint))
 	mux.Handle("GET /api/v1/endpoints", authed(auth.PermEndpointRead, s.handleListEndpoints))
 	mux.Handle("GET /api/v1/endpoints/{id}", authed(auth.PermEndpointRead, s.handleGetEndpoint))

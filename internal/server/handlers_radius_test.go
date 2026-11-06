@@ -30,7 +30,7 @@ func radiusServer(acctErr error) *Server {
 		Auth: config.AuthConfig{ServiceToken: testServiceToken}}
 	repo := &fakeAudit{}
 	return New(Deps{Config: cfg, Logger: observability.NewLogger("error", "json"), Metrics: observability.NewMetrics(),
-		Endpoints: &fakeEndpoints{}, Policies: fakePolicies{}, Access: fakeAccess{}, Operators: fakeOperators{},
+		Endpoints: &fakeEndpoints{}, Policies: fakePolicies{}, Access: fakeAccess{}, Operators: &fakeOperators{},
 		AuditRepo: repo, Audit: audit.NewRecorder(repo), Radius: fakeRadius{acctErr: acctErr}})
 }
 

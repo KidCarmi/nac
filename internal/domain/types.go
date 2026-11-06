@@ -190,8 +190,12 @@ type Operator struct {
 	PasswordHash string    `json:"-"`
 	Role         Role      `json:"role"`
 	Disabled     bool      `json:"disabled"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	// TokenVersion is embedded in every session token; incrementing it
+	// (password change, local reset) revokes all earlier sessions.
+	TokenVersion      int        `json:"-"`
+	PasswordChangedAt *time.Time `json:"password_changed_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // AuditEvent is an append-only record of a security-relevant action.

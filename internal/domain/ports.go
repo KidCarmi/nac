@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -48,6 +49,9 @@ type OperatorRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Operator, error)
 	GetByEmail(ctx context.Context, email string) (*Operator, error)
 	List(ctx context.Context, p Page) ([]Operator, error)
+	// SetPassword stores a new password hash and increments the operator's
+	// token version (revoking existing sessions); it returns the new version.
+	SetPassword(ctx context.Context, id uuid.UUID, hash string, at time.Time) (int, error)
 }
 
 // AuditRepository appends and queries audit events. Writes are append-only;

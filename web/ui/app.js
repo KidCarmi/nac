@@ -84,14 +84,15 @@ async function act(fn, okMsg) {
 // ---------- routing ----------
 const routes = {
   "": overview, overview, switches, switch: switchDetail, sessions, session: sessionDetail,
-  endpoints, policy, events,
+  endpoints, policy, events, account,
 };
 function go(hash) { location.hash = hash; }
 async function render() {
   clearInterval(pollTimer);
   if (!token) return loginView();
   document.getElementById("nav").hidden = false;
-  document.getElementById("who").replaceChildren(me + " ", h("button", { onclick: logout }, "Sign out"));
+  document.getElementById("who").replaceChildren(h("a", { href: "#/account", title: "Account and password" }, me), " ",
+    h("button", { onclick: logout }, "Sign out"));
   const [name, arg] = location.hash.replace(/^#\/?/, "").split("/");
   document.querySelectorAll("nav a").forEach((a) => a.classList.toggle("active", a.getAttribute("href") === "#/" + (name || "overview")));
   const view = routes[name] || overview;
@@ -123,6 +124,27 @@ function loginView() {
     } catch (err) { flash(err.message, "err"); }
   } }, h("h1", {}, "Sign in"), field("Email", email), field("Password", pw), h("p", {}, h("button", { class: "primary", type: "submit" }, "Sign in")));
   show(form);
+}
+
+// ---------- Account ----------
+async function account() {
+  const d = await api("GET", "/auth/me");
+  const cur = h("input", { type: "password", autocomplete: "current-password", required: true });
+  const nw = h("input", { type: "password", autocomplete: "new-password", required: true, minlength: 12 });
+  const rep = h("input", { type: "password", autocomplete: "new-password", required: true, minlength: 12 });
+  const form = h("form", { onsubmit: async (e) => {
+    e.preventDefault();
+    if (nw.value !== rep.value) { flash("The new passwords differ; nothing was changed.", "err"); return; }
+    const r = await act(() => api("POST", "/auth/password", { current_password: cur.value, new_password: nw.value }),
+      "Password changed. Every other session of this account is signed out.");
+    if (r) { token = r.token; sessionStorage.setItem("nac.token", token); render(); }
+  } }, field("Current password", cur), field("New password (at least 12 characters)", nw), field("Repeat new password", rep),
+    h("p", {}, h("button", { class: "primary", type: "submit" }, "Change password")));
+  show(panel("Account", kv([["Email", d.email], ["Role", d.role], ["Permissions", d.permissions.join(", ")],
+    ["Password last changed", d.password_changed_at ? when(d.password_changed_at) : "never (initial password)"]])),
+  panel("Change password", h("p", { class: "muted" },
+    "Changing the password signs out every other session of this account. Forgot it? On the control node run: sudo nac-reset-password " + d.email),
+  form));
 }
 
 // ---------- Overview ----------

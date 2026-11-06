@@ -2,11 +2,13 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/kidcarmi/nac/internal/auth"
 	"github.com/kidcarmi/nac/internal/domain"
+	"github.com/kidcarmi/nac/pkg/problem"
 )
 
 type loginRequest struct {
@@ -69,3 +71,92 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 // dummyHash is a precomputed Argon2id hash of a random value, used to keep the
 // login path constant-work when an email is not found. It is not a credential.
 const dummyHash = "$argon2id$v=19$m=65536,t=3,p=2$YWJjZGVmZ2hpamtsbW5vcA$3Qe2Yx0p1m0n8sJYF2gq8m9Qz0xMv7uJ1wYJ8mWcR2A"
+
+type passwordChangeRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// handlePasswordChange lets an authenticated operator change their OWN
+// password. It requires the current password (a stolen session token alone
+// cannot take over the account), stores the new hash, revokes every earlier
+// session of the operator, and returns a fresh token for this session.
+func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
+	defer drainAndClose(r.Body)
+	p, ok := auth.PrincipalFrom(r.Context())
+	if !ok {
+		writeProblem(w, r, domain.ErrUnauthorized)
+		return
+	}
+	var req passwordChangeRequest
+	if err := decodeJSON(r, &req); err != nil {
+		badRequest(w, r, "invalid password change payload")
+		return
+	}
+	op, err := s.operators.GetByID(r.Context(), p.ID)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	if ok, verr := auth.VerifyPassword(req.CurrentPassword, op.PasswordHash); verr != nil || !ok {
+		s.metrics.AuthFailures.WithLabelValues("password_change_bad_current").Inc()
+		s.audit.Record(r.Context(), "operator.password_change", "operator", op.ID.String(), "failure",
+			map[string]string{"reason": "current password incorrect"})
+		// 403, not 401: the session is still valid; only the proof failed.
+		problem.New(http.StatusForbidden, "Current password incorrect",
+			"The current password is incorrect; the password was not changed.").WithInstance(requestIDFrom(r)).Write(w)
+		return
+	}
+	if reason := auth.ValidateNewPassword(req.NewPassword, op.Email); reason != "" {
+		writeProblem(w, r, fmt.Errorf("%w: %s", domain.ErrInvalidInput, reason))
+		return
+	}
+	if req.NewPassword == req.CurrentPassword {
+		writeProblem(w, r, fmt.Errorf("%w: the new password must differ from the current one", domain.ErrInvalidInput))
+		return
+	}
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	v, err := s.operators.SetPassword(r.Context(), op.ID, hash, time.Now().UTC())
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	op.TokenVersion = v
+	token, exp, err := s.tokens.Issue(op)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	s.audit.Record(r.Context(), "operator.password_change", "operator", op.ID.String(), "success",
+		map[string]string{"sessions_revoked": "all earlier sessions of this operator"})
+	writeJSON(w, r, http.StatusOK, loginResponse{Token: token, ExpiresAt: exp, Role: string(op.Role)})
+}
+
+type meResponse struct {
+	ID                string      `json:"id"`
+	Email             string      `json:"email"`
+	Role              domain.Role `json:"role"`
+	Permissions       []string    `json:"permissions"`
+	PasswordChangedAt *time.Time  `json:"password_changed_at,omitempty"`
+}
+
+// handleMe returns the authenticated operator as the server sees it (current
+// role and permissions from the operator record, not from the token).
+func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
+	p, ok := auth.PrincipalFrom(r.Context())
+	if !ok {
+		writeProblem(w, r, domain.ErrUnauthorized)
+		return
+	}
+	op, err := s.operators.GetByID(r.Context(), p.ID)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusOK, meResponse{ID: op.ID.String(), Email: op.Email, Role: op.Role,
+		Permissions: auth.PermissionsOf(op.Role), PasswordChangedAt: op.PasswordChangedAt})
+}

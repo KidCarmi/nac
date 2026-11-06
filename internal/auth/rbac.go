@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/kidcarmi/nac/internal/domain"
+import (
+	"sort"
+
+	"github.com/kidcarmi/nac/internal/domain"
+)
 
 // Permission is a coarse-grained capability checked at the API boundary.
 type Permission string
@@ -68,4 +72,16 @@ func (p *Principal) Can(perm Permission) bool {
 		return false
 	}
 	return HasPermission(p.Role, perm)
+}
+
+// PermissionsOf lists role's permissions, sorted (for API responses).
+func PermissionsOf(role domain.Role) []string {
+	out := []string{}
+	for p, ok := range rolePermissions[role] {
+		if ok {
+			out = append(out, string(p))
+		}
+	}
+	sort.Strings(out)
+	return out
 }

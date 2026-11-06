@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -66,19 +67,55 @@ func (f fakeAccess) Evaluate(context.Context, access.EvaluateInput) (domain.Acce
 	return f.decision, nil
 }
 
-type fakeOperators struct{ op *domain.Operator }
-
-func (f fakeOperators) Create(context.Context, *domain.Operator) error { return nil }
-func (f fakeOperators) GetByID(context.Context, uuid.UUID) (*domain.Operator, error) {
-	return nil, domain.ErrNotFound
+// fakeOperators is an in-memory operator store; the auth middleware looks
+// every token's operator up, so tokens must name a stored operator.
+type fakeOperators struct {
+	mu   sync.Mutex
+	byID map[uuid.UUID]*domain.Operator
 }
-func (f fakeOperators) GetByEmail(_ context.Context, email string) (*domain.Operator, error) {
-	if f.op != nil && f.op.Email == email {
-		return f.op, nil
+
+func (f *fakeOperators) put(o *domain.Operator) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.byID == nil {
+		f.byID = map[uuid.UUID]*domain.Operator{}
+	}
+	f.byID[o.ID] = o
+}
+func (f *fakeOperators) Create(_ context.Context, o *domain.Operator) error { f.put(o); return nil }
+func (f *fakeOperators) GetByID(_ context.Context, id uuid.UUID) (*domain.Operator, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if o, ok := f.byID[id]; ok {
+		c := *o
+		return &c, nil
 	}
 	return nil, domain.ErrNotFound
 }
-func (f fakeOperators) List(context.Context, domain.Page) ([]domain.Operator, error) { return nil, nil }
+func (f *fakeOperators) GetByEmail(_ context.Context, email string) (*domain.Operator, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, o := range f.byID {
+		if o.Email == email {
+			c := *o
+			return &c, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+func (f *fakeOperators) List(context.Context, domain.Page) ([]domain.Operator, error) {
+	return nil, nil
+}
+func (f *fakeOperators) SetPassword(_ context.Context, id uuid.UUID, hash string, at time.Time) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	o, ok := f.byID[id]
+	if !ok {
+		return 0, domain.ErrNotFound
+	}
+	o.PasswordHash, o.TokenVersion, o.PasswordChangedAt = hash, o.TokenVersion+1, &at
+	return o.TokenVersion, nil
+}
 
 type fakeAudit struct{ events []domain.AuditEvent }
 
@@ -100,6 +137,7 @@ type harness struct {
 	endpoints *fakeEndpoints
 	auditRepo *fakeAudit
 	operator  *domain.Operator
+	operators *fakeOperators
 }
 
 func newHarness(t *testing.T) *harness {
@@ -122,6 +160,8 @@ func newHarness(t *testing.T) *harness {
 	}
 	eps := &fakeEndpoints{}
 	auditRepo := &fakeAudit{}
+	ops := &fakeOperators{}
+	ops.put(op)
 
 	srv := New(Deps{
 		Config:    cfg,
@@ -131,11 +171,11 @@ func newHarness(t *testing.T) *harness {
 		Endpoints: eps,
 		Policies:  fakePolicies{},
 		Access:    fakeAccess{decision: domain.AccessDecision{Endpoint: "aa:bb:cc:dd:ee:ff", Action: domain.ActionAllow, Status: domain.AccessAuthorized}},
-		Operators: fakeOperators{op: op},
+		Operators: ops,
 		AuditRepo: auditRepo,
 		Audit:     audit.NewRecorder(auditRepo),
 	})
-	return &harness{srv: srv, tokens: tokens, endpoints: eps, auditRepo: auditRepo, operator: op}
+	return &harness{srv: srv, tokens: tokens, endpoints: eps, auditRepo: auditRepo, operator: op, operators: ops}
 }
 
 func (h *harness) do(method, path, token string, body any) *httptest.ResponseRecorder {
@@ -154,7 +194,9 @@ func (h *harness) do(method, path, token string, body any) *httptest.ResponseRec
 
 func (h *harness) operatorToken(t *testing.T, role domain.Role) string {
 	t.Helper()
-	tok, _, err := h.tokens.Issue(&domain.Operator{ID: uuid.New(), Email: "x@nac.local", Role: role})
+	op := &domain.Operator{ID: uuid.New(), Email: "x-" + string(role) + "@nac.local", Role: role}
+	h.operators.put(op)
+	tok, _, err := h.tokens.Issue(op)
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
