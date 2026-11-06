@@ -81,7 +81,11 @@ type Service struct {
 	sendCoA coaSender
 	eapi    eapiClient
 
-	mu                sync.Mutex
+	mu sync.Mutex
+	// clientsMu serialises reading the switch list and replacing the
+	// FreeRADIUS client file, so an older snapshot can never overwrite a
+	// newer one when switch changes run concurrently.
+	clientsMu         sync.Mutex
 	clientsFileStatus StatusItem
 	outageStatus      StatusItem
 	wg                sync.WaitGroup

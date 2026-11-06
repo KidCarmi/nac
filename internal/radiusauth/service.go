@@ -196,8 +196,14 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		s.event(ctx, &domain.AuthEvent{SessionID: &cur.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
 			Result: "info", Reason: "session ended: a different certificate authenticated on this port and MAC", Source: "nacd"})
 	case err == nil:
-		cur.UserName, cur.CertIssuer, cur.CertSerial, cur.CertCN = req.UserName, req.CertIssuer, serial, req.CertCN
-		cur.CallingStationID, cur.NASIPAddress = req.CallingStationID, req.NASIPAddress
+		// Only a request that carries a validated certificate may set the
+		// session's identity. A failed attempt without certificate attributes
+		// must not erase it, or a later different certificate would no longer
+		// be recognised as a replacement (and would inherit this session).
+		if serial != "" && req.CertIssuer != "" {
+			cur.CertIssuer, cur.CertSerial, cur.CertCN = req.CertIssuer, serial, req.CertCN
+		}
+		cur.UserName, cur.CallingStationID, cur.NASIPAddress = req.UserName, req.CallingStationID, req.NASIPAddress
 		if req.AcctSessionID != "" {
 			cur.AcctSessionID = req.AcctSessionID
 		}

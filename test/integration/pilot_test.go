@@ -608,4 +608,61 @@ func TestPilotRegressions_ReviewFindings(t *testing.T) {
 	if newOverride != "" || newIssuer != "/CN=Another Trusted CA" {
 		t.Fatalf("new session inherited state: override=%q issuer=%q", newOverride, newIssuer)
 	}
+
+	// --- Third review: a TLS failure without certificate attributes must not
+	// erase the session's identity, so a different certificate afterwards is
+	// still recognised as a replacement. ---
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200) // bound cert A again: an ACTIVE session
+	var sessB string
+	if err := conn.QueryRow(ctx, `SELECT id FROM radius_sessions WHERE state = 'active'`).Scan(&sessB); err != nil {
+		t.Fatal(err)
+	}
+	h.do("POST", "/api/v1/sessions/"+sessB+"/quarantine", nil, 202, nil, true) // needs an active session
+	h.app.Pilot().Wait()
+	h.radiusCall("/api/v1/radius/reject", "127.0.0.1", map[string]string{"User-Name": "x", "Calling-Station-Id": "00-50-00-00-02-00",
+		"NAS-Port-Id": "Ethernet1", "Module-Failure-Message": "eap_tls: (TLS) Alert read:fatal:unknown CA"}, 204)
+	var keptSerial string
+	if err := conn.QueryRow(ctx, `SELECT cert_serial FROM radius_sessions WHERE id=$1`, sessB).Scan(&keptSerial); err != nil || keptSerial == "" {
+		t.Fatalf("TLS failure erased the session's certificate identity: %q %v", keptSerial, err)
+	}
+	third := authAttrs()
+	third["TLS-Client-Cert-Serial"] = "ABCDEF0123"
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", third, 200)
+	var stateB string
+	if err := conn.QueryRow(ctx, `SELECT state FROM radius_sessions WHERE id=$1`, sessB).Scan(&stateB); err != nil || stateB != "ended" {
+		t.Fatalf("a different certificate after a TLS failure must end the old session, got %q %v", stateB, err)
+	}
+	if err := conn.QueryRow(ctx, `SELECT override FROM radius_sessions WHERE state <> 'ended'`).Scan(&newOverride); err != nil || newOverride != "" {
+		t.Fatalf("the new certificate inherited the old session's override: %q %v", newOverride, err)
+	}
+}
+
+// Third review: concurrent switch registrations must all end up in the
+// FreeRADIUS client file (no stale snapshot may overwrite a newer one).
+func TestPilotRegressions_ConcurrentSwitchChangesKeepClientsFileComplete(t *testing.T) {
+	resetDB(t, dsn(t))
+	dir := t.TempDir()
+	h := start(t, dir)
+	defer h.stop()
+	const n = 12
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			h.do("POST", "/api/v1/switches", map[string]any{"name": fmt.Sprintf("sw-%02d", i),
+				"radius_source_ip": fmt.Sprintf("10.20.0.%d", i+1), "radius_secret": swSecret,
+				"segment_vlans": map[string]int{"corp": 10, "quarantine": 20}}, 201, nil, true)
+		}(i)
+	}
+	wg.Wait()
+	b, err := os.ReadFile(filepath.Join(dir, "clients.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < n; i++ {
+		if !strings.Contains(string(b), fmt.Sprintf("ipaddr = 10.20.0.%d\n", i+1)) {
+			t.Fatalf("switch sw-%02d missing from the FreeRADIUS client file:\n%s", i, b)
+		}
+	}
 }

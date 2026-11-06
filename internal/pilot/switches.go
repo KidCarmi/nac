@@ -364,10 +364,12 @@ func (s *Service) WriteClientsFile(ctx context.Context) StatusItem {
 	if s.cfg.ClientsFile == "" {
 		st = StatusItem{State: "unknown", At: &now, Detail: "NAC_FREERADIUS_CLIENTS_FILE is not set: add the client to FreeRADIUS clients.conf manually"}
 	} else {
+		s.clientsMu.Lock()
 		sws, err := s.store.ListSwitches(ctx)
 		if err == nil {
 			err = writeAtomic(s.cfg.ClientsFile, []byte(RenderClients(sws)), 0o640)
 		}
+		s.clientsMu.Unlock()
 		if err != nil {
 			st = StatusItem{State: "no", At: &now, Detail: "could not write " + s.cfg.ClientsFile + ": " + err.Error()}
 		} else {
