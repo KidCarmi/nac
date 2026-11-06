@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/kidcarmi/nac/internal/domain"
 )
 
@@ -80,9 +82,39 @@ func (s *Service) Evaluate(ctx context.Context, in EvaluateInput) (domain.Access
 		ep.Attributes = merged
 	}
 
+	// Prefer the versioned rule set: it carries the version's own default
+	// action and identity, which the decision records.
+	if rs, ok := s.policies.(ruleSetSource); ok {
+		set, err := rs.ActiveRuleSet(ctx)
+		if err != nil {
+			return domain.AccessDecision{}, err
+		}
+		return s.EvaluateRuleSet(ep.MAC, EndpointInputs(ep), set), nil
+	}
 	policies, err := s.policies.EnabledPolicies(ctx)
 	if err != nil {
 		return domain.AccessDecision{}, err
 	}
 	return s.engine.Evaluate(ep, policies), nil
+}
+
+// ruleSetSource is implemented by the policy-version service.
+type ruleSetSource interface {
+	ActiveRuleSet(ctx context.Context) (domain.RuleSet, error)
+}
+
+// EvaluateRuleSet evaluates inputs under a specific version, applying that
+// version's default action and stamping the version on the decision.
+func (s *Service) EvaluateRuleSet(subject string, inputs domain.Inputs, set domain.RuleSet) domain.AccessDecision {
+	eng := *s.engine
+	if set.DefaultAction.Valid() {
+		eng.DefaultAction = set.DefaultAction
+	}
+	d := eng.EvaluateInputs(subject, inputs, set.Rules)
+	d.PolicyVersion = set.VersionNumber
+	if set.VersionID != uuid.Nil {
+		id := set.VersionID
+		d.PolicyVersionID = &id
+	}
+	return d
 }

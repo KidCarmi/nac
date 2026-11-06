@@ -25,6 +25,8 @@ type Config struct {
 	Log   LogConfig
 	// Bootstrap seeds the first administrator on an empty installation.
 	Bootstrap BootstrapConfig
+	// Pilot configures the RADIUS/switch pilot features.
+	Pilot PilotConfig
 	// DefaultAction is the access-engine fallback when no policy matches.
 	DefaultAction domain.PolicyAction
 }
@@ -72,6 +74,19 @@ type AuthConfig struct {
 type BootstrapConfig struct {
 	AdminEmail    string
 	AdminPassword string
+}
+
+// PilotConfig configures evidence freshness and switch integration.
+type PilotConfig struct {
+	// PostureMaxAge: posture older than this is stale (treated as missing).
+	PostureMaxAge time.Duration
+	// ObservationMaxAge: switch-observed state older than this is shown stale.
+	ObservationMaxAge time.Duration
+	// SecretsKey encrypts switch RADIUS secrets and eAPI passwords at rest.
+	SecretsKey string
+	// CoATimeout and CoARetries bound each CoA exchange.
+	CoATimeout time.Duration
+	CoARetries int
 }
 
 // LogConfig configures structured logging.
@@ -127,6 +142,13 @@ func Load() (*Config, error) {
 			AdminPassword: os.Getenv("NAC_BOOTSTRAP_ADMIN_PASSWORD"),
 		},
 		DefaultAction: domain.PolicyAction(getEnv("NAC_DEFAULT_ACTION", string(domain.ActionDeny))),
+		Pilot: PilotConfig{
+			PostureMaxAge:     getDuration("NAC_POSTURE_MAX_AGE", 24*time.Hour),
+			ObservationMaxAge: getDuration("NAC_OBSERVATION_MAX_AGE", 5*time.Minute),
+			SecretsKey:        os.Getenv("NAC_SECRETS_KEY"),
+			CoATimeout:        getDuration("NAC_COA_TIMEOUT", 3*time.Second),
+			CoARetries:        getInt("NAC_COA_RETRIES", 2),
+		},
 	}
 
 	// Validation. Secrets are mandatory in non-development environments and

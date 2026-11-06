@@ -25,6 +25,7 @@ import (
 	"github.com/kidcarmi/nac/internal/endpoint"
 	"github.com/kidcarmi/nac/internal/observability"
 	"github.com/kidcarmi/nac/internal/policy"
+	"github.com/kidcarmi/nac/internal/policyver"
 	"github.com/kidcarmi/nac/internal/server"
 	"github.com/kidcarmi/nac/internal/storage/postgres"
 )
@@ -84,6 +85,11 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 	engine.DefaultAction = cfg.DefaultAction
 	policySvc := policy.NewService(policyRepo, policyCache)
 	endpointSvc := endpoint.NewService(endpointRepo)
+	versionSvc := policyver.New(postgres.NewPolicyVersionRepo(pool), nil, nil, cfg.DefaultAction)
+	if err := versionSvc.EnsureInitialVersion(ctx); err != nil {
+		a.Close()
+		return nil, fmt.Errorf("initial policy version: %w", err)
+	}
 
 	srv := server.New(server.Deps{
 		Config:    cfg,
@@ -92,7 +98,10 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		Tokens:    tokens,
 		Endpoints: endpointSvc,
 		Policies:  policySvc,
-		Access:    access.NewService(engine, policySvc, endpointRepo),
+		// Decisions always evaluate the ACTIVE published version; the
+		// /policies CRUD edits the draft.
+		Access:    access.NewService(engine, versionSvc, endpointRepo),
+		Versions:  versionSvc,
 		Operators: operatorRepo,
 		AuditRepo: auditRepo,
 		Audit:     audit.NewRecorder(auditRepo),

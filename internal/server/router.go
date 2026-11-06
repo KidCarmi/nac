@@ -61,6 +61,19 @@ func (s *Server) buildHandler() http.Handler {
 
 	mux.Handle("GET /api/v1/audit", authed(auth.PermAuditRead, s.handleListAudit))
 
+	// ---- Versioned policy: the /policies routes above edit the draft ----
+	if s.versions != nil {
+		mux.Handle("GET /api/v1/policy-inputs", authed(auth.PermPolicyRead, s.handlePolicyInputs))
+		mux.Handle("GET /api/v1/policy-draft", authed(auth.PermPolicyRead, s.handleGetDraft))
+		mux.Handle("PUT /api/v1/policy-draft/settings", authed(auth.PermPolicyWrite, s.handleDraftSettings))
+		mux.Handle("GET /api/v1/policy-draft/preview", authed(auth.PermPolicyRead, s.handlePreviewDraft))
+		mux.Handle("POST /api/v1/policy-draft/publish", authed(auth.PermPolicyWrite, s.handlePublishDraft))
+		mux.Handle("GET /api/v1/policy-versions", authed(auth.PermPolicyRead, s.handleListVersions))
+		mux.Handle("GET /api/v1/policy-versions/{number}", authed(auth.PermPolicyRead, s.handleGetVersion))
+		mux.Handle("POST /api/v1/policy-versions/{number}/restore", authed(auth.PermPolicyWrite, s.handleRestoreVersion))
+		mux.Handle("GET /api/v1/policy-activations", authed(auth.PermPolicyRead, s.handleListActivations))
+	}
+
 	// ---- Service-token endpoint for network enforcement points ----
 	mux.Handle("POST /api/v1/access/evaluate", s.requireServiceToken(s.handleEvaluateAccess))
 

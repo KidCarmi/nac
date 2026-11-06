@@ -143,8 +143,12 @@ type AccessDecision struct {
 	Segment         string       `json:"segment,omitempty"`
 	MatchedPolicyID *uuid.UUID   `json:"matched_policy_id,omitempty"`
 	MatchedRule     string       `json:"matched_rule,omitempty"`
-	Reason          string       `json:"reason"`
-	EvaluatedAt     time.Time    `json:"evaluated_at"`
+	// PolicyVersion identifies the immutable version that produced this
+	// decision (0 when evaluated outside versioning, e.g. a draft preview).
+	PolicyVersion   int        `json:"policy_version,omitempty"`
+	PolicyVersionID *uuid.UUID `json:"policy_version_id,omitempty"`
+	Reason          string     `json:"reason"`
+	EvaluatedAt     time.Time  `json:"evaluated_at"`
 	// Trace lists every rule in evaluation order with its outcome.
 	Trace []RuleTrace `json:"trace,omitempty"`
 	// InsufficientEvidence lists fields whose missing or stale evidence
