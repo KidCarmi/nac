@@ -26,9 +26,12 @@ jobs:
       - name: go vet
         run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        # .golangci.yml is v2 format and go.mod targets Go 1.25, so pin a v2
+        # release built with Go >= 1.25. `latest` with action v6 resolved to
+        # v1.64.8 (built with go1.24), which refuses to load the config.
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.5.0
 
   test:
     name: Unit tests
