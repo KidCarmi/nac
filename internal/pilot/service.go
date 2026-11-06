@@ -66,6 +66,7 @@ type Config struct {
 	CoAObserveWindow   time.Duration // how long to wait for the re-authentication
 	VerifyWindow       time.Duration // a verification needs an accept this recent
 	EAPIInsecureTLS    bool          // NAC_EAPI_INSECURE_SKIP_VERIFY
+	EAPIAllowRSAKex    bool          // NAC_EAPI_TLS_ALLOW_RSA_KEX
 	OutageImportPeriod time.Duration
 }
 
@@ -116,7 +117,7 @@ func New(store Store, rules *policyver.Service, eval *access.Service, auditor Au
 	}
 	s := &Service{store: store, rules: rules, eval: eval, auditor: auditor, logger: logger, cfg: cfg, now: time.Now}
 	s.sendCoA = s.exchangeCoA
-	s.eapi = newEAPIClient(cfg.EAPIInsecureTLS)
+	s.eapi = newEAPIClient(EAPITLS{InsecureSkipVerify: cfg.EAPIInsecureTLS, AllowRSAKeyExchange: cfg.EAPIAllowRSAKex})
 	return s
 }
 

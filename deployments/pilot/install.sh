@@ -91,7 +91,12 @@ JWT=$(get NAC_JWT_SIGNING_KEY); JWT=${JWT:-$(rand 48)}
 TOKEN=$(get NAC_SERVICE_TOKEN); TOKEN=${TOKEN:-$(rand 40)}
 SKEYS=$(get NAC_SECRETS_KEY); SKEYS=${SKEYS:-$(rand 48)}
 ADMINPW_FILE=/root/nac-initial-admin.txt
-if [ -f "$ADMINPW_FILE" ]; then ADMINPW=$(sed -n 's/^password: //p' "$ADMINPW_FILE"); else ADMINPW=$(rand 20); fi
+# The initial admin password is generated once and kept in nacd.env, which
+# only creates the account on first start. Re-installing must not invent a
+# new one: it would be written to the file but not match the account.
+ADMINPW=$(get NAC_BOOTSTRAP_ADMIN_PASSWORD)
+if [ -z "$ADMINPW" ] && [ -f "$ADMINPW_FILE" ]; then ADMINPW=$(sed -n 's/^password: //p' "$ADMINPW_FILE"); fi
+ADMINPW=${ADMINPW:-$(rand 20)}
 
 step "PostgreSQL database"
 systemctl enable --now postgresql >/dev/null 2>&1 || service postgresql start >/dev/null
@@ -114,8 +119,16 @@ elif [ ! -f /etc/nac/https.pem ]; then
 fi
 
 step "nacd configuration ($ENVF)"
+# Operator-tunable settings keep their current value on re-install; the
+# default applies only to a first install. Lines the operator added that the
+# template does not know are carried over unchanged.
+keep() { v=$(get "$1"); echo "${v:-$2}"; }
+PREV_ENV=""
+[ -f "$ENVF" ] && PREV_ENV=$(cat "$ENVF")
 umask 027
-cat > "$ENVF" <<ENV
+# Write a new file and move it into place: a "> $ENVF" redirection would
+# truncate the file before keep() reads the current values.
+cat > "$ENVF.new" <<ENV
 # NAC pilot configuration. See docs/operations/configuration.md.
 NAC_ENV=production
 # Loopback HTTP for FreeRADIUS; HTTPS for operators.
@@ -128,22 +141,31 @@ NAC_DB_PASSWORD_HINT=$DBPW
 NAC_JWT_SIGNING_KEY=$JWT
 NAC_SERVICE_TOKEN=$TOKEN
 NAC_SECRETS_KEY=$SKEYS
-NAC_DEFAULT_ACTION=deny
-NAC_POSTURE_MAX_AGE=24h
-NAC_OBSERVATION_MAX_AGE=5m
-NAC_COA_TIMEOUT=3s
-NAC_COA_RETRIES=2
+NAC_DEFAULT_ACTION=$(keep NAC_DEFAULT_ACTION deny)
+NAC_POSTURE_MAX_AGE=$(keep NAC_POSTURE_MAX_AGE 24h)
+NAC_OBSERVATION_MAX_AGE=$(keep NAC_OBSERVATION_MAX_AGE 5m)
+NAC_COA_TIMEOUT=$(keep NAC_COA_TIMEOUT 3s)
+NAC_COA_RETRIES=$(keep NAC_COA_RETRIES 2)
 NAC_FREERADIUS_CLIENTS_FILE=/var/lib/nac/freeradius-clients.conf
 NAC_FREERADIUS_OUTAGE_LOG=/var/log/freeradius/nac-outage.log
-NAC_EAPI_INSECURE_SKIP_VERIFY=false
-NAC_LOG_FORMAT=json
-NAC_LOG_LEVEL=info
+NAC_EAPI_INSECURE_SKIP_VERIFY=$(keep NAC_EAPI_INSECURE_SKIP_VERIFY false)
+NAC_EAPI_TLS_ALLOW_RSA_KEX=$(keep NAC_EAPI_TLS_ALLOW_RSA_KEX false)
+NAC_LOG_FORMAT=$(keep NAC_LOG_FORMAT json)
+NAC_LOG_LEVEL=$(keep NAC_LOG_LEVEL info)
 NAC_BOOTSTRAP_ADMIN_EMAIL=$ADMIN
 NAC_BOOTSTRAP_ADMIN_PASSWORD=$ADMINPW
 ENV
-chown root:nac "$ENVF"; chmod 0640 "$ENVF"
+if [ -n "$PREV_ENV" ]; then
+  extra=$(printf '%s\n' "$PREV_ENV" | while IFS= read -r line; do
+    case "$line" in ''|'#'*) continue ;; esac
+    grep -q "^${line%%=*}=" "$ENVF.new" || printf '%s\n' "$line"
+  done)
+  if [ -n "$extra" ]; then printf '# Kept from the previous configuration:\n%s\n' "$extra" >> "$ENVF.new"; fi
+fi
+chown root:nac "$ENVF.new"; chmod 0640 "$ENVF.new"; mv -f "$ENVF.new" "$ENVF"
 umask 077
-printf 'console: https://%s:8443/\nemail: %s\npassword: %s\n' "$(hostname -I | awk '{print $1}')" "$ADMIN" "$ADMINPW" > "$ADMINPW_FILE"
+printf 'console: https://%s:8443/\nemail: %s\npassword: %s\nnote: initial password only. After you change it (console: Account) it no longer works; delete this file. Forgotten password: sudo nac-reset-password %s\n' \
+  "$(hostname -I | awk '{print $1}')" "$ADMIN" "$ADMINPW" "$ADMIN" > "$ADMINPW_FILE"
 umask 022
 
 step "Database schema"
@@ -189,7 +211,8 @@ cat <<DONE
 
 NAC pilot installed.
   Console:        https://$(hostname -I | awk '{print $1}'):8443/
-  First admin:    see $ADMINPW_FILE (root only); keep it secret (the pilot has no password-change page)
+  First admin:    initial password in $ADMINPW_FILE (root only). Change it under Account, then delete the file.
+  Lost password:  sudo nac-reset-password $ADMIN
   FreeRADIUS:     $FRVER, UDP 1812/1813; outage log /var/log/freeradius/nac-outage.log
   Configuration:  $ENVF
 Next: open the console, register the switch (Switches), apply the generated EOS configuration.

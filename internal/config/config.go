@@ -98,6 +98,9 @@ type PilotConfig struct {
 	OutageLog string
 	// EAPIInsecureSkipVerify accepts self-signed switch eAPI certificates.
 	EAPIInsecureSkipVerify bool
+	// EAPIAllowRSAKeyExchange lets the eAPI client (only) offer TLS 1.2 RSA
+	// key-exchange suites, which stock EOS 4.29.2F eAPI requires.
+	EAPIAllowRSAKeyExchange bool
 }
 
 // LogConfig configures structured logging.
@@ -157,14 +160,15 @@ func Load() (*Config, error) {
 		},
 		DefaultAction: domain.PolicyAction(getEnv("NAC_DEFAULT_ACTION", string(domain.ActionDeny))),
 		Pilot: PilotConfig{
-			PostureMaxAge:          getDuration("NAC_POSTURE_MAX_AGE", 24*time.Hour),
-			ObservationMaxAge:      getDuration("NAC_OBSERVATION_MAX_AGE", 5*time.Minute),
-			SecretsKey:             os.Getenv("NAC_SECRETS_KEY"),
-			CoATimeout:             getDuration("NAC_COA_TIMEOUT", 3*time.Second),
-			CoARetries:             getInt("NAC_COA_RETRIES", 2),
-			ClientsFile:            os.Getenv("NAC_FREERADIUS_CLIENTS_FILE"),
-			OutageLog:              os.Getenv("NAC_FREERADIUS_OUTAGE_LOG"),
-			EAPIInsecureSkipVerify: getEnv("NAC_EAPI_INSECURE_SKIP_VERIFY", "false") == "true",
+			PostureMaxAge:           getDuration("NAC_POSTURE_MAX_AGE", 24*time.Hour),
+			ObservationMaxAge:       getDuration("NAC_OBSERVATION_MAX_AGE", 5*time.Minute),
+			SecretsKey:              os.Getenv("NAC_SECRETS_KEY"),
+			CoATimeout:              getDuration("NAC_COA_TIMEOUT", 3*time.Second),
+			CoARetries:              getInt("NAC_COA_RETRIES", 2),
+			ClientsFile:             os.Getenv("NAC_FREERADIUS_CLIENTS_FILE"),
+			OutageLog:               os.Getenv("NAC_FREERADIUS_OUTAGE_LOG"),
+			EAPIInsecureSkipVerify:  getEnv("NAC_EAPI_INSECURE_SKIP_VERIFY", "false") == "true",
+			EAPIAllowRSAKeyExchange: getEnv("NAC_EAPI_TLS_ALLOW_RSA_KEX", "false") == "true",
 		},
 	}
 

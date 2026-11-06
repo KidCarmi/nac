@@ -116,6 +116,7 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		CoATimeout:        cfg.Pilot.CoATimeout,
 		CoAAttempts:       cfg.Pilot.CoARetries + 1,
 		EAPIInsecureTLS:   cfg.Pilot.EAPIInsecureSkipVerify,
+		EAPIAllowRSAKex:   cfg.Pilot.EAPIAllowRSAKeyExchange,
 	})
 	a.bg = append(a.bg, pilotSvc.Start)
 	a.pilot = pilotSvc

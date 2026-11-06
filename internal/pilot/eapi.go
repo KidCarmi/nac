@@ -22,14 +22,67 @@ type eapiClient interface {
 	run(ctx context.Context, sw *domain.Switch, cmds ...string) ([]json.RawMessage, error)
 }
 
-type httpEAPI struct{ client *http.Client }
+type httpEAPI struct {
+	client *http.Client
+	tls    EAPITLS
+}
 
-func newEAPIClient(insecure bool) eapiClient {
+// EAPITLS is the TLS policy of the eAPI client ONLY. It never changes any
+// other outbound TLS connection of nacd (unlike GODEBUG=tlsrsakex=1).
+type EAPITLS struct {
+	// InsecureSkipVerify accepts self-signed switch certificates
+	// (NAC_EAPI_INSECURE_SKIP_VERIFY).
+	InsecureSkipVerify bool
+	// AllowRSAKeyExchange additionally offers TLS 1.2 RSA key-exchange
+	// suites (no forward secrecy), which stock EOS 4.29.2F eAPI requires
+	// unless an SSL profile with ECDHE ciphers is configured on the switch
+	// (NAC_EAPI_TLS_ALLOW_RSA_KEX). ECDHE suites stay preferred.
+	AllowRSAKeyExchange bool
+}
+
+// rsaKeyExchangeSuites are appended after Go's default (ECDHE) suites.
+var rsaKeyExchangeSuites = []uint16{
+	tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+}
+
+// modernSuites are Go's default TLS 1.2 suites (all ECDHE, AEAD first).
+var modernSuites = []uint16{
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+}
+
+func newEAPIClient(p EAPITLS) eapiClient {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
-	if insecure {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit operator opt-in (self-signed switch certificates)
+	cfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: p.InsecureSkipVerify} //nolint:gosec // explicit operator opt-in (self-signed switch certificates)
+	if p.AllowRSAKeyExchange {
+		cfg.CipherSuites = append(append([]uint16{}, modernSuites...), rsaKeyExchangeSuites...)
 	}
-	return &httpEAPI{client: &http.Client{Timeout: 8 * time.Second, Transport: tr}}
+	tr.TLSClientConfig = cfg
+	return &httpEAPI{client: &http.Client{Timeout: 8 * time.Second, Transport: tr}, tls: p}
+}
+
+// tlsHint explains a TLS handshake failure in operator terms.
+func (e *httpEAPI) tlsHint(err error) string {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "handshake failure") && !e.tls.AllowRSAKeyExchange:
+		return " (the switch offered no TLS cipher nacd accepts. Stock EOS 4.29.2F eAPI offers only RSA key exchange: " +
+			"configure an eAPI ssl profile with ECDHE ciphers on the switch, or set NAC_EAPI_TLS_ALLOW_RSA_KEX=true; see installation section 7a)"
+	case strings.Contains(msg, "certificate") && !e.tls.InsecureSkipVerify:
+		return " (the switch certificate is not trusted: install a trusted certificate on the switch, or set NAC_EAPI_INSECURE_SKIP_VERIFY=true on a trusted management network)"
+	}
+	return ""
 }
 
 // run executes commands through Arista eAPI (JSON-RPC runCmds).
@@ -44,7 +97,7 @@ func (e *httpEAPI) run(ctx context.Context, sw *domain.Switch, cmds ...string) (
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("eAPI %s unreachable: %w", sw.EAPIURL, err)
+		return nil, fmt.Errorf("eAPI %s unreachable: %w%s", sw.EAPIURL, err, e.tlsHint(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))

@@ -215,4 +215,5 @@ ConfigMap and the secrets through the `nacd-secrets` Secret. See
 | `NAC_FREERADIUS_CLIENTS_FILE` | path | — | No | Where nacd renders FreeRADIUS client definitions (installer: `/var/lib/nac/freeradius-clients.conf`). |
 | `NAC_FREERADIUS_OUTAGE_LOG` | path | — | No | FreeRADIUS outage log imported into the timeline (installer: `/var/log/freeradius/nac-outage.log`). |
 | `NAC_EAPI_INSECURE_SKIP_VERIFY` | bool | `false` | No | Accept self-signed switch eAPI certificates. |
+| `NAC_EAPI_TLS_ALLOW_RSA_KEX` | bool | `false` | No | Let the eAPI client (only) also offer TLS 1.2 RSA key-exchange ciphers, which stock EOS 4.29.2F eAPI requires unless an ECDHE SSL profile is configured on the switch. ECDHE stays preferred; no forward secrecy when RSA is negotiated. |
 | `NAC_BOOTSTRAP_ADMIN_EMAIL`, `NAC_BOOTSTRAP_ADMIN_PASSWORD` | string | — | No | Creates the first administrator if missing (password 12+ characters). |
