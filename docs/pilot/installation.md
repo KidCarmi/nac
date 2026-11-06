@@ -136,6 +136,16 @@ sudo cat /root/nac-initial-admin.txt
 Open the console at `https://<control-node>:8443/` and sign in. With the
 self-signed certificate, the browser warns once.
 
+**The password cannot be changed in the pilot.** There is no password-change
+page or API, and only this one administrator account exists (see
+[known limitations](known-limitations.md)). Keep the file root-only. To
+replace the password:
+1. Set a new `NAC_BOOTSTRAP_ADMIN_PASSWORD` in `/etc/nac/nacd.env`.
+2. Delete the account row in PostgreSQL.
+3. Restart nacd, which re-creates the account.
+
+That is a shell procedure, not a product workflow.
+
 Then follow the [operator walkthrough](operator-walkthrough.md).
 
 ## 5. Certificates
@@ -149,7 +159,12 @@ Then follow the [operator walkthrough](operator-walkthrough.md).
 **Lab validation with the existing test CA:** pass the lab's test CA
 certificate as `--ca`, and a server certificate/key issued by that CA as
 `--server-cert`/`--server-key`. The CA private key is never needed on the
-control node.
+control node. Endpoints keep their existing certificates. With the pilot lab's
+disposable PKI (PEM files with `.crt` names are fine):
+
+```bash
+sudo deployments/pilot/install.sh --proxy http://10.70.99.254:3128 --ca /root/nac-pki/ca.crt --server-cert /root/nac-pki/server.crt --server-key /root/nac-pki/server.key
+```
 
 **Your own CA:** pass your issuing CA (or the chain, concatenated PEM) as
 `--ca`, and a server certificate from a CA your endpoints trust. To replace
