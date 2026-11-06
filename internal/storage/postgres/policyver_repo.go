@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kidcarmi/nac/internal/domain"
+	"github.com/kidcarmi/nac/internal/policyver"
 )
 
 // PolicyVersionRepo implements policyver.Store.
@@ -183,7 +184,19 @@ func insertActivation(ctx context.Context, tx pgx.Tx, a *domain.PolicyActivation
 }
 
 // PublishWorkspace snapshots the workspace into a new active version.
-func (r *PolicyVersionRepo) PublishWorkspace(ctx context.Context, prepare func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error) {
+// txView loads, on the activation transaction itself, everything the
+// prepare callback may need, so the callback never takes a second pooled
+// connection while this transaction holds one and the activation lock.
+func txView(ctx context.Context, tx pgx.Tx) (policyver.TxView, error) {
+	var v policyver.TxView
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(number), 0) + 1 FROM policy_versions`).Scan(&v.NextNumber); err != nil {
+		return v, err
+	}
+	v.Segments, v.SegmentsErr = segmentMappings(ctx, tx)
+	return v, nil
+}
+
+func (r *PolicyVersionRepo) PublishWorkspace(ctx context.Context, prepare func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion, view policyver.TxView) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -200,7 +213,11 @@ func (r *PolicyVersionRepo) PublishWorkspace(ctx context.Context, prepare func(w
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, err
 	}
-	v, act, err := prepare(ws, def, active)
+	view, err := txView(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	v, act, err := prepare(ws, def, active, view)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +245,7 @@ func (r *PolicyVersionRepo) PublishWorkspace(ctx context.Context, prepare func(w
 }
 
 // Activate re-activates an existing version, optionally resetting the draft.
-func (r *PolicyVersionRepo) Activate(ctx context.Context, number int, prepare func(target, active *domain.PolicyVersion) (*domain.PolicyActivation, error), resetWorkspace bool) (*domain.PolicyActivation, error) {
+func (r *PolicyVersionRepo) Activate(ctx context.Context, number int, prepare func(target, active *domain.PolicyVersion, view policyver.TxView) (*domain.PolicyActivation, error), resetWorkspace bool) (*domain.PolicyActivation, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -248,7 +265,11 @@ func (r *PolicyVersionRepo) Activate(ctx context.Context, number int, prepare fu
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, err
 	}
-	act, err := prepare(target, active)
+	view, err := txView(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	act, err := prepare(target, active, view)
 	if err != nil {
 		return nil, err
 	}

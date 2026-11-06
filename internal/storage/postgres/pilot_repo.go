@@ -164,7 +164,13 @@ func (r *PilotRepo) RecordVerification(ctx context.Context, id uuid.UUID, at tim
 
 // SegmentMappings satisfies policyver.SegmentSource.
 func (r *PilotRepo) SegmentMappings(ctx context.Context) (map[string]map[string]int, error) {
-	rows, err := r.pool.Query(ctx, `SELECT name, segment_vlans FROM switches`)
+	return segmentMappings(ctx, r.pool)
+}
+
+// segmentMappings reads switch name -> segment -> VLAN through q (a pool or
+// a transaction).
+func segmentMappings(ctx context.Context, q querier) (map[string]map[string]int, error) {
+	rows, err := q.Query(ctx, `SELECT name, segment_vlans FROM switches`)
 	if err != nil {
 		return nil, err
 	}

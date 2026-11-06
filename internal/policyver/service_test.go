@@ -20,6 +20,18 @@ type memStore struct {
 	def         domain.PolicyAction
 	versions    []domain.PolicyVersion
 	activations []domain.PolicyActivation
+	segments    map[string]map[string]int
+}
+
+// view mirrors what the Postgres store loads inside the transaction.
+func (m *memStore) view() TxView {
+	n := 1
+	for _, v := range m.versions {
+		if v.Number >= n {
+			n = v.Number + 1
+		}
+	}
+	return TxView{NextNumber: n, Segments: m.segments}
 }
 
 func (m *memStore) Workspace(context.Context) ([]domain.Policy, domain.PolicyAction, error) {
@@ -73,10 +85,10 @@ func (m *memStore) ListActivations(context.Context, int) ([]domain.PolicyActivat
 	defer m.mu.Unlock()
 	return append([]domain.PolicyActivation(nil), m.activations...), nil
 }
-func (m *memStore) PublishWorkspace(_ context.Context, prepare func([]domain.Policy, domain.PolicyAction, *domain.PolicyVersion) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error) {
+func (m *memStore) PublishWorkspace(_ context.Context, prepare func([]domain.Policy, domain.PolicyAction, *domain.PolicyVersion, TxView) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	v, a, err := prepare(append([]domain.Policy(nil), m.ws...), m.def, m.activeLocked())
+	v, a, err := prepare(append([]domain.Policy(nil), m.ws...), m.def, m.activeLocked(), m.view())
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +97,7 @@ func (m *memStore) PublishWorkspace(_ context.Context, prepare func([]domain.Pol
 	m.activations = append(m.activations, *a)
 	return v, nil
 }
-func (m *memStore) Activate(_ context.Context, n int, prepare func(target, active *domain.PolicyVersion) (*domain.PolicyActivation, error), reset bool) (*domain.PolicyActivation, error) {
+func (m *memStore) Activate(_ context.Context, n int, prepare func(target, active *domain.PolicyVersion, view TxView) (*domain.PolicyActivation, error), reset bool) (*domain.PolicyActivation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var target *domain.PolicyVersion
@@ -97,7 +109,7 @@ func (m *memStore) Activate(_ context.Context, n int, prepare func(target, activ
 	if target == nil {
 		return nil, domain.ErrNotFound
 	}
-	a, err := prepare(target, m.activeLocked())
+	a, err := prepare(target, m.activeLocked(), m.view())
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +146,7 @@ func boundIdentity() domain.Condition {
 
 func newSvc(t *testing.T, ws ...domain.Policy) (*Service, *memStore) {
 	t.Helper()
-	st := &memStore{ws: ws}
+	st := &memStore{ws: ws, segments: lab}
 	svc := New(st, nil, lab, domain.ActionDeny)
 	if err := svc.EnsureInitialVersion(context.Background()); err != nil {
 		t.Fatalf("initial version: %v", err)

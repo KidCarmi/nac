@@ -41,8 +41,19 @@ type Store interface {
 	GetVersion(ctx context.Context, number int) (*domain.PolicyVersion, error)
 	ListVersions(ctx context.Context) ([]domain.PolicyVersion, error)
 	ListActivations(ctx context.Context, limit int) ([]domain.PolicyActivation, error)
-	PublishWorkspace(ctx context.Context, prepare func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error)
-	Activate(ctx context.Context, number int, prepare func(target, active *domain.PolicyVersion) (*domain.PolicyActivation, error), resetWorkspace bool) (*domain.PolicyActivation, error)
+	PublishWorkspace(ctx context.Context, prepare func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion, view TxView) (*domain.PolicyVersion, *domain.PolicyActivation, error)) (*domain.PolicyVersion, error)
+	Activate(ctx context.Context, number int, prepare func(target, active *domain.PolicyVersion, view TxView) (*domain.PolicyActivation, error), resetWorkspace bool) (*domain.PolicyActivation, error)
+}
+
+// TxView is everything a publish/restore callback may read, loaded by the
+// store INSIDE the activation transaction. The callback must not query the
+// store itself: it runs while the transaction holds a pooled connection and
+// the activation lock, so a second connection could exhaust the pool and
+// block publication indefinitely.
+type TxView struct {
+	NextNumber  int
+	Segments    map[string]map[string]int
+	SegmentsErr error
 }
 
 // RecordedCase is one historical decision's recorded inputs.
@@ -118,11 +129,11 @@ func (s *Service) EnsureInitialVersion(ctx context.Context) error {
 	} else if !errors.Is(err, domain.ErrNotFound) {
 		return err
 	}
-	_, err := s.store.PublishWorkspace(ctx, func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion) (*domain.PolicyVersion, *domain.PolicyActivation, error) {
+	_, err := s.store.PublishWorkspace(ctx, func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion, view TxView) (*domain.PolicyVersion, *domain.PolicyActivation, error) {
 		if active != nil {
 			return nil, nil, errAlreadyActive
 		}
-		v := s.newVersion(ws, s.resolveDefault(def), 1, "system", "initial version created from existing policies")
+		v := s.newVersion(ws, s.resolveDefault(def), view.NextNumber, "system", "initial version created from existing policies")
 		return v, &domain.PolicyActivation{Kind: domain.ActivationInitial, ActivatedBy: "system", ActivatedAt: v.CreatedAt}, nil
 	})
 	if errors.Is(err, errAlreadyActive) {
@@ -170,6 +181,20 @@ func (s *Service) SetDraftDefaultAction(ctx context.Context, a domain.PolicyActi
 // Validate checks a complete rule set. Errors block publication; warnings
 // are shown to the operator.
 func (s *Service) Validate(ctx context.Context, rules []domain.Policy, def domain.PolicyAction) Validation {
+	if s.segments == nil {
+		return s.validate(rules, def, nil, nil, false)
+	}
+	maps, err := s.segments.SegmentMappings(ctx)
+	return s.validate(rules, def, maps, err, true)
+}
+
+// validateTx validates with VLAN mappings the store read inside the
+// activation transaction (no extra connection).
+func (s *Service) validateTx(rules []domain.Policy, def domain.PolicyAction, view TxView) Validation {
+	return s.validate(rules, def, view.Segments, view.SegmentsErr, s.segments != nil)
+}
+
+func (s *Service) validate(rules []domain.Policy, def domain.PolicyAction, maps map[string]map[string]int, mapsErr error, checkSegments bool) Validation {
 	v := Validation{Errors: []string{}, Warnings: []string{}}
 	names := map[string]bool{}
 	sorted := canonicalRules(rules)
@@ -216,11 +241,10 @@ func (s *Service) Validate(ctx context.Context, rules []domain.Policy, def domai
 		v.Warnings = append(v.Warnings, "no enabled rules: every device receives the default action ("+string(def)+")")
 	}
 
-	if s.segments != nil {
-		maps, err := s.segments.SegmentMappings(ctx)
+	if checkSegments {
 		switch {
-		case err != nil:
-			v.Errors = append(v.Errors, "could not load switch VLAN mappings: "+err.Error())
+		case mapsErr != nil:
+			v.Errors = append(v.Errors, "could not load switch VLAN mappings: "+mapsErr.Error())
 		case len(maps) == 0:
 			v.Warnings = append(v.Warnings, "no switches registered: segment-to-VLAN mappings cannot be checked yet")
 		default:
@@ -335,7 +359,7 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (*domain.PolicyV
 	if in.ExpectedDigest == "" {
 		return nil, fmt.Errorf("%w: expected_digest is required (preview the draft first)", domain.ErrInvalidInput)
 	}
-	return s.store.PublishWorkspace(ctx, func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion) (*domain.PolicyVersion, *domain.PolicyActivation, error) {
+	return s.store.PublishWorkspace(ctx, func(ws []domain.Policy, def domain.PolicyAction, active *domain.PolicyVersion, view TxView) (*domain.PolicyVersion, *domain.PolicyActivation, error) {
 		def = s.resolveDefault(def)
 		digest := Digest(ws, def)
 		if digest != in.ExpectedDigest {
@@ -344,25 +368,15 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (*domain.PolicyV
 		if active != nil && active.Digest == digest {
 			return nil, nil, fmt.Errorf("%w: the draft is identical to active version %d", domain.ErrConflict, active.Number)
 		}
-		if val := s.Validate(ctx, ws, def); !val.Valid {
+		if val := s.validateTx(ws, def, view); !val.Valid {
 			return nil, nil, fmt.Errorf("%w: %s", domain.ErrInvalidInput, strings.Join(val.Errors, "; "))
 		}
-		number := 1
 		var prev *uuid.UUID
 		if active != nil {
 			id := active.ID
 			prev = &id
 		}
-		latest, err := s.store.ListVersions(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, v := range latest {
-			if v.Number >= number {
-				number = v.Number + 1
-			}
-		}
-		v := s.newVersion(ws, def, number, in.Actor, in.Note)
+		v := s.newVersion(ws, def, view.NextNumber, in.Actor, in.Note)
 		return v, &domain.PolicyActivation{Kind: domain.ActivationPublish, PreviousVersionID: prev,
 			ActivatedBy: in.Actor, ActivatedAt: v.CreatedAt, Note: in.Note}, nil
 	})
@@ -380,13 +394,13 @@ type RestoreInput struct {
 
 // Restore re-activates an earlier version.
 func (s *Service) Restore(ctx context.Context, in RestoreInput) (*domain.PolicyActivation, error) {
-	return s.store.Activate(ctx, in.Number, func(target, active *domain.PolicyVersion) (*domain.PolicyActivation, error) {
+	return s.store.Activate(ctx, in.Number, func(target, active *domain.PolicyVersion, view TxView) (*domain.PolicyActivation, error) {
 		if active != nil && active.ID == target.ID {
 			return nil, fmt.Errorf("%w: version %d is already active", domain.ErrConflict, target.Number)
 		}
 		// Re-validate against today's switches: a restored version may name a
 		// segment a switch no longer maps.
-		if val := s.Validate(ctx, target.Rules, target.DefaultAction); !val.Valid {
+		if val := s.validateTx(target.Rules, target.DefaultAction, view); !val.Valid {
 			return nil, fmt.Errorf("%w: version %d is no longer valid: %s", domain.ErrInvalidInput, target.Number, strings.Join(val.Errors, "; "))
 		}
 		a := &domain.PolicyActivation{Kind: domain.ActivationRestore, ActivatedBy: in.Actor,

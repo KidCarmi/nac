@@ -709,3 +709,36 @@ func TestPilotRegressions_ConcurrentSwitchChangesKeepClientsFileComplete(t *test
 		}
 	}
 }
+
+// Sixth review: publish/restore must not need a second pooled connection
+// while the activation transaction holds one (a one-connection pool hung).
+func TestPilotRegressions_PublishWithSingleConnectionPool(t *testing.T) {
+	resetDB(t, dsn(t))
+	t.Setenv("NAC_DB_MAX_CONNS", "1")
+	t.Setenv("NAC_DB_MIN_CONNS", "0")
+	h := start(t, t.TempDir())
+	// Stopped only on success: after a hang the stuck request would block
+	// the server's shutdown, turning a fast failure into a CI timeout.
+	within := func(what string, f func()) {
+		done := make(chan struct{})
+		go func() { defer close(done); f() }()
+		select {
+		case <-done:
+		case <-time.After(15 * time.Second):
+			t.Fatalf("%s hung with a one-connection pool", what)
+		}
+	}
+	h.do("POST", "/api/v1/switches", map[string]any{"name": "sw", "radius_source_ip": "127.0.0.1", "radius_secret": swSecret,
+		"segment_vlans": map[string]int{"corp": 10, "quarantine": 20}}, 201, nil, true)
+	h.do("POST", "/api/v1/policies", map[string]any{"name": "corp", "priority": 10, "enabled": true, "action": "allow", "segment": "corp",
+		"conditions": []map[string]any{{"field": "identity.bound", "operator": "eq", "values": []string{"true"}}}}, 201, nil, true)
+	var pv map[string]any
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	within("publish", func() {
+		h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+	})
+	within("restore", func() {
+		h.do("POST", "/api/v1/policy-versions/1/restore", map[string]any{}, 200, nil, true)
+	})
+	h.stop()
+}
