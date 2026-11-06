@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -28,11 +29,36 @@ type Service struct {
 	engine    *Engine
 	policies  policySource
 	endpoints endpointSource
+	maxAge    map[string]time.Duration
+	now       func() time.Time
+}
+
+// WithFreshness sets per-field maximum evidence ages (e.g. posture).
+func (s *Service) WithFreshness(maxAge map[string]time.Duration) *Service {
+	s.maxAge = maxAge
+	return s
+}
+
+// ApplyFreshness marks present evidence older than its field's max age as
+// stale. Evidence without an observation time is left as is (it was supplied
+// with the request itself).
+func ApplyFreshness(in domain.Inputs, now time.Time, maxAge map[string]time.Duration) {
+	for field, limit := range maxAge {
+		ev, ok := in[field]
+		if !ok || limit <= 0 || ev.Status != domain.EvidencePresent || ev.ObservedAt == nil {
+			continue
+		}
+		if age := now.Sub(*ev.ObservedAt); age > limit {
+			ev.Status = domain.EvidenceStale
+			ev.Note = "observed " + age.Truncate(time.Second).String() + " ago; older than the " + limit.String() + " limit"
+			in[field] = ev
+		}
+	}
 }
 
 // NewService wires the engine to its data sources.
 func NewService(engine *Engine, policies policySource, endpoints endpointSource) *Service {
-	return &Service{engine: engine, policies: policies, endpoints: endpoints}
+	return &Service{engine: engine, policies: policies, endpoints: endpoints, now: time.Now}
 }
 
 // EvaluateInput is an access request from an enforcement point. The MAC is
@@ -89,7 +115,23 @@ func (s *Service) Evaluate(ctx context.Context, in EvaluateInput) (domain.Access
 		if err != nil {
 			return domain.AccessDecision{}, err
 		}
-		return s.EvaluateRuleSet(ep.MAC, EndpointInputs(ep), set), nil
+		inputs := EndpointInputs(ep)
+		if in.Posture != "" {
+			// Request-supplied posture is labelled with its real source. The
+			// RADIUS path never accepts posture from a request at all.
+			inputs.Set("posture", string(in.Posture), domain.SourceRequest, nil, false)
+			if in.Posture == domain.PostureUnknown {
+				inputs["posture"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourceRequest, Note: "request reported unknown posture"}
+			}
+		}
+		if in.IP != "" {
+			inputs.Set("ip", in.IP, domain.SourceRequest, nil, false)
+		}
+		for k, v := range in.Attributes {
+			inputs.Set("attr."+k, v, domain.SourceRequest, nil, false)
+		}
+		ApplyFreshness(inputs, s.now(), s.maxAge)
+		return s.EvaluateRuleSet(ep.MAC, inputs, set), nil
 	}
 	policies, err := s.policies.EnabledPolicies(ctx)
 	if err != nil {

@@ -24,8 +24,11 @@ import (
 	"github.com/kidcarmi/nac/internal/domain"
 	"github.com/kidcarmi/nac/internal/endpoint"
 	"github.com/kidcarmi/nac/internal/observability"
+	"github.com/kidcarmi/nac/internal/pilot"
 	"github.com/kidcarmi/nac/internal/policy"
 	"github.com/kidcarmi/nac/internal/policyver"
+	"github.com/kidcarmi/nac/internal/radiusauth"
+	"github.com/kidcarmi/nac/internal/secrets"
 	"github.com/kidcarmi/nac/internal/server"
 	"github.com/kidcarmi/nac/internal/storage/postgres"
 )
@@ -38,7 +41,11 @@ type App struct {
 	closers []func()
 	handler http.Handler
 	bg      []func(ctx context.Context)
+	pilot   *pilot.Service
 }
+
+// Pilot exposes the pilot service (tests wait for CoA workers through it).
+func (a *App) Pilot() *pilot.Service { return a.pilot }
 
 // New connects to the database, migrates, bootstraps and wires the server.
 func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, error) {
@@ -91,6 +98,28 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		return nil, fmt.Errorf("initial policy version: %w", err)
 	}
 
+	box, err := secrets.New(cfg.Pilot.SecretsKey)
+	if err != nil {
+		a.Close()
+		return nil, err
+	}
+	pilotRepo := postgres.NewPilotRepo(pool, box)
+	versionSvc.SetSources(pilotRepo, pilotRepo)
+	recorder := audit.NewRecorder(auditRepo)
+	accessSvc := access.NewService(engine, versionSvc, endpointRepo).
+		WithFreshness(map[string]time.Duration{"posture": cfg.Pilot.PostureMaxAge})
+	radiusSvc := radiusauth.New(pilotRepo, versionSvc, accessSvc, cfg.Pilot.PostureMaxAge, logger)
+	pilotSvc := pilot.New(pilotRepo, versionSvc, accessSvc, recorder, logger, pilot.Config{
+		ClientsFile:       cfg.Pilot.ClientsFile,
+		OutageLog:         cfg.Pilot.OutageLog,
+		ObservationMaxAge: cfg.Pilot.ObservationMaxAge,
+		CoATimeout:        cfg.Pilot.CoATimeout,
+		CoAAttempts:       cfg.Pilot.CoARetries + 1,
+		EAPIInsecureTLS:   cfg.Pilot.EAPIInsecureSkipVerify,
+	})
+	a.bg = append(a.bg, pilotSvc.Start)
+	a.pilot = pilotSvc
+
 	srv := server.New(server.Deps{
 		Config:    cfg,
 		Logger:    logger,
@@ -100,11 +129,13 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		Policies:  policySvc,
 		// Decisions always evaluate the ACTIVE published version; the
 		// /policies CRUD edits the draft.
-		Access:    access.NewService(engine, versionSvc, endpointRepo),
+		Access:    accessSvc,
 		Versions:  versionSvc,
+		Radius:    radiusSvc,
+		Pilot:     pilotSvc,
 		Operators: operatorRepo,
 		AuditRepo: auditRepo,
-		Audit:     audit.NewRecorder(auditRepo),
+		Audit:     recorder,
 		Ready:     func(ctx context.Context) error { return pool.Ping(ctx) },
 	})
 	a.handler = srv.Handler()

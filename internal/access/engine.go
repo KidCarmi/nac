@@ -72,7 +72,11 @@ func EndpointInputs(ep domain.Endpoint) domain.Inputs {
 	in.Set("hostname", ep.Hostname, domain.SourceEndpointRecord, at, false)
 	in.Set("device_type", ep.DeviceType, domain.SourceEndpointRecord, at, false)
 	if ep.Posture != "" && ep.Posture != domain.PostureUnknown {
-		in.Set("posture", string(ep.Posture), domain.SourcePosture, at, false)
+		pat := at
+		if ep.PostureObservedAt != nil {
+			pat = ep.PostureObservedAt
+		}
+		in.Set("posture", string(ep.Posture), domain.SourcePosture, pat, false)
 	} else {
 		in["posture"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourcePosture, Note: "no posture result recorded"}
 	}

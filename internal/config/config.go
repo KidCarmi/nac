@@ -87,6 +87,12 @@ type PilotConfig struct {
 	// CoATimeout and CoARetries bound each CoA exchange.
 	CoATimeout time.Duration
 	CoARetries int
+	// ClientsFile is where nacd renders FreeRADIUS client definitions.
+	ClientsFile string
+	// OutageLog is the FreeRADIUS outage log nacd imports into the timeline.
+	OutageLog string
+	// EAPIInsecureSkipVerify accepts self-signed switch eAPI certificates.
+	EAPIInsecureSkipVerify bool
 }
 
 // LogConfig configures structured logging.
@@ -143,11 +149,14 @@ func Load() (*Config, error) {
 		},
 		DefaultAction: domain.PolicyAction(getEnv("NAC_DEFAULT_ACTION", string(domain.ActionDeny))),
 		Pilot: PilotConfig{
-			PostureMaxAge:     getDuration("NAC_POSTURE_MAX_AGE", 24*time.Hour),
-			ObservationMaxAge: getDuration("NAC_OBSERVATION_MAX_AGE", 5*time.Minute),
-			SecretsKey:        os.Getenv("NAC_SECRETS_KEY"),
-			CoATimeout:        getDuration("NAC_COA_TIMEOUT", 3*time.Second),
-			CoARetries:        getInt("NAC_COA_RETRIES", 2),
+			PostureMaxAge:          getDuration("NAC_POSTURE_MAX_AGE", 24*time.Hour),
+			ObservationMaxAge:      getDuration("NAC_OBSERVATION_MAX_AGE", 5*time.Minute),
+			SecretsKey:             os.Getenv("NAC_SECRETS_KEY"),
+			CoATimeout:             getDuration("NAC_COA_TIMEOUT", 3*time.Second),
+			CoARetries:             getInt("NAC_COA_RETRIES", 2),
+			ClientsFile:            os.Getenv("NAC_FREERADIUS_CLIENTS_FILE"),
+			OutageLog:              os.Getenv("NAC_FREERADIUS_OUTAGE_LOG"),
+			EAPIInsecureSkipVerify: getEnv("NAC_EAPI_INSECURE_SKIP_VERIFY", "false") == "true",
 		},
 	}
 
@@ -171,6 +180,16 @@ func Load() (*Config, error) {
 			// Development convenience: a clearly-marked ephemeral dev key.
 			cfg.Auth.JWTSigningKey = []byte("dev-insecure-signing-key-change-me-now!")
 		}
+	}
+	if len(cfg.Pilot.SecretsKey) < 32 {
+		if prod {
+			add("NAC_SECRETS_KEY must be at least 32 characters (it encrypts switch RADIUS secrets at rest)")
+		} else if cfg.Pilot.SecretsKey == "" {
+			cfg.Pilot.SecretsKey = "dev-insecure-secrets-key-change-me-0123456789"
+		}
+	}
+	if cfg.Pilot.CoARetries < 0 || cfg.Pilot.CoARetries > 10 {
+		add("NAC_COA_RETRIES must be 0-10")
 	}
 	if prod && len(cfg.Auth.ServiceToken) < 24 {
 		add("NAC_SERVICE_TOKEN must be at least 24 chars in non-development environments")

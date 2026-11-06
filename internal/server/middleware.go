@@ -175,6 +175,13 @@ func (s *Server) requirePermission(perm auth.Permission, next http.HandlerFunc) 
 func (s *Server) requireServiceToken(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		presented := bearerToken(r)
+		if presented == "" {
+			// FreeRADIUS rlm_rest authenticates with HTTP Basic; the token is
+			// the password (the username is ignored).
+			if _, pw, ok := r.BasicAuth(); ok {
+				presented = pw
+			}
+		}
 		expected := s.cfg.Auth.ServiceToken
 		if expected == "" || subtle.ConstantTimeCompare([]byte(presented), []byte(expected)) != 1 {
 			s.authFail(w, r, "invalid_service_token")

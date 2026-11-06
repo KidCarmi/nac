@@ -77,6 +77,16 @@ func (s *Server) buildHandler() http.Handler {
 	// ---- Service-token endpoint for network enforcement points ----
 	mux.Handle("POST /api/v1/access/evaluate", s.requireServiceToken(s.handleEvaluateAccess))
 
+	// ---- FreeRADIUS integration (service token as Bearer or Basic password) ----
+	if s.radius != nil {
+		mux.Handle("POST /api/v1/radius/authorize", s.requireServiceToken(s.handleRadiusAuthorize))
+		mux.Handle("POST /api/v1/radius/reject", s.requireServiceToken(s.handleRadiusReject))
+		mux.Handle("POST /api/v1/radius/accounting", s.requireServiceToken(s.handleRadiusAccounting))
+	}
+	if s.pilot != nil {
+		s.pilotRoutes(mux, authed)
+	}
+
 	// Global middleware stack (outermost first).
 	return chain(mux,
 		recoverer,

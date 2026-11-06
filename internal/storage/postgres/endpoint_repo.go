@@ -19,7 +19,7 @@ type EndpointRepo struct {
 // NewEndpointRepo constructs an EndpointRepo.
 func NewEndpointRepo(pool *pgxpool.Pool) *EndpointRepo { return &EndpointRepo{pool: pool} }
 
-const endpointColumns = `id, mac, ip, hostname, device_type, access_status, posture, attributes, last_seen, created_at, updated_at`
+const endpointColumns = `id, mac, ip, hostname, device_type, access_status, posture, attributes, last_seen, created_at, updated_at, posture_source, posture_observed_at`
 
 func (r *EndpointRepo) Create(ctx context.Context, e *domain.Endpoint) error {
 	attrs, err := json.Marshal(orEmptyMap(e.Attributes))
@@ -28,8 +28,9 @@ func (r *EndpointRepo) Create(ctx context.Context, e *domain.Endpoint) error {
 	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO endpoints (`+endpointColumns+`)
-		VALUES ($1,$2,NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,$7,$8,$9,$10,$11)`,
-		e.ID, e.MAC, e.IP, e.Hostname, e.DeviceType, e.AccessStatus, e.Posture, attrs, e.LastSeen, e.CreatedAt, e.UpdatedAt)
+		VALUES ($1,$2,NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,$7,$8,$9,$10,$11,$12,$13)`,
+		e.ID, e.MAC, e.IP, e.Hostname, e.DeviceType, e.AccessStatus, e.Posture, attrs, e.LastSeen, e.CreatedAt, e.UpdatedAt,
+		e.PostureSource, e.PostureObservedAt)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("%w: endpoint with MAC %s already exists", domain.ErrConflict, e.MAC)
 	}
@@ -52,9 +53,11 @@ func (r *EndpointRepo) Update(ctx context.Context, e *domain.Endpoint) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE endpoints SET
 			ip = NULLIF($2,''), hostname = NULLIF($3,''), device_type = NULLIF($4,''),
-			access_status = $5, posture = $6, attributes = $7, last_seen = $8, updated_at = $9
+			access_status = $5, posture = $6, attributes = $7, last_seen = $8, updated_at = $9,
+			posture_source = $10, posture_observed_at = $11
 		WHERE id = $1`,
-		e.ID, e.IP, e.Hostname, e.DeviceType, e.AccessStatus, e.Posture, attrs, e.LastSeen, e.UpdatedAt)
+		e.ID, e.IP, e.Hostname, e.DeviceType, e.AccessStatus, e.Posture, attrs, e.LastSeen, e.UpdatedAt,
+		e.PostureSource, e.PostureObservedAt)
 	if err != nil {
 		return err
 	}
@@ -124,7 +127,7 @@ func scanEndpoint(row rowScanner) (*domain.Endpoint, error) {
 		devType  *string
 		attrs    []byte
 	)
-	if err := row.Scan(&e.ID, &e.MAC, &ip, &hostname, &devType, &e.AccessStatus, &e.Posture, &attrs, &e.LastSeen, &e.CreatedAt, &e.UpdatedAt); err != nil {
+	if err := row.Scan(&e.ID, &e.MAC, &ip, &hostname, &devType, &e.AccessStatus, &e.Posture, &attrs, &e.LastSeen, &e.CreatedAt, &e.UpdatedAt, &e.PostureSource, &e.PostureObservedAt); err != nil {
 		return nil, err
 	}
 	e.IP = deref(ip)

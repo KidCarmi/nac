@@ -13,6 +13,11 @@ const (
 	PermAccessEvaluate Permission = "access:evaluate"
 	PermAuditRead      Permission = "audit:read"
 	PermOperatorManage Permission = "operator:manage"
+	// Pilot: switches, identity bindings and session troubleshooting.
+	PermNetworkRead  Permission = "network:read"
+	PermNetworkWrite Permission = "network:write"
+	// PermSessionAct allows CoA actions (quarantine/restore/reauthenticate).
+	PermSessionAct Permission = "session:act"
 )
 
 // rolePermissions is the authoritative role→permission matrix. It is defined
@@ -30,17 +35,20 @@ var rolePermissions = map[domain.Role]map[Permission]bool{
 		PermAccessEvaluate: true,
 		PermAuditRead:      true,
 		PermOperatorManage: true,
+		PermNetworkRead:    true, PermNetworkWrite: true, PermSessionAct: true,
 	},
 	domain.RoleOperator: {
 		PermEndpointRead: true, PermEndpointWrite: true,
 		PermPolicyRead: true, PermPolicyWrite: true,
 		PermAccessEvaluate: true,
 		PermAuditRead:      true,
+		PermNetworkRead:    true, PermNetworkWrite: true, PermSessionAct: true,
 	},
 	domain.RoleViewer: {
 		PermEndpointRead: true,
 		PermPolicyRead:   true,
 		PermAuditRead:    true,
+		PermNetworkRead:  true,
 	},
 }
 

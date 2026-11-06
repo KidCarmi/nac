@@ -53,17 +53,21 @@ func (p PostureStatus) Valid() bool {
 
 // Endpoint is a device observed on the network, keyed by its MAC address.
 type Endpoint struct {
-	ID           uuid.UUID         `json:"id"`
-	MAC          string            `json:"mac"`
-	IP           string            `json:"ip,omitempty"`
-	Hostname     string            `json:"hostname,omitempty"`
-	DeviceType   string            `json:"device_type,omitempty"`
-	AccessStatus AccessStatus      `json:"access_status"`
-	Posture      PostureStatus     `json:"posture"`
-	Attributes   map[string]string `json:"attributes,omitempty"`
-	LastSeen     time.Time         `json:"last_seen"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	ID           uuid.UUID     `json:"id"`
+	MAC          string        `json:"mac"`
+	IP           string        `json:"ip,omitempty"`
+	Hostname     string        `json:"hostname,omitempty"`
+	DeviceType   string        `json:"device_type,omitempty"`
+	AccessStatus AccessStatus  `json:"access_status"`
+	Posture      PostureStatus `json:"posture"`
+	// PostureSource and PostureObservedAt record who reported posture and
+	// when; posture older than NAC_POSTURE_MAX_AGE is stale evidence.
+	PostureSource     string            `json:"posture_source,omitempty"`
+	PostureObservedAt *time.Time        `json:"posture_observed_at,omitempty"`
+	Attributes        map[string]string `json:"attributes,omitempty"`
+	LastSeen          time.Time         `json:"last_seen"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 // PolicyAction is the decision a matching policy yields.
