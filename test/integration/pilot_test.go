@@ -777,3 +777,45 @@ func TestPilotRegressions_ActiveSessionsOnSwitchIsUnbounded(t *testing.T) {
 		t.Fatalf("observation would see %d of %d active sessions", len(got), n)
 	}
 }
+
+// Eighth review: a long session timeline keeps its NEWEST events.
+func TestPilotRegressions_SessionTimelineKeepsNewestEvents(t *testing.T) {
+	resetDB(t, dsn(t))
+	ctx := context.Background()
+	pool, err := postgres.Connect(ctx, config.DBConfig{DSN: dsn(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if err := postgres.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	swID, sessID := uuid.New(), uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO switches (id, name, radius_source_ip, nas_ip, radius_secret_enc, segment_vlans)
+		VALUES ($1, 'sw', '10.0.0.1', '10.0.0.1', 'x', '{"corp":10,"quarantine":20}')`, swID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO radius_sessions (id, switch_id, nas_port_id, mac, state)
+		VALUES ($1, $2, 'Ethernet1', 'aa:bb:cc:dd:ee:ff', 'active')`, sessID, swID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO auth_events (id, occurred_at, session_id, switch_id, stage, result, reason)
+		SELECT gen_random_uuid(), now() - ((1200 - g) || ' seconds')::interval, $1, $2, 'nac-decision', 'info', 'event ' || g
+		FROM generate_series(1, 1200) g`, sessID, swID); err != nil {
+		t.Fatal(err)
+	}
+	repo := postgres.NewPilotRepo(pool, nil)
+	sess, err := repo.GetSession(ctx, sessID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evs, err := repo.SessionEvents(ctx, sess)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const limit = 1000
+	if len(evs) != limit || evs[len(evs)-1].Reason != "event 1200" || evs[0].Reason != "event 201" {
+		t.Fatalf("timeline should hold events 201..1200 oldest-first, got %d events, first %q, last %q",
+			len(evs), evs[0].Reason, evs[len(evs)-1].Reason)
+	}
+}

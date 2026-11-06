@@ -553,10 +553,16 @@ func scanEvents(rows pgx.Rows) ([]domain.AuthEvent, error) {
 // SessionEvents lists a session's events, oldest first. Events recorded
 // before the session existed (e.g. outage rejects for the same port and MAC)
 // are included by matching switch, port and MAC.
+// SessionEventLimit bounds a session timeline. The NEWEST events are kept
+// (then shown oldest first), so recent failures never fall off the view.
+const SessionEventLimit = 1000
+
 func (r *PilotRepo) SessionEvents(ctx context.Context, s *domain.Session) ([]domain.AuthEvent, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+eventColumns+` FROM auth_events
+	rows, err := r.pool.Query(ctx, `SELECT `+eventColumns+` FROM (
+		SELECT * FROM auth_events
 		WHERE session_id=$1 OR (session_id IS NULL AND switch_id=$2 AND nas_port_id=$3 AND mac=$4)
-		ORDER BY occurred_at, id LIMIT 1000`, s.ID, s.SwitchID, s.NASPortID, s.MAC)
+		ORDER BY occurred_at DESC, id DESC LIMIT $5) newest
+		ORDER BY occurred_at, id`, s.ID, s.SwitchID, s.NASPortID, s.MAC, SessionEventLimit)
 	if err != nil {
 		return nil, err
 	}

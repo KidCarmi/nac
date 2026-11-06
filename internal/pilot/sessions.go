@@ -189,6 +189,11 @@ func (s *Service) SessionDetail(ctx context.Context, id uuid.UUID) (*SessionDeta
 	if err != nil {
 		return nil, err
 	}
+	if len(events) >= postgres.SessionEventLimit {
+		d.Timeline = append(d.Timeline, TimelineEntry{At: events[0].OccurredAt, Kind: "event", Stage: "timeline", Result: "info",
+			Summary: fmt.Sprintf("only the %d most recent events are shown; older events are in GET /api/v1/auth-events?mac=%s",
+				postgres.SessionEventLimit, sess.MAC), Source: "nacd"})
+	}
 	for _, e := range events {
 		d.Timeline = append(d.Timeline, TimelineEntry{At: e.OccurredAt, Kind: "event", Stage: e.Stage, Result: e.Result,
 			Summary: e.Reason, Source: e.Source, DecisionID: e.DecisionID, CoAID: e.CoAID})
