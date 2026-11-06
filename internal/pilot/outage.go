@@ -126,7 +126,7 @@ func (s *Service) ImportOutageLog(ctx context.Context) StatusItem {
 			e.Stage, e.Result = domain.StageAccounting, "info"
 			e.Reason = "FreeRADIUS answered an accounting packet but could not forward it to nacd (" + reason + ")"
 		}
-				if sw := byIP[client]; sw != nil {
+		if sw := byIP[client]; sw != nil {
 			e.SwitchID = &sw.ID
 		}
 		if ok, err := s.store.InsertEvent(ctx, e); err == nil && ok {
