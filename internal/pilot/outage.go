@@ -26,6 +26,24 @@ type outageLine struct {
 	Attrs    map[string]any `json:"attrs"`
 }
 
+// normalizeAttrs makes keys independent of rlm_json prefix settings
+// (":User-Name", "control:Tmp-String-2" -> "User-Name", "Tmp-String-2") and
+// undoes the "\/" escaping FreeRADIUS applies to values inside linelog.
+func normalizeAttrs(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for k, v := range in {
+		k = strings.TrimPrefix(k, ":")
+		for _, list := range []string{"control:", "request:", "reply:"} {
+			k = strings.TrimPrefix(k, list)
+		}
+		if s, ok := v.(string); ok {
+			v = strings.ReplaceAll(s, `\/`, "/")
+		}
+		out[k] = v
+	}
+	return out
+}
+
 func attr(m map[string]any, keys ...string) string {
 	for _, k := range keys {
 		switch v := m[k].(type) {
@@ -88,11 +106,12 @@ func (s *Service) ImportOutageLog(ctx context.Context) StatusItem {
 			bad++
 			continue
 		}
+		ol.Attrs = normalizeAttrs(ol.Attrs)
 		sum := sha256.Sum256([]byte(line))
 		at := time.Unix(ol.UnixTime, 0).UTC()
-		client := attr(ol.Attrs, "control:Tmp-String-3", "Tmp-String-3", "Packet-Src-IP-Address")
+		client := attr(ol.Attrs, "Tmp-String-3", "Packet-Src-IP-Address")
 		mac, _ := validation.NormalizeMAC(attr(ol.Attrs, "Calling-Station-Id"))
-		reason := attr(ol.Attrs, "control:Tmp-String-2", "Tmp-String-2")
+		reason := attr(ol.Attrs, "Tmp-String-2")
 		if reason == "" {
 			reason = "NAC decision service unavailable"
 		}
@@ -103,7 +122,11 @@ func (s *Service) ImportOutageLog(ctx context.Context) StatusItem {
 				"cert_cn": attr(ol.Attrs, "TLS-Client-Cert-Common-Name"), "user_name": attr(ol.Attrs, "User-Name"),
 				"rest_failure": attr(ol.Attrs, "Module-Failure-Message")},
 			ImportKey: "outage:" + hex.EncodeToString(sum[:16])}
-		if sw := byIP[client]; sw != nil {
+		if ol.Event == "accounting-not-forwarded" {
+			e.Stage, e.Result = domain.StageAccounting, "info"
+			e.Reason = "FreeRADIUS answered an accounting packet but could not forward it to nacd (" + reason + ")"
+		}
+				if sw := byIP[client]; sw != nil {
 			e.SwitchID = &sw.ID
 		}
 		if ok, err := s.store.InsertEvent(ctx, e); err == nil && ok {

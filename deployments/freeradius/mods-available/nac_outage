@@ -1,0 +1,10 @@
+# One JSON line per authentication FreeRADIUS rejected because nacd could not
+# decide. nacd imports this file into the session timeline with source
+# "freeradius-outage-log" (NAC_FREERADIUS_OUTAGE_LOG).
+linelog nac_outage {
+	filename = ${logdir}/nac-outage.log
+	escape_filenames = no
+	permissions = 0640
+	group = freerad
+	format = "{\"event\":\"%{%{control:Tmp-String-4}:-outage-reject}\",\"unix_time\":%l,\"attrs\":%{json_encode:&User-Name &Calling-Station-Id &NAS-IP-Address &NAS-Port-Id &TLS-Client-Cert-Serial &TLS-Client-Cert-Common-Name &TLS-Client-Cert-Issuer &Module-Failure-Message &control:Tmp-String-2 &control:Tmp-String-3}}"
+}

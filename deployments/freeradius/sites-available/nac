@@ -1,0 +1,122 @@
+# NAC pilot virtual server (FreeRADIUS 3.2.5).
+#
+# Flow: authorize/authenticate run EAP-TLS against the configured CA. Only an
+# authentication that passed EAP-TLS reaches post-auth, where nacd decides.
+#
+# control:Tmp-String-1  nac-accept | nac-reject (set by nacd) | nac-outage
+# control:Tmp-String-2  outage reason (for the outage log)
+# control:Tmp-String-3  RADIUS packet source address (for the outage log)
+
+server nac {
+	listen {
+		type = auth
+		ipaddr = *
+		port = 1812
+	}
+	listen {
+		type = acct
+		ipaddr = *
+		port = 1813
+	}
+
+	authorize {
+		filter_username
+		eap {
+			ok = return
+		}
+		# EAP claims the request by setting Auth-Type (also for ongoing
+		# conversations, where it returns "updated"). Anything else is not
+		# EAP, and this server authenticates nothing but EAP-TLS.
+		if (!&control:Auth-Type) {
+			reject
+		}
+	}
+
+	authenticate {
+		eap
+	}
+
+	post-auth {
+		update control {
+			&Tmp-String-3 := "%{Packet-Src-IP-Address}"
+		}
+
+		# Return-code priorities keep the section running after a failed call
+		# (by default "fail" would end post-auth before the fallback below).
+		nac_authorize {
+			fail = 1
+			reject = 1
+			invalid = 1
+			notfound = 1
+			noop = 1
+		}
+
+		# rlm_rest: connection failure, timeout and HTTP 5xx all return "fail".
+		if (fail) {
+			update control {
+				&Tmp-String-2 := "nacd unreachable, timed out, or returned HTTP 5xx"
+			}
+		}
+		elsif (reject) {
+			update control {
+				&Tmp-String-2 := "nacd refused the FreeRADIUS service token (check nac/nac-token.conf)"
+			}
+		}
+		elsif (invalid || notfound || noop) {
+			update control {
+				&Tmp-String-2 := "nacd rejected the request (HTTP 4xx)"
+			}
+		}
+
+		if (&control:Tmp-String-2) {
+			# Fail closed. There is no authorization cache.
+			nac_outage
+			update control {
+				&Tmp-String-1 := "nac-outage"
+			}
+			update reply {
+				&Reply-Message := "NAC decision service unavailable"
+				&Tunnel-Type !* ANY
+				&Tunnel-Medium-Type !* ANY
+				&Tunnel-Private-Group-Id !* ANY
+			}
+			reject
+		}
+
+		if (&control:Tmp-String-1 != "nac-accept") {
+			reject
+		}
+
+		Post-Auth-Type REJECT {
+			# Record rejections NAC did not decide itself (EAP-TLS failures,
+			# missing client certificate). NAC rejects and outage rejects are
+			# already recorded.
+			if (!&control:Tmp-String-1) {
+				nac_reject {
+					fail = 1
+					reject = 1
+					invalid = 1
+				}
+			}
+			attr_filter.access_reject
+			eap
+		}
+	}
+
+	accounting {
+		nac_accounting {
+			fail = 1
+			reject = 1
+			invalid = 1
+		}
+		if (fail || reject || invalid) {
+			update control {
+				&Tmp-String-2 := "accounting not forwarded: nacd unavailable"
+				&Tmp-String-4 := "accounting-not-forwarded"
+			}
+			nac_outage
+		}
+		# Always answer the switch so it does not queue accounting.
+		ok
+	}
+}
