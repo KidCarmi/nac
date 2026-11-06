@@ -10,6 +10,11 @@ relevant docs in the same change (see the
 - [Business Logic & Domain Model](architecture/business-logic.md)
 - [Low-Level Design](architecture/low-level-design.md)
 - [Diagrams](architecture/diagrams.md)
+- [Integration boundary (versioned API, server-side authorization, attribution)](architecture/integration-boundary.md)
+
+## Pilot (wired EAP-TLS on Arista EOS)
+- [Installation](pilot/installation.md) · [Operator walkthrough](pilot/operator-walkthrough.md) · [Known limitations](pilot/known-limitations.md)
+- [Qualification status](pilot/qualification-status.md) · [Lab API/evidence contract](pilot/astra-contract.md)
 
 ## API
 - [OpenAPI 3.1 specification](../api/openapi/openapi.yaml) — also served at `GET /openapi.yaml`

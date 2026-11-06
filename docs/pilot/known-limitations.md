@@ -44,7 +44,7 @@
 - While nacd is down, nothing is recorded in NAC. FreeRADIUS logs the rejects,
   and nacd imports them after recovery.
 
-## Sessions without accounting or eAPI (the validated lab setup)
+## Sessions without accounting or eAPI (the `fe7c981` lab setup)
 
 - **Session end.** NAC ends a session only on a RADIUS accounting Stop, or
   when a different certificate authenticates on the same port and MAC. The lab
@@ -54,8 +54,10 @@
   liveness is **unknown**: "active" means the last authentication was
   accepted, not that the endpoint is connected now.
 - **Switch-observed state** comes only from eAPI (`show dot1x hosts | json`).
-  The lab's vEOS management is disconnected, so observation shows
-  "unavailable". **Verify** is then "decision only".
+  The `fe7c981` lab run had no eAPI configured, so observation showed
+  "unavailable" and **Verify** was "decision only". The eAPI and accounting
+  paths are being qualified on `pilot-rc2`; see
+  [qualification status](qualification-status.md).
 - **CoA retry guard.** Before every retransmission, nacd checks that the
   captured session is still current in NAC: not ended, same start time, same
   port. If not, nacd abandons the CoA and never re-targets it. Without
@@ -67,8 +69,9 @@
   vEOS is expected from RFC 5176 but has not been captured in the lab.
 - **Acknowledged is not enforced.** `acked` means only that the switch accepted
   the CoA. `observed` means its re-authentication received the requested VLAN.
-  Neither proves reachability: ASTRA measured 17–22 s from switch SUCCESS to
-  TCP reachability in the virtual lab.
+  Neither proves reachability. In the virtual lab, ASTRA measured about
+  17–22 s from switch SUCCESS to TCP reachability, and 21.3 s from a Restore
+  request to permitted TCP on `fe7c981`.
 
 - **Quarantine is per session.** An operator override belongs to one session:
   switch + port + MAC + certificate (issuer and serial). A *rejected*
@@ -82,9 +85,15 @@
 ## Endpoint addressing after a VLAN change
 
 After a CoA or a re-authentication moves an endpoint between VLANs, the
-endpoint needs an address in the new subnet. In the lab the operator renewed
-it by hand. NAC does not force DHCP renewal: a port-bounce CoA is not
-validated on vEOS 4.29.2F.
+endpoint needs an address in the new subnet.
+
+- NAC does not force DHCP renewal and has no automatic recovery action. A
+  port bounce is not implemented. It would need documented switch support,
+  must target one port, and disconnects every device on that port.
+- The `fe7c981` qualification used **static** addresses on the endpoint, so
+  DHCP behavior was not exercised. ASTRA is qualifying DHCP transitions on
+  `pilot-rc2`. Until that result is in, treat re-addressing as the endpoint's
+  job: check the endpoint's address after quarantine or restore.
 
 ## Security and operations
 
@@ -99,11 +108,24 @@ validated on vEOS 4.29.2F.
 - Posture has no integration in the pilot: it is set through the device
   record (API/console), is considered stale after `NAC_POSTURE_MAX_AGE`
   (24 h), and is never taken from RADIUS.
-- **Not tested here:** the systemd units, because the build environment has
-  no systemd. Everything else in the installer was run on Ubuntu 24.04.5, and
-  the services were started the way the units start them. CoA against a real
-  switch was tested only against an emulator that reproduces the lab's NAK
-  402 / ACK 200 behavior.
-- **One operator account.** The pilot has no operator management or
-  password change (console or API). Only the bootstrapped administrator
-  exists; its generated password is in `/root/nac-initial-admin.txt`.
+- **Validation:** the documented install (systemd units included), product
+  CoA, outage and full-restart recovery were validated on vEOS-lab 4.29.2F in
+  the `fe7c981` lab run. Physical Arista hardware is untested.
+- **One operator account.** The bootstrapped administrator can change its own
+  password (console **Account**, or `POST /api/v1/auth/password`), and root on
+  the control node can reset it (`nac-reset-password`). There is no operator
+  management (more accounts, roles, disabling) in the console or API, no
+  per-account lockout after failed attempts (Argon2id cost and per-client
+  rate limiting only), and no single sign-on.
+- **Confirmation dialogs.** Publish, restore, quarantine/restore/
+  re-authenticate, binding removal and switch deletion ask for confirmation
+  in a native browser dialog. Browser automation must accept it explicitly.
+- **eAPI TLS settings are global.** `NAC_EAPI_INSECURE_SKIP_VERIFY=true`
+  (needed for self-signed eAPI certificates) disables certificate checking
+  for every switch's eAPI. `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` (needed for stock
+  EOS 4.29.2F eAPI without an ECDHE SSL profile) allows RSA key exchange for
+  every switch's eAPI. Neither affects other connections. Per-switch
+  certificate pinning is not implemented.
+- **Reproducible build:** `nacd` builds to the same SHA-256 from the same
+  commit and `VERSION`. The bundle tarball does not, because of archive
+  timestamps.

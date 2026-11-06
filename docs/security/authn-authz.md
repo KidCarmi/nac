@@ -20,9 +20,9 @@ are deliberately kept separate:
 
 | Caller | Mechanism | Routes |
 |--------|-----------|--------|
-| **Operator** (human admin) | Bearer **JWT** (HS256), gated by RBAC | All `/api/v1/endpoints`, `/api/v1/policies`, `/api/v1/audit` |
-| **Enforcement point** (machine) | Shared **service token** | `POST /api/v1/access/evaluate` |
-| *(none)* | Public | `POST /api/v1/auth/login`, `GET /healthz` `/readyz` `/version` `/metrics` `/openapi.yaml` |
+| **Operator** (human admin) | Bearer **JWT** (HS256), gated by RBAC and checked against the operator record | Every other `/api/v1/*` route, including switches, sessions, bindings, CoA, policy versions, audit and `/api/v1/auth/me`, `/api/v1/auth/password` |
+| **Enforcement point** (machine) | Shared **service token** (Bearer, or HTTP Basic with the token as password for FreeRADIUS `rlm_rest`) | `POST /api/v1/access/evaluate`, `POST /api/v1/radius/{authorize,reject,accounting}` |
+| *(none)* | Public | `POST /api/v1/auth/login`, `GET /healthz` `/readyz` `/version` `/metrics` `/openapi.yaml`, the static console `/ui/` |
 
 Keeping the service token separate from operator JWTs means a leaked enforcement-point
 credential cannot be used to administer policy, and an operator token cannot be replayed at
@@ -48,6 +48,7 @@ Issued at login by `internal/auth/jwt.go`'s `TokenIssuer`.
   | `aud` | audience |
   | `iat`, `nbf`, `exp` | issued-at, not-before, expiry |
   | `jti` | unique token id |
+  | `tv` | operator `token_version` at issue time (revocation, see below) |
 
 ### Validation on `Parse`
 
@@ -58,21 +59,49 @@ Issued at login by `internal/auth/jwt.go`'s `TokenIssuer`.
 - Validates `exp` and **requires** an expiry claim to be present — a token without an expiry
   is rejected rather than treated as non-expiring.
 
-### Revocation tradeoff (disabled flag + short TTL)
+### Revocation: the operator record is authoritative
 
-JWTs are stateless: once issued they are valid until `exp`. The platform does **not** maintain
-a server-side token blocklist. Revocation is achieved by two complementary means:
+Every token carries a `tv` (token version) claim. On **every** operator request,
+`requireOperator` loads the operator record by `sub` and rejects the token when:
 
-1. The operator record carries an **`enabled` flag**. Disabling an operator stops new logins
-   immediately (login checks `enabled`).
-2. **Short TTLs** bound the window during which an already-issued token for a now-disabled
-   operator remains usable.
+- the operator no longer exists or is **disabled**, or
+- `tv` differs from the operator's current `token_version` (migration 0005).
 
-The accepted tradeoff: a disabled operator's *outstanding* token stays valid until it expires
-(at most one TTL). This is the deliberate price of stateless tokens; the mitigation is to keep
-TTLs short. If hard, immediate revocation becomes a requirement, the next step is a `jti`
-denylist or token-version claim checked per request — see
-[ADR-0004](../../adr/0004-auth-jwt-argon2-rbac.md).
+It then enforces the operator's **current** role from the record, not the
+role claimed in the token. So a demotion, a disablement or a password change
+takes effect on the next request, not at token expiry.
+
+A password change (`POST /api/v1/auth/password`) or a host-local reset
+(`nac-reset-password`) increments `token_version`. That signs out every
+earlier session of that operator; the change returns a fresh token for the
+session that made it. The price is one indexed primary-key lookup per
+request, which is acceptable for an operator API.
+
+Tokens issued before migration 0005 carry no `tv` (read as 0) and match the
+column default 0, so upgrading signs nobody out.
+
+### Password change and recovery
+
+- **Change (self-service):** `POST /api/v1/auth/password` with
+  `current_password` and `new_password`.
+  - Any authenticated operator may call it, for their own account only.
+  - The current password is required, so a stolen token alone cannot take
+    over the account. A wrong current password returns 403 and leaves the
+    session valid.
+  - Policy: 12–256 characters, not the account email, not the current
+    password.
+  - Success and failure are both audited (`operator.password_change`).
+- **Recovery (host-local):** `sudo nac-reset-password <email>` on the control
+  node.
+  - The helper reads the password twice without echo and passes it to
+    `nacd -reset-password` on stdin, never on the command line.
+  - It needs the service's database credentials, so it is limited to root on
+    the control node.
+  - It applies the same policy, revokes all of the operator's sessions, and
+    writes an `operator.password_reset` audit event attributed to
+    `host:nacd -reset-password`.
+- There is no operator management API or UI yet: one bootstrap admin per
+  installation (see §9).
 
 ---
 
@@ -129,7 +158,10 @@ without forcing a global password reset. (Hooked into the login path when needed
 **fail-closed**: an unknown or unmapped role has *no* permissions.
 
 Permissions: `endpoint:read`, `endpoint:write`, `policy:read`, `policy:write`,
-`access:evaluate`, `audit:read`, `operator:manage`.
+`access:evaluate`, `audit:read`, `operator:manage`, and for the pilot
+`network:read` (switches, sessions, bindings, events), `network:write`
+(switch registration, bindings) and `session:act` (CoA quarantine, restore,
+re-authenticate).
 
 | Permission | admin | operator | viewer |
 |------------|:-----:|:--------:|:------:|
@@ -140,6 +172,9 @@ Permissions: `endpoint:read`, `endpoint:write`, `policy:read`, `policy:write`,
 | `access:evaluate` | ✅ | ✅ | — |
 | `audit:read` | ✅ | ✅ | ✅ |
 | `operator:manage` | ✅ | — | — |
+| `network:read` | ✅ | ✅ | ✅ |
+| `network:write` | ✅ | ✅ | — |
+| `session:act` | ✅ | ✅ | — |
 
 > The table reflects the intended role model: **admin** is full control including managing
 > other operators; **operator** administers endpoints and policies and can evaluate access but
@@ -167,12 +202,13 @@ flowchart LR
     tier -->|service| st["requireServiceToken<br/>(constant-time)"] --> sth[handler]
 ```
 
-- `requireOperator` validates the JWT and places the `Principal{ID, Email, Role}` into the
-  request context.
+- `requireOperator` validates the JWT, loads the operator record (rejecting
+  unknown, disabled or revoked principals) and places the `Principal{ID, Email,
+  Role}` with the record's current email and role into the request context.
 - `requirePermission(<perm>)` then checks the principal's role against the required
   permission via the RBAC map. For example `POST /api/v1/policies` requires `policy:write`;
   `GET /api/v1/audit` requires `audit:read`.
-- `requireServiceToken` guards only `/access/evaluate`.
+- `requireServiceToken` guards `/access/evaluate` and the FreeRADIUS adapter routes `/radius/*`. It is the only credential FreeRADIUS holds, and it grants no operator capability.
 
 ---
 

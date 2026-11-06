@@ -8,8 +8,9 @@ boundary must update it (see the [Definition of Done](../guides/contributing.md)
 ## 1. Scope & assumptions
 
 **In scope:** the `nacd` control-plane service, its REST API, its data stores
-(PostgreSQL, Redis), operator authentication/authorization, and the
-enforcement-point decision endpoint.
+(PostgreSQL, Redis), operator authentication/authorization, the
+enforcement-point decision endpoint, and the pilot's FreeRADIUS adapter,
+switch CoA/eAPI channels and console.
 
 **Out of scope (delegated):** TLS termination (handled by ingress/LB), the
 physical network enforcement (handled by switches/WLCs/RADIUS), host/OS
@@ -39,6 +40,12 @@ hardening, and the secrets manager itself.
 | `POST /api/v1/auth/login` | none | Credential intake; rate-limited; generic errors. |
 | `/api/v1/endpoints`, `/api/v1/policies`, `/api/v1/audit` | JWT + RBAC | Operator API. |
 | `POST /api/v1/access/evaluate` | service token | Machine-to-machine; constant-time token check. |
+| `POST /api/v1/radius/{authorize,reject,accounting}` | service token (Basic) | FreeRADIUS adapter over loopback only (pilot). |
+| Switch, session, binding, CoA, policy-version and event routes | JWT + operator record + RBAC | Pilot operator API (`network:*`, `session:act`, `policy:*`). |
+| `GET /api/v1/auth/me`, `POST /api/v1/auth/password` | JWT + operator record | Self-service; the change needs the current password. |
+| `/ui/` | none (static) | The console is a client of the same API and holds no privileges of its own. |
+| RADIUS UDP 1812/1813 (FreeRADIUS) | per-switch shared secret + EAP-TLS | Only registered switches; requests without EAP are rejected. |
+| Host: `nacd.env`, `nac-reset-password` | root | Fully trusted (see Trust Boundaries §12). |
 | `/healthz`, `/readyz`, `/version`, `/metrics`, `/openapi.yaml` | none | No sensitive data; metrics carry no secrets. |
 
 Full enumeration: [`security/attack-surface.md`](../../security/attack-surface.md).
@@ -99,6 +106,21 @@ Full enumeration: [`security/attack-surface.md`](../../security/attack-surface.m
 - **Threat:** Enforcement point uses operator credentials (or vice versa).
   **Mitigation:** Separate auth schemes; the service-token endpoint rejects
   JWTs and vice versa (verified by tests).
+
+
+### Pilot-specific threats (FreeRADIUS, switches, CoA)
+
+| Threat | Mitigation | Residual |
+|--------|------------|----------|
+| A rejected certificate clears a quarantine or takes over a session on the same port/MAC | Rejects never replace a session or become identity; regression-tested and confirmed in the lab on `fe7c981` | — |
+| Spoofed MAC admitted via switch MAB fallback | nacd has no MAB path, and non-EAP requests are rejected before nacd | A switch configured with mac-auth fallback toward **another** RADIUS server can still admit a spoofed MAC (ASTRA MikroTik run). The documentation forbids it |
+| Forged CoA-ACK makes NAC report an action that did not happen | Response authenticator verified; CoA "observed" needs a later re-authentication | — |
+| nacd outage grants access | Fail closed: FreeRADIUS rejects, no authorization cache | Already-authorized sessions persist on the switch until re-authentication (switch behavior) |
+| Stolen operator token outlives a password change | `token_version` checked per request; a change or reset revokes all earlier sessions | Tokens remain valid until expiry if the password is not changed |
+| Demoted or disabled operator keeps access | Role and disabled flag read from the operator record per request | — |
+| eAPI credentials intercepted | HTTPS; read-only account; sealed at rest | `NAC_EAPI_INSECURE_SKIP_VERIFY=true` (needed for self-signed eAPI) disables certificate checks for all switches |
+| FreeRADIUS service token leaked | Loopback-only HTTP; no operator capability | `freeradius -X` debug output prints it |
+| Brute force of the current password through a stolen session | Argon2id cost; per-client rate limiting; failures audited | No per-account lockout |
 
 ## 5. Residual risks & accepted trade-offs
 

@@ -11,6 +11,10 @@ each. Keep this in sync with `internal/server/router.go`.
 | PostgreSQL `:5432` | App network only | TLS + least-privilege role |
 | Redis `:6379` | App network only | AUTH + TLS; no secrets stored |
 | `/metrics` | Internal scrape | No secrets in labels/values |
+| Pilot: `nacd` HTTP `127.0.0.1:8080` | Loopback only (FreeRADIUS) | Installer binds it to loopback |
+| Pilot: `nacd` HTTPS `:8443` | Operator network | Console + operator API; self-signed by default |
+| Pilot: FreeRADIUS UDP `1812`/`1813` | Switch management network | Registered switches only, per-switch secret, EAP-TLS only |
+| Pilot: outbound CoA UDP `3799`, eAPI TCP `443` to switches | Switch management network | Response authenticator verified; eAPI optional, read-only account |
 
 ## HTTP entry points
 
@@ -28,6 +32,11 @@ each. Keep this in sync with `internal/server/router.go`.
 | `/api/v1/policies/{id}` | GET/PUT/DELETE | JWT+RBAC | UUID path, body | As above; cache invalidation |
 | `/api/v1/access/evaluate` | POST | service token | MAC, posture, attrs | Constant-time token, MAC/posture validation |
 | `/api/v1/audit` | GET | JWT+RBAC | pagination | Read-only; bounded page size |
+| `/api/v1/auth/me` | GET | JWT + operator record | — | Current role and permissions from the record |
+| `/api/v1/auth/password` | POST | JWT + operator record | current, new password | Current password required; policy; revokes earlier sessions; audited |
+| `/api/v1/radius/{authorize,reject,accounting}` | POST | service token (Basic) | FreeRADIUS rest attributes | Loopback; switch identified by packet source IP; strict attribute parsing |
+| Pilot operator routes (`/switches`, `/sessions`, `/identity-bindings`, `/policy-*`, `/auth-events`, `/decisions`) | various | JWT + operator record + RBAC | see OpenAPI | `network:*`, `session:act`, `policy:*`; actor from the principal |
+| `/ui/` | GET | none (static) | — | Same-origin CSP; holds no privileges |
 
 ## Global request controls (middleware)
 

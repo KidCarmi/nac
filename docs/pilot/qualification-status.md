@@ -1,0 +1,62 @@
+# NAC pilot: qualification status
+
+What has been proven, on which exact commit, and where the evidence is. ASTRA
+runs the lab qualification in EVE-NG. The build session runs the automated
+tests. A row stays **pending** until a lab result names the commit it ran on.
+
+## Candidates
+
+| Candidate | Commit | nacd SHA-256 (`make pilot-bundle VERSION=<name>`) | Status |
+|---|---|---|---|
+| `pilot-rc1` | `fe7c9810848910aa4dc4536a5074d3ebaef72c7e` | `062e948ac922ed703ed3743a75a2bc85241bf59597b963282dae2cef3e764204` | **PASS** (static addressing, no eAPI/accounting), 2026-11-06 |
+| `pilot-rc2` | `c121a952cf86c78f6a29b5950d62101c7f9bab6b` | `babe6ff523acadd0d382ca6df5dfcad5f96189b1c1b68e297027625c2f7fa6cf` | In qualification: DHCP transitions, eAPI observation, accounting |
+| `pilot-rc3` | not named yet | — | Will add password change, the eAPI TLS fix, installer settings preservation, OpenAPI 1.1, documentation, and fixes for further rc2 findings |
+
+Evidence lives on branch `astra/lab-evidence`:
+- `fe7c981` run: commit `1e0d2a3`, `lab/runs/candidate-fe7c981-20261106/`
+- MikroTik MAB run: commit `43980c6`, `lab/runs/mikrotik-mab-20261106/`
+
+## Lab results by capability
+
+Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
+24.04. Every access verdict uses a fresh endpoint TCP connection.
+
+| Capability | Result | Commit | Notes |
+|---|---|---|---|
+| Documented clean install | PASS | `fe7c981` | About 63 s; installed nacd hash matched |
+| Switch registration, generated EOS config | PASS | `fe7c981` | Generated config matched the saved switch config |
+| Unauthenticated endpoint blocked | PASS | `fe7c981` | |
+| Valid bound EAP-TLS → corp VLAN 10 | PASS | `fe7c981` | Before binding: default deny |
+| Invalid certificate rejected, both segments blocked | PASS | `fe7c981` | Also when it replaced an active quarantine on the same port and MAC |
+| Preview → publish → Re-authenticate CoA → VLAN 20 | PASS | `fe7c981` | Preview prediction matched the later decision |
+| Quarantine / Restore CoA without endpoint action | PASS | `fe7c981` | ACK and switch-initiated re-authentication; restore 21.3 s to permitted TCP |
+| nacd outage: existing session kept, new login rejected, automatic recovery | PASS | `fe7c981` | Recovery 30.2 s after nacd restart; no authorization cache |
+| Full restart of all nodes | PASS | `fe7c981` | The final restore used an operator `wpa_cli reauthenticate` (disclosed) |
+| DHCP addressing across corp ⇄ quarantine | **pending** | `pilot-rc2` | `fe7c981` used static addresses |
+| eAPI session observation (fresh / stale / absent, Verify with observation) | **defect found** → fix in `pilot-rc3` | `pilot-rc2` | Probe failed with a TLS handshake failure: stock EOS 4.29.2F eAPI offers only RSA key exchange, and Go 1.22+ does not offer it. With a lab-only `GODEBUG=tlsrsakex=1`, Probe answered `vEOS-lab EOS 4.29.2F`. rc3 adds `NAC_EAPI_TLS_ALLOW_RSA_KEX` (eAPI client only), a Probe error that names the fix, and the EOS SSL-profile alternative (to be validated) |
+| RADIUS accounting (Start/Stop, Class echo, session end) | **pending** | `pilot-rc2` | Correlation integration-tested only |
+| Password change and host reset | **pending** | `pilot-rc3` | Unit and integration tested |
+| MAB / fallback | BLOCKED on Arista | — | vEOS rejects MAB. Separate MikroTik run: a spoofed allowlisted MAC can pass switch fallback after an EAP-TLS reject (non-product rule). The product rejects non-EAP requests; see known limitations |
+
+## Automated tests (every commit)
+
+- `go test -race ./...`: unit tests, including the RADIUS codec, policy
+  engine, versions and preview, the eAPI parser on the vEOS capture, and
+  password change and revocation.
+- `go test -tags=integration ./test/integration/`: the full HTTP workflow on
+  PostgreSQL against a fake vEOS, every review-finding regression, and the
+  account lifecycle including restart and host reset.
+- `scripts/e2e-freeradius.sh`: `eapol_test`/`radclient` → FreeRADIUS 3.2.5 →
+  nacd → PostgreSQL. Runs in the build environment, not in CI.
+- `internal/server/openapi_coverage_test.go`: every registered route is in
+  the API specification and vice versa.
+
+## Manual interventions recorded during lab runs
+
+- `fe7c981`: after the full restart, the final policy restore was completed
+  with an endpoint `wpa_cli reauthenticate`. Policy restore applies at the
+  next authentication; the product path is the session's **Re-authenticate**.
+- `fe7c981`: in the outage test, the operator stopped the supplicant and
+  cleared the port to force a new session.
+- `fe7c981`: browser-native confirmation dialogs needed a human click in the
+  automation.

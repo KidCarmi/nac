@@ -81,8 +81,11 @@ Click the row to open the session on that port.
    - changed decisions
    - cases with insufficient evidence
 
-   It is a **prediction based on recorded inputs**.
-3. **Publish this draft** activates exactly the previewed draft, as a new
+   It is a **prediction based on recorded inputs**. A session under an
+   operator quarantine is marked **override applies**. It stays quarantined
+   whatever the draft says, but the row still shows what the draft alone
+   would decide.
+3. **Publish this draft** asks for confirmation in a browser dialog, then activates exactly the previewed draft, as a new
    immutable version. If someone changed the draft after your preview, it
    refuses.
 4. Publishing applies at the **next authentication**. To apply it to a
@@ -102,7 +105,13 @@ Click the row to open the session on that port.
    | timeout | No answer from the switch |
    | observed | The switch's re-authentication received the quarantine VLAN |
 
-3. The endpoint may need to renew its IP address in the new VLAN.
+   **observed** is a RADIUS fact: the switch re-authenticated the endpoint and
+   NAC answered with the requested VLAN. It does not prove the endpoint has a
+   working address in that VLAN. With eAPI configured, **Observed on the
+   switch** also shows the switch's own view (status and VLAN).
+3. Check the endpoint's address. Whether it renews its IP address in the new
+   VLAN depends on its DHCP client. NAC does not bounce the port. In the lab,
+   with static addresses, reachability changed about 20 s after the CoA.
 4. **Restore** clears the override and sends a CoA. The re-authentication gets
    what the active policy decides.
 
@@ -113,10 +122,34 @@ authentication.
 
 **Versions → Restore** re-activates an earlier version. It is recorded in
 **Activation history**, and by default the draft is reset to it. It applies at
-the next authentication. Sessions under an operator quarantine **stay
-quarantined** until you restore them individually.
+the next authentication: to apply it to a connected endpoint now, open its
+session and click **Re-authenticate**. Sessions under an operator quarantine
+**stay quarantined** until you restore them individually.
 
-## 8. After a restart or a NAC outage
+## 8. Is the endpoint still connected? (Sessions → session)
+
+**Still connected?** on the session page has four values:
+
+| Value | Basis |
+|---|---|
+| ended | RADIUS accounting Stop for this session |
+| connected | A fresh eAPI observation lists the port and MAC |
+| absent | A fresh eAPI observation does not list the port and MAC |
+| unknown | Neither accounting nor a fresh observation, so "active" only means the last authentication was accepted |
+
+Setting up eAPI and accounting is in
+[installation §7a](installation.md#7a-optional-session-observation-eapi-and-accounting).
+
+## 9. Your account (Account)
+
+Click your email at the top right:
+- **Account** shows your role and permissions as the server enforces them.
+- **Change password** needs the current password. It signs out your other
+  sessions.
+- A forgotten password is reset on the control node with
+  `sudo nac-reset-password <email>`.
+
+## 10. After a restart or a NAC outage
 
 Nothing needs re-entering: all state is in the database. Logins rejected while
 nacd was unreachable appear in the timeline as `outage` events with source
