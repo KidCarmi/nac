@@ -112,7 +112,14 @@ sudo deployments/pilot/install.sh --test-pki
 
 The installer is idempotent. Re-running it keeps the generated secrets, the
 database and your configuration: the settings in `/etc/nac/nacd.env` keep
-their current values, and lines you added are carried over. It finishes by printing the console address.
+their current values, and lines you added are carried over. It restarts nacd
+and FreeRADIUS, and fails unless the **running** nacd reports the commit of
+the installed binary (recorded as `running nacd:` in the install report).
+
+> Candidates up to `pilot-rc6` do not restart a running nacd on re-install.
+> After installing one of them over an existing installation, run
+> `sudo systemctl restart nacd`, then check that
+> `curl -s http://127.0.0.1:8080/version` shows the candidate's commit. It finishes by printing the console address.
 
 ### What the installer does
 

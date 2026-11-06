@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### After pilot-rc6 (next candidate)
+- `install.sh` restarts nacd. Re-running it on an active installation used
+  `enable --now`, which left the old nacd process running the previous
+  binary and console certificate. The installer now also fails unless the
+  running nacd reports the installed commit, and records it in the install
+  report.
+
 ### pilot-rc6 (supersedes pilot-rc5 `23349b7`, which was never qualified)
 - **Security: concurrent exchanges could bypass quarantine** (Codex review
   of rc5). After an accounting Stop, a rejected and a valid exchange could

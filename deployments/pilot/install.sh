@@ -199,12 +199,20 @@ step "Services"
 install -m 0644 "$BUNDLE/deployments/pilot/systemd/"*.service "$BUNDLE/deployments/pilot/systemd/"*.path /etc/systemd/system/
 if [ "$START" = 1 ]; then
   systemctl daemon-reload
-  systemctl enable --now nacd.service nac-freeradius-reload.path
-  systemctl enable freeradius.service
+  systemctl enable nacd.service freeradius.service
+  systemctl enable --now nac-freeradius-reload.path
+  # restart, not "enable --now": on a re-install the running nacd must load
+  # the new binary, configuration and console certificate.
+  systemctl restart nacd.service
   systemctl restart freeradius.service
   for _ in $(seq 1 60); do curl -fs http://127.0.0.1:8080/readyz >/dev/null && break; sleep 1; done
   curl -fs http://127.0.0.1:8080/readyz >/dev/null || die "nacd did not become ready: journalctl -u nacd"
   systemctl is-active --quiet freeradius || die "FreeRADIUS is not running: journalctl -u freeradius"
+  # The RUNNING nacd must be the installed binary.
+  want=$(/usr/local/bin/nacd -version | sed -n 's/.* commit \([^ ]*\) .*/\1/p')
+  have=$(curl -fs http://127.0.0.1:8080/version | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
+  [ -n "$want" ] && [ "$want" = "$have" ] || die "running nacd is commit '$have', installed binary is '$want': systemctl restart nacd"
+  echo "running nacd: commit $have" | tee -a /etc/nac/install-report.txt
 fi
 
 cat <<DONE
