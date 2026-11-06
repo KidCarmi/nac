@@ -199,3 +199,20 @@ ConfigMap and the secrets through the `nacd-secrets` Secret. See
 - [Metrics](metrics.md) — Prometheus collectors and scrape configuration.
 - [Tracing](tracing.md) — W3C trace context propagation.
 - `.env.example` at the repository root — a copy-ready environment template.
+
+
+## Pilot settings (RADIUS, switches, CoA)
+
+| Variable | Type | Default | Required | Description |
+|---|---|---|---|---|
+| `NAC_HTTPS_ADDR` | address | — | No | Adds an HTTPS listener for operators (installer: `:8443`). Requires the two TLS files below. |
+| `NAC_TLS_CERT_FILE`, `NAC_TLS_KEY_FILE` | path | — | with HTTPS | Console certificate and key (PEM). |
+| `NAC_SECRETS_KEY` | secret (32+ chars) | dev key in development | **Yes** outside development | Encrypts switch RADIUS secrets and eAPI passwords at rest (AES-256-GCM). Losing it makes stored switch secrets unreadable. |
+| `NAC_POSTURE_MAX_AGE` | duration | `24h` | No | Posture older than this is stale evidence (treated as missing). |
+| `NAC_OBSERVATION_MAX_AGE` | duration | `5m` | No | Switch observations older than this are shown as stale. |
+| `NAC_COA_TIMEOUT` | duration | `3s` | No | Wait per CoA transmission. |
+| `NAC_COA_RETRIES` | int 0–10 | `2` | No | Retransmissions after the first CoA attempt (byte-identical). |
+| `NAC_FREERADIUS_CLIENTS_FILE` | path | — | No | Where nacd renders FreeRADIUS client definitions (installer: `/var/lib/nac/freeradius-clients.conf`). |
+| `NAC_FREERADIUS_OUTAGE_LOG` | path | — | No | FreeRADIUS outage log imported into the timeline (installer: `/var/log/freeradius/nac-outage.log`). |
+| `NAC_EAPI_INSECURE_SKIP_VERIFY` | bool | `false` | No | Accept self-signed switch eAPI certificates. |
+| `NAC_BOOTSTRAP_ADMIN_EMAIL`, `NAC_BOOTSTRAP_ADMIN_PASSWORD` | string | — | No | Creates the first administrator if missing (password 12+ characters). |

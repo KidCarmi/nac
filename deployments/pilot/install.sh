@@ -188,7 +188,7 @@ cat <<DONE
 
 NAC pilot installed.
   Console:        https://$(hostname -I | awk '{print $1}'):8443/
-  First admin:    see $ADMINPW_FILE (root only); change the password after first sign-in
+  First admin:    see $ADMINPW_FILE (root only); keep it secret (the pilot has no password-change page)
   FreeRADIUS:     $FRVER, UDP 1812/1813; outage log /var/log/freeradius/nac-outage.log
   Configuration:  $ENVF
 Next: open the console, register the switch (Switches), apply the generated EOS configuration.
