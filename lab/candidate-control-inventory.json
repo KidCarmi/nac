@@ -1,0 +1,19 @@
+{
+  "observed_at_utc": "2026-11-06T09:22:36Z",
+  "source": "agent-transcribed EVE node 15 serial console after actual EVE API start",
+  "commands": "ip -br addr show; ip route; df -h /; command -v freeradius || echo FREERADIUS_NOT_INSTALLED",
+  "os": "Ubuntu 24.04.5 LTS",
+  "kernel": "6.8.0-147-generic",
+  "interfaces": {
+    "lo": "127.0.0.1/8",
+    "ens3": "10.70.99.2/24"
+  },
+  "routes": ["10.70.99.0/24 dev ens3 proto kernel scope link src 10.70.99.2"],
+  "default_route": false,
+  "root_filesystem": "/dev/vda4 15G total 1.6G used 13G available",
+  "freeradius_installed": false,
+  "eve_status_during_boot": 2,
+  "eve_status_after_stop": 0,
+  "smoke_runtime_disk_wiped_afterward": true,
+  "raw_boot_log": "candidate-eve-control-boot.log"
+}

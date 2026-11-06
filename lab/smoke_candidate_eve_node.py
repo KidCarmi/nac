@@ -44,6 +44,26 @@ try:
                     if not chunk: break
                     log.extend(chunk)
                     if b'login:' in log: break
+            if b'login:' in log:
+                sock.sendall(b'root\r\n')
+                prompt = bytearray()
+                end = time.monotonic()+5
+                while time.monotonic()<end and b'Password:' not in prompt:
+                    if select.select([sock],[],[],0.2)[0]:
+                        prompt.extend(sock.recv(65536))
+                if b'Password:' not in prompt:
+                    raise RuntimeError('root password prompt not observed')
+                secret = Path('/root/nac-pilot-control.rootpw').read_text().strip()
+                sock.sendall(secret.encode()+b'\r\n')
+                time.sleep(0.6)
+                sock.sendall(b'ip -br addr show; ip route; df -h /; command -v freeradius || echo FREERADIUS_NOT_INSTALLED\r\n')
+                observed = bytearray()
+                end = time.monotonic()+4
+                while time.monotonic()<end:
+                    if select.select([sock],[],[],0.2)[0]:
+                        observed.extend(sock.recv(65536))
+                clean = observed.decode(errors='replace').replace(secret,'[REDACTED]')
+                print('GUEST_CHECK',repr(clean[-1800:]),flush=True)
     except OSError as exc:
         print('CONSOLE_ERROR',type(exc).__name__,str(exc),flush=True)
     path = Path('/root/nac-qualification/candidate-eve-control-boot.log')
