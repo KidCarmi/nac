@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lab name="NAC-MAB-MikroTik" id="29079d7d-fa67-4b16-9951-f8dfe9dd830d" version="1" scripttimeout="600" lock="0" author="NAC wired lab">
+  <description>Separate MikroTik CHR MAB qualification; Arista pilot preserved</description>
+  <body>Isolated EVE data/control bridges. Run only while baseline and Arista candidate nodes are stopped because the address plan is reused.</body>
+  <topology>
+    <nodes>
+      <node id="21" name="MikroTik-CHR-access" type="qemu" template="mikrotik" image="mikrotik-7.24.6" console="telnet" cpu="1" cpulimit="1" ram="1024" ethernet="4" uuid="04d6b816-197f-4853-9619-c73ca3888c97" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -no-user-config -nodefaults -display none -vga std -rtc base=utc -boot order=c" qemu_version="8.2.1" qemu_arch="x86_64" delay="0" icon="Router.png" config="0" left="420" top="250" qemu_nic="e1000-82545em">
+        <interface id="0" name="e0" type="ethernet" network_id="21" />
+        <interface id="1" name="e1" type="ethernet" network_id="22" />
+        <interface id="2" name="e2" type="ethernet" network_id="23" />
+        <interface id="3" name="e3" type="ethernet" network_id="24" />
+      </node>
+      <node id="22" name="mab-printer-or-supplicant" type="qemu" template="linux" image="linux-nac-endpoint" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="bb46ee6c-ddd3-46fa-83ab-e38ab906d390" firstmac="00:50:00:00:02:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="250">
+        <interface id="0" name="e0" type="ethernet" network_id="21" />
+      </node>
+      <node id="23" name="mab-corp-service" type="qemu" template="linux" image="linux-nac-corp" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="f55fed44-8478-4b77-84cd-91a1e6ff3669" firstmac="00:50:00:00:03:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="140">
+        <interface id="0" name="e0" type="ethernet" network_id="22" />
+      </node>
+      <node id="24" name="mab-quarantine-service" type="qemu" template="linux" image="linux-nac-quarantine" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="7e62e701-383c-411b-8559-5c9597b23205" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="380">
+        <interface id="0" name="e0" type="ethernet" network_id="23" />
+      </node>
+      <node id="25" name="mab-radius-control" type="qemu" template="linux" image="linux-nac24-mab-control" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="c00a123c-fc90-4935-9c72-044f386bc8a0" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
+        <interface id="0" name="e0" type="ethernet" network_id="24" />
+      </node>
+    </nodes>
+    <networks>
+      <network id="21" type="bridge" name="mab-nac-access-link" left="307" top="268" visibility="1" icon="lan.png" />
+      <network id="22" type="bridge" name="mab-nac-corp-link" left="614" top="153" visibility="1" icon="lan.png" />
+      <network id="23" type="bridge" name="mab-nac-quarantine-link" left="614" top="384" visibility="1" icon="lan.png" />
+      <network id="24" type="bridge" name="mab-nac-control-link" left="307" top="499" visibility="1" icon="lan.png" />
+    </networks>
+  </topology>
+</lab>

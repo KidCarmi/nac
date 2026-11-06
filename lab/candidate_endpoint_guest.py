@@ -10,7 +10,9 @@ import socket
 import time
 
 
-PORT = 32780
+PORT = int(os.environ.get("ENDPOINT_CONSOLE_PORT", "32780"))
+if PORT not in {32780, 32790}:
+    raise SystemExit("Unexpected endpoint console port")
 PASSWORD = Path("/root/nac-linux.rootpw").read_text().strip()
 
 
@@ -109,5 +111,9 @@ with socket.create_connection(("127.0.0.1", PORT), timeout=5) as sock:
     elif action == "probe":
         print("CORP_TCP", probe("corp"))
         print("QUARANTINE_TCP", probe("quarantine"))
+    elif action in ("mac_unregistered", "mac_printer"):
+        wanted = "00:50:00:00:02:01" if action == "mac_unregistered" else "00:50:00:00:02:00"
+        print("STOP", cmd("wpa_cli -i ens3 terminate 2>&1 || true", 1.5))
+        print("MAC", cmd(f"ip link set ens3 down; ip link set ens3 address {wanted}; ip link set ens3 up; ip -br link show ens3", 1.5))
     else:
-        raise SystemExit("set ENDPOINT_ACTION=inventory|stage|fresh|valid_start|invalid_start|valid_restart|stop|reauth|probe")
+        raise SystemExit("set ENDPOINT_ACTION=inventory|stage|fresh|valid_start|invalid_start|valid_restart|stop|reauth|probe|mac_unregistered|mac_printer")
