@@ -108,3 +108,33 @@ func TestOperatorRecordIsAuthoritative(t *testing.T) {
 		t.Errorf("disabled operator still authenticated: %d", c)
 	}
 }
+
+func TestLoginFailuresAreAuditedWithoutEnumeration(t *testing.T) {
+	h := newHarness(t)
+	h.login(t, "admin@nac.local", "wrong-password-1")
+	h.login(t, "nobody@nac.local", "wrong-password-2")
+	var reasons []string
+	for _, e := range h.auditRepo.events {
+		if e.Action == "operator.login" && e.Outcome == "failure" {
+			reasons = append(reasons, e.Metadata["reason"])
+		}
+	}
+	if len(reasons) != 2 || reasons[0] != reasons[1] {
+		t.Fatalf("failed logins: want two audit events with the same reason, got %v", reasons)
+	}
+}
+
+func TestAuditPagingDefaultsAndBounds(t *testing.T) {
+	h := newHarness(t)
+	tok := h.operatorToken(t, domain.RoleViewer)
+	for q, want := range map[string]int{"": 50, "?limit=1000000": 200, "?limit=5&offset=-3": 5} {
+		var out struct {
+			Page struct{ Limit, Offset int } `json:"page"`
+		}
+		rec := h.do(http.MethodGet, "/api/v1/audit"+q, tok, nil)
+		_ = json.Unmarshal(rec.Body.Bytes(), &out)
+		if rec.Code != http.StatusOK || out.Page.Limit != want || out.Page.Offset != 0 {
+			t.Errorf("audit%s: status %d page %+v, want limit %d offset 0", q, rec.Code, out.Page, want)
+		}
+	}
+}

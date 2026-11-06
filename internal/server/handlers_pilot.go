@@ -93,7 +93,11 @@ func (s *Server) handleCreateSwitch(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, r, err)
 		return
 	}
-	v, _ := s.pilot.GetSwitch(r.Context(), sw.ID)
+	v, err := s.pilot.GetSwitch(r.Context(), sw.ID)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
 	writeJSON(w, r, http.StatusCreated, v)
 }
 

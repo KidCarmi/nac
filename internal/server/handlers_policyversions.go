@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -144,11 +146,10 @@ func (s *Server) handleRestoreVersion(w http.ResponseWriter, r *http.Request) {
 		ResetDraft *bool  `json:"reset_draft"`
 		Note       string `json:"note"`
 	}{}
-	if r.ContentLength != 0 {
-		if err := decodeJSON(r, &req); err != nil {
-			badRequest(w, r, "invalid restore payload")
-			return
-		}
+	// The body is optional; an empty body (also when chunked) means defaults.
+	if err := decodeJSON(r, &req); err != nil && !errors.Is(err, io.EOF) {
+		badRequest(w, r, "invalid restore payload")
+		return
 	}
 	reset := req.ResetDraft == nil || *req.ResetDraft
 	a, err := s.versions.Restore(r.Context(), policyver.RestoreInput{Number: n, ResetDraft: reset, Note: req.Note, Actor: actor(r)})

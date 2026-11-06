@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kidcarmi/nac/internal/auth"
@@ -40,6 +41,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// Constant-work path: verify against a fixed dummy hash, then fail.
 		_, _ = auth.VerifyPassword(req.Password, dummyHash)
 		s.metrics.AuthFailures.WithLabelValues("unknown_operator").Inc()
+		s.audit.Record(r.Context(), "operator.login", "operator", "", "failure", map[string]string{"reason": "unknown or wrong credentials", "email": truncate(req.Email, 254)})
 		writeProblem(w, r, domain.ErrUnauthorized)
 		return
 	}
@@ -55,6 +57,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			reason = "disabled_operator"
 		}
 		s.metrics.AuthFailures.WithLabelValues(reason).Inc()
+		// Same audited reason as for an unknown email: the audit log is
+		// readable by viewers and must not become an enumeration oracle.
+		s.audit.Record(r.Context(), "operator.login", "operator", "", "failure", map[string]string{"reason": "unknown or wrong credentials", "email": truncate(req.Email, 254)})
 		writeProblem(w, r, domain.ErrUnauthorized)
 		return
 	}
@@ -159,4 +164,12 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, r, http.StatusOK, meResponse{ID: op.ID.String(), Email: op.Email, Role: op.Role,
 		Permissions: auth.PermissionsOf(op.Role), PasswordChangedAt: op.PasswordChangedAt})
+}
+
+// truncate bounds attacker-supplied strings stored in the audit log.
+func truncate(v string, n int) string {
+	if len(v) > n {
+		v = v[:n]
+	}
+	return strings.ToValidUTF8(v, "")
 }
