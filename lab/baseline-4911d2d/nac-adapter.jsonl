@@ -1,0 +1,14 @@
+{"reason": "certificate serial not enrolled", "result": "deny", "serial": "\"2e1b47dc86a00b7f7250500b4a21f454b2efd819\"", "time": "2026-11-06T08:03:33Z"}
+{"reason": "certificate serial not enrolled", "result": "deny", "serial": "\"2e1b47dc86a00b7f7250500b4a21f454b2efd819\"", "time": "2026-11-06T08:04:06Z"}
+{"reason": "certificate serial not enrolled", "result": "deny", "serial": "\"2e1b47dc86a00b7f7250500b4a21f454b2efd819\"", "time": "2026-11-06T08:04:39Z"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "corp", "time": "2026-11-06T08:05:12Z", "vlan": "10"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "corp", "time": "2026-11-06T08:05:24Z", "vlan": "10"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "corp", "time": "2026-11-06T08:05:33Z", "vlan": "10"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "quarantine", "time": "2026-11-06T08:06:46Z", "vlan": "20"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "quarantine", "time": "2026-11-06T08:06:55Z", "vlan": "20"}
+{"error": "URLError", "reason": "NAC decision service unavailable", "result": "deny", "time": "2026-11-06T08:08:07Z"}
+{"error": "URLError", "reason": "NAC decision service unavailable", "result": "deny", "time": "2026-11-06T08:08:40Z"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "quarantine", "time": "2026-11-06T08:09:13Z", "vlan": "20"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "quarantine", "time": "2026-11-06T08:09:27Z", "vlan": "20"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "quarantine", "time": "2026-11-06T08:09:35Z", "vlan": "20"}
+{"cert_serial": "2e1b47dc86a00b7f7250500b4a21f454b2efd819", "endpoint": "00:50:00:00:02:00", "matched_policy_id": "97b99d3b-9251-481e-a957-156f42688a21", "result": "allow", "segment": "corp", "time": "2026-11-06T08:12:13Z", "vlan": "10"}

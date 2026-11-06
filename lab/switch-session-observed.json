@@ -1,0 +1,17 @@
+{
+  "intfSupplicantsDict": {
+    "Ethernet1": {
+      "supplicants": {
+        "00:50:00:00:02:00": {
+          "supplicantMac": "00:50:00:00:02:00",
+          "authMethod": "EAPOL",
+          "authStage": "SUCCESS",
+          "fallback": "NONE",
+          "vlanId": "10",
+          "cachedAuthAtLinkDown": false,
+          "reauthTimeoutSeen": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+Successfully initialized wpa_supplicant
+ens3: Associated with 01:80:c2:00:00:03
+ens3: CTRL-EVENT-SUBNET-STATUS-UPDATE status=0
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=13
+ens3: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 13 (TLS) selected
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=1 subject='/CN=NAC Lab Disposable CA' hash=a7c0b70440431feb392fc06f5e87d2f403e844ab39798a489a41d678a8c99c81
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=0 subject='/CN=radius.nac.lab' hash=c7e9620d2905b4d35c9e97be9bbe502a8e3613be66607fd01e13397a07686cc3
+ens3: CTRL-EVENT-EAP-PEER-ALT depth=0 DNS:radius.nac.lab
+ens3: CTRL-EVENT-EAP-FAILURE EAP authentication failed
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=13
+ens3: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 13 (TLS) selected
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=1 subject='/CN=NAC Lab Disposable CA' hash=a7c0b70440431feb392fc06f5e87d2f403e844ab39798a489a41d678a8c99c81
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=0 subject='/CN=radius.nac.lab' hash=c7e9620d2905b4d35c9e97be9bbe502a8e3613be66607fd01e13397a07686cc3
+ens3: CTRL-EVENT-EAP-PEER-ALT depth=0 DNS:radius.nac.lab
+ens3: CTRL-EVENT-EAP-FAILURE EAP authentication failed
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=13
+ens3: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 13 (TLS) selected
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=1 subject='/CN=NAC Lab Disposable CA' hash=a7c0b70440431feb392fc06f5e87d2f403e844ab39798a489a41d678a8c99c81
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=0 subject='/CN=radius.nac.lab' hash=c7e9620d2905b4d35c9e97be9bbe502a8e3613be66607fd01e13397a07686cc3
+ens3: CTRL-EVENT-EAP-PEER-ALT depth=0 DNS:radius.nac.lab
+ens3: CTRL-EVENT-EAP-FAILURE EAP authentication failed
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started
+ens3: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=13
+ens3: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 13 (TLS) selected
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=1 subject='/CN=NAC Lab Disposable CA' hash=a7c0b70440431feb392fc06f5e87d2f403e844ab39798a489a41d678a8c99c81
+ens3: CTRL-EVENT-EAP-PEER-CERT depth=0 subject='/CN=radius.nac.lab' hash=c7e9620d2905b4d35c9e97be9bbe502a8e3613be66607fd01e13397a07686cc3
+ens3: CTRL-EVENT-EAP-PEER-ALT depth=0 DNS:radius.nac.lab
+ens3: CTRL-EVENT-EAP-FAILURE EAP authentication failed
+ens3: CTRL-EVENT-EAP-STARTED EAP authentication started

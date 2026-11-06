@@ -1,0 +1,11 @@
+{
+  "nac_commit": "4911d2d940797aeb41be3815af1cf23b25573dc1",
+  "topology_sha256": "659656f9030ce694ac01347db943f67a87bc56f451ef3789d5d3f94e2200fad9",
+  "adapter_sha256": "7c2d77197495e28e6fd1724e60b30836be4314d812a936c58d326ef2ed4dda30",
+  "eve_version": "eve-ng\t6.2.0-4",
+  "eos_version_output": "show version | include Software image version\nSoftware image version: 4.29.2F\nnac-veos#\nnac-veos#",
+  "radius_version_output": "freeradius -v 2>&1 | head -1\nradiusd: FreeRADIUS Version 3.0.26, for host x86_64-pc-linux-gnu, built on Dec 17 2024 at 15:46:27\nroot@nac-control:~# \nroot@nac-control:~#",
+  "switch_dot1x_config": "show running-config section dot1x\naaa authentication dot1x default group radius\ninterface Ethernet1\n   dot1x pae authenticator\n   dot1x port-control auto\ndot1x system-auth-control\ndot1x dynamic-authorization\nnac-veos#\nnac-veos#",
+  "switch_port_config": "show running-config interfaces Ethernet1\ninterface Ethernet1\n   switchport access vlan 10\n   dot1x pae authenticator\n   dot1x port-control auto\nnac-veos#\nnac-veos#",
+  "radius_adapter_module_sha256": "sha256sum /etc/freeradius/3.0/nac-lab/adapter.py\n7c2d77197495e28e6fd1724e60b30836be4314d812a936c58d326ef2ed4dda30  /etc/freeradius/3.0/nac-lab/adapter.py\nroot@nac-control:~# \nroot@nac-control:~#"
+}

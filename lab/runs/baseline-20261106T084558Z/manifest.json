@@ -1,0 +1,53 @@
+{
+  "run_id": "baseline-20261106T084558Z",
+  "kind": "baseline-regression",
+  "runner_sha256": "6a761e00c6a53df7a96131283dbb929315cfa5eec0ad995ccebe4c0d124f68cf",
+  "launcher_exit_code": 0,
+  "nac_commit": "4911d2d940797aeb41be3815af1cf23b25573dc1",
+  "files_sha256": {
+    "events.jsonl": "3e96ddb1d90835b54d9be9be0818b611a4e6c150fc4d93060ff02db67929221f",
+    "results.json": "f62135233ee5720b96794d3ff8d76d626857decdbb8161c4d1c8beeed1388eda",
+    "metadata.json": "d705b3fb46e5d0687afd9bf3f0db4c74f03891d3100badfc4c1253ce228e73b0",
+    "nac-decisions.jsonl": "5112f8a1f3233506194fe27ef2d5fa51f63d649656ad1fdcfde423e76c9d3236",
+    "endpoint-eapol.pcap": "f11b9b478e8b7457409e03bef5d4bd59b654de8e3828be3ff51bf598ad5f5944",
+    "radius.pcap": "eff0a180b4310ea0bece7f9789c89532f0867ef764a954dc9c748d2d427bc0c8"
+  },
+  "results": [
+    {
+      "test": "service_health",
+      "status": "PASS",
+      "expected": "both HTTP 200 from their own EVE bridges",
+      "actual": "{'corp': 200, 'quarantine': 200}"
+    },
+    {
+      "test": "fresh_unauthenticated",
+      "status": "PASS",
+      "expected": "corp TCP blocked on one-NIC endpoint",
+      "actual": "corp_open=False; show dot1x hosts\nPort      Supplicant MAC Auth  State                   Fallback              \n--------- -------------- ----- ----------------------- ----------------------\n\nVLAN\n----\n\nnac-veos#\nnac-veos#"
+    },
+    {
+      "test": "valid_corp",
+      "status": "PASS",
+      "expected": "EAP-TLS SUCCESS, VLAN 10, corp open, quarantine blocked",
+      "actual": "vlan10=True,corp_open=True,corp_convergence_s=21.6,quarantine_open=False"
+    },
+    {
+      "test": "invalid_certificate",
+      "status": "PASS",
+      "expected": "EAP-TLS reject, no VLAN, corp blocked",
+      "actual": "eap_failed=True,corp_open=False"
+    },
+    {
+      "test": "policy_to_quarantine",
+      "status": "PASS",
+      "expected": "same identity and port; only NAC rule segment changed; VLAN 20, quarantine open, corp blocked",
+      "actual": "vlan20=True,quarantine_open=True,quarantine_convergence_s=17.1,corp_open=False"
+    },
+    {
+      "test": "policy_restore",
+      "status": "PASS",
+      "expected": "previous rule restored; VLAN 10, corp open, quarantine blocked",
+      "actual": "vlan10=True,corp_open=True,corp_convergence_s=17.1,quarantine_open=False"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+# vEOS-lab 4.29.2F, relevant running configuration
+hostname nac-veos
+vlan 10
+   name corp
+vlan 20
+   name quarantine
+radius-server host 10.70.99.2 key <RADIUS_SHARED_SECRET>
+aaa authentication dot1x default group radius
+dot1x system-auth-control
+dot1x dynamic-authorization
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+
+# FreeRADIUS 3.0.26, relevant effective configuration
+# /etc/freeradius/3.0/clients.conf
+client nac-veos {
+   ipaddr = 10.70.99.1
+   secret = <RADIUS_SHARED_SECRET>
+}
+# /etc/freeradius/3.0/mods-enabled/eap
+eap {
+   default_eap_type = tls
+   tls-config tls-common {
+      private_key_file = /etc/freeradius/3.0/certs/nac-server.key
+      certificate_file = /etc/freeradius/3.0/certs/nac-server.pem
+      ca_file = /etc/freeradius/3.0/certs/nac-ca.pem
+   }
+}
+# /etc/freeradius/3.0/sites-enabled/default, in authorize and post-auth
+verify_tls_client_common_name
+post-auth {
+   nac_lab
+   if (fail) {
+      reject
+   }
+   # Retain the stock FreeRADIUS post-auth statements below this block.
+}
+# /etc/freeradius/3.0/mods-enabled/nac_lab
+exec nac_lab {
+   wait = yes
+   program = "/usr/bin/python3 /etc/freeradius/3.0/nac-lab/adapter.py"
+   input_pairs = request
+   output_pairs = reply
+}
+# /etc/freeradius/3.0/nac-lab/identity.json
+{"serial":"2E1B47DC86A00B7F7250500B4A21F454B2EFD819","issuer_cn":"NAC Lab Disposable CA","cn":"wired-endpoint-01","mac":"00:50:00:00:02:00"}
+# /etc/freeradius/3.0/nac-lab/service-token: <NAC_SERVICE_TOKEN>
+# Private CA key, client key, server key, RADIUS shared secret and service token remain only in the lab.
+
+# Endpoint: one NIC ens3, wpa_supplicant wired EAP-TLS
+network={
+   key_mgmt=IEEE8021X
+   eap=TLS
+   identity="wired-endpoint-01"
+   ca_cert="/root/nac-ca.pem"
+   client_cert="/root/nac-endpoint.pem"
+   private_key="/root/nac-endpoint.key"
+}
+
+# NAC lab rule (same ID and conditions in both runs)
+# id: 97b99d3b-9251-481e-a957-156f42688a21
+{"name":"lab-wired-endpoint","priority":10,"enabled":true,"conditions":[{"field":"attr.cert_serial","operator":"eq","values":["2E1B47DC86A00B7F7250500B4A21F454B2EFD819"]}],"action":"allow","segment":"corp"}
+# For the second main run, only segment changed to "quarantine".

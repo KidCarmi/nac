@@ -1,0 +1,79 @@
+# Independent wired NAC qualification, 2026-11-06 UTC
+
+## Current lab inventory
+
+| Component | Observed inventory |
+| --- | --- |
+| Proxmox | `cv-lenovo-pve-01`, PVE 9.2.2, 12 logical CPUs, 31 GiB RAM; VM 102 is the dedicated EVE lab. Existing bridges and unrelated VMs were not changed in this qualification. |
+| EVE VM 102 | 6 vCPU, 12 GiB RAM, 80 GiB thin disk; guest `eve-ng 6.2.0-4`, kernel `6.7.5-eveng-6-ksm+`, about 6.6 GiB available RAM and 54 GiB free disk at inventory. `/dev/kvm` was read/write and a nested KVM launch had passed. |
+| Topology | Five nodes on four internal EVE bridges: one-NIC supplicant to vEOS Ethernet1, corp service on Ethernet2/VLAN 10, quarantine service on Ethernet3/VLAN 20, FreeRADIUS on Ethernet4/control. vEOS management is disconnected; EVE IP forwarding is `0`. [Export](baseline-4911d2d/NAC-Wired-Qualification.unl). |
+| vEOS | Authorized vEOS-lab EOS 4.29.2F, EVE QEMU 8.2.1 with Haswell CPU. [Sanitized switch configuration](baseline-4911d2d/configs.sanitized.txt). |
+| RADIUS and adapter | FreeRADIUS 3.0.26, EAP-TLS with a disposable CA. Lab adapter SHA-256 `7c2d77197495e28e6fd1724e60b30836be4314d812a936c58d326ef2ed4dda30`. The adapter binds FreeRADIUS-validated certificate serial, issuer and CN to an administrator-owned endpoint map, cross-checks the NAS-reported MAC, then calls NAC. It has no authorization-result cache. |
+| NAC baseline | `KidCarmi/nac` `4911d2d940797aeb41be3815af1cf23b25573dc1`, running inside EVE. OPUS's `fd604b0` evidence model and subsequent `94ee467` engine fix are development commits, **not** named test candidates. |
+
+The original `deliverables/` baseline was copied byte-for-byte to [baseline-4911d2d](baseline-4911d2d) before further testing. The topology SHA-256 is `659656f9030ce694ac01347db943f67a87bc56f451ef3789d5d3f94e2200fad9`; the original RADIUS capture SHA-256 is `0ddc7ef6895f87655d51400aa42164b913521eaa95cecddaf9b5defb24061cef`.
+
+**Did this vEOS build enforce access? Yes, for fresh EAP-TLS sessions and VLAN admission.** In the new [baseline regression](runs/baseline-20261106T084558Z/manifest.json), fresh unauthenticated and invalid-certificate sessions could not open corp TCP; valid EAP-TLS on the same port opened corp in VLAN 10. The [original fixed-RADIUS result](baseline-4911d2d/evidence.md) additionally reached quarantine in VLAN 20 and blocked corp. Endpoint TCP probes, [EAPOL](runs/baseline-20261106T084558Z/endpoint-eapol.pcap) and [RADIUS](runs/baseline-20261106T084558Z/radius.pcap) determine the result; a switch VLAN display alone does not.
+
+**Did changing only the NAC rule change actual reachability? Yes for the preserved baseline, not yet for an OPUS pilot candidate.** In the [new regression](runs/baseline-20261106T084558Z/results.json), changing only rule `97b99d3b-9251-481e-a957-156f42688a21` from corp to quarantine, then clearing and reauthenticating the same identity/port, changed the [adapter decisions](runs/baseline-20261106T084558Z/nac-decisions.jsonl) and RADIUS VLAN 10→20. Fresh endpoint TCP changed from corp open/quarantine blocked to quarantine open/corp blocked, then restored to corp. Endpoint addressing was refreshed after each VLAN change. The candidate product workflow has not been supplied or exercised.
+
+## Outage and CoA clarification
+
+The [detailed clarification](clarifications.md) and its [outage action transcript](outage-clarification-events.jsonl), [RADIUS capture](outage-clarification-radius.pcap) and [EAPOL capture](outage-clarification-endpoint-eapol.pcap) separate existing, new and recovered sessions.
+
+| Outage phase | Expected in the current lab | Actual | Status |
+| --- | --- | --- | --- |
+| Existing session while NAC stops | Retain previously enforced VLAN until reauth/expiry; fresh corp connections continue | Et1 stayed EAPOL SUCCESS VLAN 10; fresh corp TCP connected twice. This is switch session persistence, not a cached NAC decision. The prior handoff had not measured this phase. | **PASS** within the short observed outage |
+| New authentication while down | Fail closed, no corp | Operator cleared Et1 and invoked `wpa_cli reauthenticate`; switch began RADIUS on the clear, Access-Reject/EAPOL Failure followed, Et1 FAILED, corp TCP timed out. Both manual actions are in the transcript. | **PASS** |
+| After recovery | Fresh successful authorization restores corp | NAC returned ready; without another manual reconnect, the supplicant retried, Access-Accept VLAN 10 and Et1 SUCCESS followed. The first fresh corp probe after switch SUCCESS still timed out; a later probe opened. | **PASS**, with unbounded short convergence delay in this run |
+
+The old adapter calls NAC for each successful EAP-TLS post-auth event and has no authorization-result cache. OPUS's draft pilot contract proposes a **new** FreeRADIUS outage cache with a TTL and fallback. That behavior remains to be specified and tested on the candidate; it must not be inferred from this baseline.
+
+The original active-session CoA was sent by a lab script, **not** a product UI/API action. First request ID 233 omitted the observed NAS port and received CoA-NAK Error-Cause 402. Corrected request ID 172 targeted identity `wired-endpoint-01`, MAC `00-50-00-00-02-00`, NAS-Port-Id `Ethernet1`, NAS-IP-Address `10.70.99.1`, and VLAN 10; it received CoA-ACK Error-Cause 200 at 08:12:13.288 UTC. vEOS then initiated its own Access-Request at 08:12:13.503, which received Access-Accept VLAN 10 at 08:12:13.696. There was **no operator-triggered reauthentication or endpoint reconnect after that corrected CoA**. The operator did manually change endpoint IP from the VLAN 20 to VLAN 10 subnet before post-change probes; corp opened and quarantine timed out. The old test had no continuous probes or established TCP stream observation. [Source capture](baseline-4911d2d/radius.pcap), [CoA explanation](clarifications.md).
+
+## Repeatable baseline run
+
+The one-command [launcher](run_baseline.py) invokes the [EVE runner](runner_guest.py), collects immutable run files and SHA-256 hashes, and restores the original NAC rule. It uses the existing pinned host keys and root-only lab credentials; no credential is copied into the bundle. Run:
+
+```powershell
+& 'D:\AI\.venv-culvcenter\Scripts\python.exe' 'D:\AI\nac-wired-lab\qualification\run_baseline.py'
+```
+
+The corrected complete run is [baseline-20261106T084558Z](runs/baseline-20261106T084558Z/manifest.json). It recorded **6 PASS, 0 FAIL**: independent service health (both HTTP 200), fresh unauthenticated isolation, valid corp, invalid certificate, NAC rule to quarantine, and restoration to corp. The runner's first trial at 08:37 had a probe-parser defect: it matched the `OPEN` string in its echoed shell command, falsely reporting opens. That trial is preserved but **invalid evidence**. The parser now requires a standalone result line; two subsequent runs passed, including the final bundled one.
+
+The final run needed about 21.6 seconds for corp TCP after switch VLAN 10 SUCCESS, and about 17.1 seconds after each VLAN change. The runner repeatedly made fresh TCP connections with an explicit source IP on the one endpoint NIC. It did not measure survival of an already established connection. The EVE host's temporary corp bridge IP for service health was removed before endpoint probes; IP forwarding stayed off. The run's [metadata](runs/baseline-20261106T084558Z/metadata.json) records versions/configuration and hashes, while [events](runs/baseline-20261106T084558Z/events.jsonl), [decisions](runs/baseline-20261106T084558Z/nac-decisions.jsonl), and packet captures provide correlation. A scan against known lab credentials found zero plaintext matches in these files.
+
+## Pilot candidate qualification matrix
+
+No immutable OPUS candidate, installer/operator guide or supported adapter has been handed off. `fd604b0` is explicitly a foundation commit. The status below is for the **pilot candidate**, not the already proven baseline. Expected results are recorded before execution.
+
+| Step | Expected result | Candidate status | Current evidence or prerequisite |
+| --- | --- | --- | --- |
+| 1. Clean install | Documented install starts candidate and reports ready | **BLOCKED** | Await OPUS candidate SHA and installation guide |
+| 2. Register switch and map segments | Operator workflow registers source IP and corp=10/quarantine=20 | **BLOCKED** | Await documented product workflow |
+| 3. Service health | HTTP 200 from each service's own segment | **PASS** lab preflight | Final baseline run verified both; repeat after candidate install |
+| 4. Fresh unauthenticated | Corp TCP blocked | **BLOCKED** | Pass on old baseline; candidate run pending |
+| 5. Valid certificate | Corp open, quarantine blocked; identity/decision/RADIUS/session correlate | **BLOCKED** | Pass on old baseline; candidate run pending |
+| 6. Invalid certificate | RADIUS rejection and corp blocked | **BLOCKED** | Pass on old baseline; candidate run pending |
+| 7. Draft preview | Predicted decision matches later published result with policy version and trace | **BLOCKED** | Await preview workflow |
+| 8. Publish quarantine | Only rule changes; new auth gives VLAN 20, quarantine open, corp blocked | **BLOCKED** | Old baseline passed; versioned publish pending |
+| 9. Product CoA | Action targets active session; ACK, switch-initiated reauth and live probes show new access | **BLOCKED** | Old lab-script CoA passed after manual IP change; product action/continuous probes pending |
+| 10. Restore policy/session | Documented restore returns corp access | **BLOCKED** | Old baseline passed; candidate workflow pending |
+| 11. Outage/recovery | Existing/new/recovered sessions meet OPUS's documented cache/fallback semantics | **BLOCKED** | Draft proposes cache, not implemented/qualified here |
+| 12. Restart and rerun | Core admission, policy change and restore pass after restart | **BLOCKED** | Await installed candidate and restart guide |
+| MAB printer and rejected-EAP fallback | Printer limited to quarantine; invalid cert cannot fall back to corp | **BLOCKED** | vEOS-lab 4.29.2F rejects the MAB enable command; authorized physical Arista with supported MAB is prerequisite |
+
+## Operator experience and defects
+
+The old baseline can be operated through direct NAC API calls and documented lab shell commands; it has no qualified pilot install, registration, policy-preview, CoA, restore or diagnosis web workflow. OPUS owns those product surfaces. A clean candidate installation time, time to diagnose a rejected endpoint and time to restore access cannot be measured honestly until the candidate guide and UI exist. The baseline regression itself was agent-operated, with approximately 17–22 second post-VLAN TCP convergence; this is a lab measurement, not a human usability result. A separate human usability trial remains necessary.
+
+| Issue | Reproducible trigger | Expected | Actual and evidence | Affected version |
+| --- | --- | --- | --- | --- |
+| Runner parser defect, fixed | Use the initial trial's substring `OPEN` match on an echoed `nc` command | Only the result line decides TCP status | Timeouts appeared as open in the invalid [08:37 trial](baseline-20261106T083719Z-results.json); corrected parser and [08:45 run](runs/baseline-20261106T084558Z/results.json) pass | ASTRA runner only, no NAC product commit |
+| Virtual VLAN convergence delay, under observation | Authenticate or reassign VLAN, then probe immediately after `show dot1x hosts` SUCCESS | Eventually permitted service opens; candidate deadline to be agreed | First probes may still time out; final run measured 17–22 seconds. [Events](runs/baseline-20261106T084558Z/events.jsonl) distinguish state from reachability | vEOS-lab 4.29.2F, NAC baseline 4911d2d; cause not isolated to product |
+
+OPUS's [draft API/evidence contract](api-evidence-contract.md) and his `docs/pilot/astra-contract.md` require stable authenticated identity, policy version, matched rule, source/freshness of inputs, RADIUS Class/decision ID, switch-observed state and CoA action state. ASTRA has raised two explicit contract differences with OPUS: the current FreeRADIUS is 3.0.26 while the draft says 3.2, and the proposed outage cache differs from the old no-cache adapter. Candidate defects will be filed with trigger, expected/actual result, evidence and exact commit, then retested against the replacement commit only.
+
+## Physical hardware and handoff
+
+The vEOS image has proven fresh EAP-TLS admission and the lab-script CoA path. It cannot enable MAB on this virtual platform, so a permitted simulated printer and rejected-certificate fallback require an authorized physical Arista access switch/port whose EOS and hardware support MAC authentication bypass, connected only to the isolated access/control/service lab networks. Repeat fresh TCP probes and collect switch session/RADIUS evidence there. The [topology export](baseline-4911d2d/NAC-Wired-Qualification.unl), [sanitized configurations](baseline-4911d2d/configs.sanitized.txt), [public test CA certificate](nac-ca-public.pem), [original rerun guide](baseline-4911d2d/rerun.md) and current runner are retained. No vendor image, private key, shared secret or service token is in the deliverables.
