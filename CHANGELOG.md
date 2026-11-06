@@ -6,6 +6,49 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc3 (after pilot-rc2 `c121a95`)
+
+Fixed (from ASTRA's rc2 qualification):
+- **Quarantine lost on session replacement.** With switch accounting on, the
+  Stop sent before a CoA re-authentication ended the session, and the new
+  session had no operator override, so the endpoint got corp. The override
+  now follows the identity on the port (switch + port + MAC + certificate)
+  until Restore, and the CoA is correlated with the replacement session.
+  Affects pilot-rc1 and pilot-rc2 whenever accounting is enabled.
+- **eAPI TLS handshake failure** with stock EOS 4.29.2F (RSA key exchange
+  only). Adds `NAC_EAPI_TLS_ALLOW_RSA_KEX`, which applies to the eAPI client
+  only, and a Probe error that names the fix.
+- **Accounting NAC cannot attribute** is shown under Events instead of being
+  dropped silently.
+
+Added:
+- Operator password change (`POST /api/v1/auth/password`, console
+  **Account**). It revokes the operator's earlier sessions (token version).
+  Host-local recovery with `nac-reset-password`. `GET /api/v1/auth/me`.
+  The operator record is authoritative on every request (current role,
+  disabled operators).
+- OpenAPI 1.1.0 covering every route, with permissions and compatibility
+  rules, and a test that keeps it complete.
+- Docs: integration boundary (versioned API, server-side authorization,
+  attribution), pilot trust boundaries and threat model, qualification
+  status, eAPI/accounting setup.
+
+Changed and fixed:
+- Re-running `install.sh` keeps operator settings in `nacd.env` and lines
+  added to it, and never writes an initial password that does not match the
+  account.
+- Paged lists (including audit) apply a default and a maximum. Failed logins
+  are audited. Switch creation no longer returns 201 with an empty body.
+  Restore accepts an empty chunked body.
+
+### pilot-rc2 (`c121a95`, after pilot-rc1 `fe7c981`)
+- Publish and restore read only through their own transaction.
+- eAPI observation covers every active session of a switch.
+- The session timeline keeps the newest events.
+- Preview applies the operator quarantine override.
+- An e2e check that MAB requests never reach a NAC decision, and a warning
+  against MAB fallback.
+
 ### Added: wired pilot (pilot-rc1)
 - **Supported RADIUS integration**: a FreeRADIUS 3.2.5 adapter
   (`deployments/freeradius`) validates EAP-TLS and asks nacd for each
