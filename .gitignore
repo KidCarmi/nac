@@ -20,3 +20,4 @@ coverage.html
 
 # Go build cache (when set locally)
 /.gocache/
+/dist/

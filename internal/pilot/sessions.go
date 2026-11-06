@@ -43,6 +43,7 @@ type SessionView struct {
 	Requested Requested          `json:"requested"`
 	Observed  Observed           `json:"observed"`
 	LastCoA   *domain.CoARequest `json:"last_coa,omitempty"`
+	Liveness  Liveness           `json:"liveness"`
 }
 
 func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Switch) SessionView {
@@ -74,7 +75,36 @@ func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Swit
 	if coas, err := s.store.SessionCoAs(ctx, sess.ID); err == nil && len(coas) > 0 {
 		v.LastCoA = &coas[len(coas)-1]
 	}
+	v.Liveness = liveness(sess, v.Observed, now)
 	return v
+}
+
+// Liveness says whether NAC knows the endpoint is still connected. A session
+// only ENDS in NAC on RADIUS accounting Stop or when a different certificate
+// authenticates on the same port and MAC. Without accounting and without a
+// fresh switch observation (the validated lab sends neither), "active" means
+// "last authentication was accepted", not "connected now".
+type Liveness struct {
+	State string `json:"state"` // ended | connected | absent | unknown
+	Basis string `json:"basis"`
+	Note  string `json:"note"`
+}
+
+func liveness(sess domain.Session, o Observed, now time.Time) Liveness {
+	switch {
+	case sess.State == domain.SessionEnded:
+		return Liveness{State: "ended", Basis: "nac",
+			Note: "ended by RADIUS accounting Stop or replaced by a different certificate on this port and MAC"}
+	case o.Freshness == "fresh" && strings.EqualFold(o.Status, "SUCCESS"):
+		return Liveness{State: "connected", Basis: o.Source, Note: "the switch currently lists this MAC as authenticated on this port"}
+	case o.Freshness == "fresh":
+		return Liveness{State: "absent", Basis: o.Source, Note: "the switch does not list this MAC as authenticated on this port; a CoA would be refused (503)"}
+	default:
+		return Liveness{State: "unknown", Basis: "last authentication only",
+			Note: fmt.Sprintf("NAC receives no RADIUS accounting and no fresh switch observation for this session, so it cannot tell "+
+				"whether the endpoint is still connected. Last authenticated %s ago. A CoA still targets only this switch, port and MAC; "+
+				"if the endpoint left, the switch refuses it (Error-Cause 503).", now.Sub(sess.LastAuthAt).Truncate(time.Second))}
+	}
 }
 
 // SessionQuery filters the session list.
@@ -207,6 +237,9 @@ func explain(d *SessionDetail) []string {
 		if len(ld.Insufficient) > 0 {
 			out = append(out, "Evidence was missing or stale for: "+strings.Join(ld.Insufficient, ", ")+"; rules that needed it were skipped.")
 		}
+	}
+	if d.State != domain.SessionRejected {
+		out = append(out, "Connection: "+d.Liveness.State+" ("+d.Liveness.Basis+"). "+d.Liveness.Note)
 	}
 	if d.Override != "" {
 		out = append(out, fmt.Sprintf("Operator override %q set by %s; it applies at every authentication until the session is restored.", d.Override, d.OverrideBy))

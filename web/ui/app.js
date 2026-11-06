@@ -38,7 +38,7 @@ function stateChip(s) {
   const map = { yes: "ok", no: "bad", unknown: "warn", active: "ok", rejected: "bad", ended: "",
     accept: "ok", reject: "bad", info: "", error: "bad", present: "ok", missing: "warn", stale: "warn",
     observed: "ok", acked: "ok", nak: "bad", timeout: "bad", failed: "bad", sent: "warn", requested: "warn",
-    fresh: "ok", unavailable: "warn", matched: "ok", not_matched: "", insufficient_evidence: "warn",
+    fresh: "ok", unavailable: "warn", connected: "ok", absent: "bad", matched: "ok", not_matched: "", insufficient_evidence: "warn",
     disabled: "", not_reached: "" };
   return chip(s, map[s] ?? "");
 }
@@ -263,7 +263,8 @@ async function sessionDetail(id) {
   const ld = d.last_decision;
   const coaBusy = d.last_coa && ["requested", "sent"].includes(d.last_coa.state);
   const coaBtn = (kind, label, cls) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
-    if (!confirm(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?")) return;
+    const live = d.liveness.state === "connected" ? "" : "\n\nNote: " + d.liveness.note;
+    if (!confirm(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live)) return;
     if (await act(() => api("POST", "/sessions/" + id + "/" + kind), "Requested. Following the CoA…")) render();
   } }, label);
 
@@ -291,7 +292,8 @@ async function sessionDetail(id) {
     h("div", { class: "grid" },
       panel("Requested by NAC", kv([["Action", d.requested.action], ["Segment", d.requested.segment], ["VLAN", d.requested.vlan],
         ["Override", d.override ? d.override + " by " + d.override_by : "none"], ["Decision", d.requested.decision_id], ["At", when(d.requested.at)]])),
-      panel("Observed on the switch", kv([["Freshness", stateChip(d.observed.freshness)], ["Status", d.observed.status], ["VLAN", d.observed.vlan],
+      panel("Observed on the switch", kv([["Still connected?", h("span", {}, stateChip(d.liveness.state), " ", d.liveness.note)],
+        ["Freshness", stateChip(d.observed.freshness)], ["Status", d.observed.status], ["VLAN", d.observed.vlan],
         ["Source", d.observed.source], ["At", when(d.observed.at)], ["Note", d.observed.note]])),
       panel("Identity and device", kv([["Certificate CN", d.cert_cn], ["Serial", d.cert_serial ? h("code", {}, d.cert_serial) : "—"],
         ["Issuer", d.cert_issuer], ["Outer identity (untrusted)", d.user_name], ["Binding", d.binding ? d.binding.id + " rev " + d.binding.revision : "none"],

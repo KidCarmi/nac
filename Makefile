@@ -28,6 +28,20 @@ build: ## Build the nacd binary into ./bin
 	@mkdir -p bin
 	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/nacd ./cmd/nacd
 
+.PHONY: pilot-bundle
+pilot-bundle: ## Build the pilot release bundle (linux/amd64 nacd + adapter + installer + docs) into dist/
+	@set -e; stage=$$(mktemp -d); dir=$$stage/nac-pilot-$(VERSION); mkdir -p $$dir/bin dist; \
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $$dir/bin/nacd ./cmd/nacd; \
+	cp -r deployments docs scripts README.md LICENSE $$dir/; \
+	{ echo "version: $(VERSION)"; echo "commit: $$(git rev-parse HEAD)"; echo "built: $(BUILD_DATE)"; \
+	  echo "nacd_sha256: $$(sha256sum $$dir/bin/nacd | cut -d' ' -f1)"; } > $$dir/BUNDLE-MANIFEST.txt; \
+	tar -C $$stage -czf dist/nac-pilot-$(VERSION).tar.gz nac-pilot-$(VERSION); \
+	cd dist && sha256sum nac-pilot-$(VERSION).tar.gz > nac-pilot-$(VERSION).tar.gz.sha256 && cat nac-pilot-$(VERSION).tar.gz.sha256
+
+.PHONY: test-e2e-radius
+test-e2e-radius: build ## EAP-TLS end to end through FreeRADIUS 3.2.5 (root; see scripts/e2e-freeradius.sh)
+	scripts/e2e-freeradius.sh
+
 .PHONY: run
 run: ## Run nacd locally (expects Postgres/Redis reachable)
 	$(GO) run ./cmd/nacd

@@ -1,0 +1,35 @@
+[Unit]
+Description=NAC decision and management service (nacd)
+Documentation=file:///opt/nac/docs/pilot/installation.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=nac
+Group=nac
+SupplementaryGroups=freerad
+EnvironmentFile=/etc/nac/nacd.env
+ExecStart=/usr/local/bin/nacd
+Restart=on-failure
+RestartSec=2
+UMask=0027
+# Hardening: nacd only needs its state directory (FreeRADIUS client file).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/var/lib/nac
+ReadOnlyPaths=/var/log/freeradius
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

@@ -33,7 +33,12 @@ type Config struct {
 
 // HTTPConfig configures the API server.
 type HTTPConfig struct {
-	Addr              string
+	Addr string
+	// HTTPSAddr, when set, adds a TLS listener (operators) next to Addr
+	// (which the installer binds to loopback for FreeRADIUS).
+	HTTPSAddr         string
+	TLSCertFile       string
+	TLSKeyFile        string
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
@@ -112,6 +117,9 @@ func Load() (*Config, error) {
 		Env: getEnv("NAC_ENV", "development"),
 		HTTP: HTTPConfig{
 			Addr:              getEnv("NAC_HTTP_ADDR", ":8080"),
+			HTTPSAddr:         os.Getenv("NAC_HTTPS_ADDR"),
+			TLSCertFile:       os.Getenv("NAC_TLS_CERT_FILE"),
+			TLSKeyFile:        os.Getenv("NAC_TLS_KEY_FILE"),
 			ReadTimeout:       getDuration("NAC_HTTP_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout:      getDuration("NAC_HTTP_WRITE_TIMEOUT", 15*time.Second),
 			IdleTimeout:       getDuration("NAC_HTTP_IDLE_TIMEOUT", 60*time.Second),
@@ -167,6 +175,9 @@ func Load() (*Config, error) {
 	}
 	if !cfg.DefaultAction.Valid() {
 		add("NAC_DEFAULT_ACTION %q is invalid", cfg.DefaultAction)
+	}
+	if cfg.HTTP.HTTPSAddr != "" && (cfg.HTTP.TLSCertFile == "" || cfg.HTTP.TLSKeyFile == "") {
+		add("NAC_HTTPS_ADDR requires NAC_TLS_CERT_FILE and NAC_TLS_KEY_FILE")
 	}
 	if cfg.HTTP.RateLimitPerMin <= 0 {
 		add("NAC_HTTP_RATE_LIMIT_PER_MIN must be positive")
