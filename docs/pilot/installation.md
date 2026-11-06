@@ -344,6 +344,10 @@ How sessions are matched:
   (liveness **ended**).
 - A packet whose Class or session id belongs to an earlier connection is
   ignored, and the session timeline says why.
+- Accounting NAC cannot attribute (no `NAS-Port-Id`, a `Calling-Station-Id`
+  that is not a MAC, or no NAC session for that port and MAC) is also
+  ignored, and shown under **Events** (stage `accounting`) with the reason.
+  If sessions never end, look there first.
 
 ## 8. Upgrading from the lab baseline (FreeRADIUS 3.0.26)
 

@@ -593,6 +593,28 @@ func TestPilotRegressions_ReviewFindings(t *testing.T) {
 		t.Fatalf("the matching Stop should end the session")
 	}
 
+	// Accounting NAC cannot attribute is ignored but visible (pilot-rc3):
+	// missing NAS-Port-Id, a non-MAC Calling-Station-Id, an unknown session.
+	h.radiusCall("/api/v1/radius/accounting", "127.0.0.1", map[string]string{"Acct-Status-Type": "Start", "Calling-Station-Id": "00-50-00-00-02-00"}, 204)
+	h.radiusCall("/api/v1/radius/accounting", "127.0.0.1", map[string]string{"Acct-Status-Type": "Start", "Calling-Station-Id": "host/printer", "NAS-Port-Id": "Ethernet1"}, 204)
+	h.radiusCall("/api/v1/radius/accounting", "127.0.0.1", map[string]string{"Acct-Status-Type": "Interim-Update", "Calling-Station-Id": "00-50-00-00-0F-0F", "NAS-Port-Id": "Ethernet1"}, 204)
+	var acctEvents struct {
+		Events []map[string]any `json:"events"`
+	}
+	h.do("GET", "/api/v1/auth-events?stage=accounting&limit=20", nil, 200, &acctEvents, true)
+	seen := map[string]bool{}
+	for _, e := range acctEvents.Events {
+		reason, _ := e["reason"].(string)
+		for _, want := range []string{"NAS-Port-Id is missing", "not a MAC address", "NAC has no session for this port and MAC"} {
+			if strings.Contains(reason, want) {
+				seen[want] = true
+			}
+		}
+	}
+	if len(seen) != 3 {
+		t.Fatalf("unattributable accounting not visible in events: %v", acctEvents.Events)
+	}
+
 	// --- Re-review finding: same serial from a DIFFERENT issuer is a
 	// different certificate and must not inherit the session (override). ---
 	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200) // fresh session for cert A

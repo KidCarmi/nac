@@ -427,15 +427,30 @@ func (s *Service) Accounting(ctx context.Context, req Request) error {
 		return err
 	}
 	_ = s.store.TouchSwitchRadius(ctx, sw.ID, now)
-	mac, merr := validation.NormalizeMAC(req.CallingStationID)
-	if merr != nil || req.NASPortID == "" {
+	detail := map[string]string{"acct_status_type": req.AcctStatusType, "acct_session_id": req.AcctSessionID, "class": req.Class,
+		"calling_station_id": req.CallingStationID, "nas_port_id": req.NASPortID}
+	// Accounting NAC cannot attribute is ignored, but never silently: the
+	// switch's events show why, so a switch that formats or omits these
+	// attributes differently is visible to the operator.
+	unmatched := func(mac, why string) error {
+		s.event(ctx, &domain.AuthEvent{SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageAccounting,
+			Result: "info", Reason: "accounting " + req.AcctStatusType + " ignored: " + why, Source: "switch", Detail: detail})
 		return nil
 	}
-	sess, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
-	if err != nil {
-		return nil // accounting for a session we never authorized: ignore
+	mac, merr := validation.NormalizeMAC(req.CallingStationID)
+	switch {
+	case merr != nil:
+		return unmatched("", "Calling-Station-Id is missing or not a MAC address ("+req.CallingStationID+")")
+	case req.NASPortID == "":
+		return unmatched(mac, "NAS-Port-Id is missing")
 	}
-	detail := map[string]string{"acct_status_type": req.AcctStatusType, "acct_session_id": req.AcctSessionID, "class": req.Class}
+	sess, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
+	if errors.Is(err, domain.ErrNotFound) {
+		return unmatched(mac, "NAC has no session for this port and MAC")
+	}
+	if err != nil {
+		return err
+	}
 	// A delayed or retransmitted packet from an EARLIER connection on the same
 	// port and MAC must not touch the current session: only a Start may bind a
 	// new Acct-Session-Id, and the echoed Class must name a decision of this
