@@ -25,6 +25,7 @@ import (
 	"github.com/kidcarmi/nac/internal/app"
 	"github.com/kidcarmi/nac/internal/config"
 	"github.com/kidcarmi/nac/internal/radius"
+	"github.com/kidcarmi/nac/internal/storage/postgres"
 )
 
 const (
@@ -741,4 +742,38 @@ func TestPilotRegressions_PublishWithSingleConnectionPool(t *testing.T) {
 		h.do("POST", "/api/v1/policy-versions/1/restore", map[string]any{}, 200, nil, true)
 	})
 	h.stop()
+}
+
+// Seventh review: the observation poller must see every active session of a
+// switch, not just the API listing's first page.
+func TestPilotRegressions_ActiveSessionsOnSwitchIsUnbounded(t *testing.T) {
+	resetDB(t, dsn(t))
+	ctx := context.Background()
+	pool, err := postgres.Connect(ctx, config.DBConfig{DSN: dsn(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if err := postgres.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	swID := uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO switches (id, name, radius_source_ip, nas_ip, radius_secret_enc, segment_vlans)
+		VALUES ($1, 'sw', '10.0.0.1', '10.0.0.1', 'x', '{"corp":10,"quarantine":20}')`, swID); err != nil {
+		t.Fatal(err)
+	}
+	const n = 620
+	if _, err := pool.Exec(ctx, `INSERT INTO radius_sessions (id, switch_id, nas_port_id, mac, state, last_auth_at)
+		SELECT gen_random_uuid(), $1, 'Ethernet' || g, 'aa:bb:cc:00:' || lpad(to_hex(g / 256), 2, '0') || ':' || lpad(to_hex(g % 256), 2, '0'),
+		       'active', now() - (g || ' seconds')::interval
+		FROM generate_series(1, $2) g`, swID, n); err != nil {
+		t.Fatal(err)
+	}
+	got, err := postgres.NewPilotRepo(pool, nil).ActiveSessionsOnSwitch(ctx, swID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != n {
+		t.Fatalf("observation would see %d of %d active sessions", len(got), n)
+	}
 }

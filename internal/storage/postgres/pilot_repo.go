@@ -394,9 +394,26 @@ func (r *PilotRepo) ListSessions(ctx context.Context, f SessionFilter) ([]domain
 	return out, rows.Err()
 }
 
-// ActiveSessionsOnSwitch lists active sessions of one switch (for observation).
+// ActiveSessionsOnSwitch lists ALL active sessions of one switch, for the
+// observation poller and Verify. Unlike ListSessions (an API listing with a
+// page cap), it is unbounded: a capped list would leave the oldest active
+// sessions unobserved forever once a switch exceeded the cap.
 func (r *PilotRepo) ActiveSessionsOnSwitch(ctx context.Context, switchID uuid.UUID) ([]domain.Session, error) {
-	return r.ListSessions(ctx, SessionFilter{State: domain.SessionActive, SwitchID: &switchID, Limit: 500})
+	rows, err := r.pool.Query(ctx, `SELECT `+sessionColumns+sessionFrom+
+		` WHERE s.switch_id = $1 AND s.state = 'active' ORDER BY s.last_auth_at DESC`, switchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []domain.Session{}
+	for rows.Next() {
+		sess, err := scanSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *sess)
+	}
+	return out, rows.Err()
 }
 
 // ---------------------------------------------------------------- decisions
