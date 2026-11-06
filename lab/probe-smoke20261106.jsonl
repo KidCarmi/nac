@@ -1,0 +1,22 @@
+{"time": "2026-11-06T09:03:40.012+00:00", "event": "probe_start", "interfaces": ["ens3", "lo"], "addresses": ["10.70.10.50", "10.70.20.50"], "duration_s": 10}
+{"connected": true, "elapsed_ms": 8, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:40.020+00:00"}
+{"connected": false, "elapsed_ms": 1202, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:41.221+00:00"}
+{"connected": true, "elapsed_ms": 4, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:41.475+00:00"}
+{"connected": false, "elapsed_ms": 1202, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:42.677+00:00"}
+{"connected": true, "elapsed_ms": 4, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:42.931+00:00"}
+{"connected": false, "elapsed_ms": 165, "error": "OSError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:43.097+00:00"}
+{"connected": true, "elapsed_ms": 4, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:43.351+00:00"}
+{"connected": false, "elapsed_ms": 1201, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:44.553+00:00"}
+{"connected": true, "elapsed_ms": 3, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:44.806+00:00"}
+{"connected": false, "elapsed_ms": 1202, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:46.008+00:00"}
+{"connected": true, "elapsed_ms": 6, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:46.264+00:00"}
+{"connected": false, "elapsed_ms": 160, "error": "OSError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:46.425+00:00"}
+{"connected": true, "elapsed_ms": 5, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:46.680+00:00"}
+{"connected": false, "elapsed_ms": 1202, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:47.882+00:00"}
+{"connected": true, "elapsed_ms": 4, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:48.136+00:00"}
+{"connected": false, "elapsed_ms": 1201, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:49.338+00:00"}
+{"connected": true, "elapsed_ms": 3, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:49.592+00:00"}
+{"connected": false, "elapsed_ms": 161, "error": "OSError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:49.752+00:00"}
+{"connected": true, "elapsed_ms": 4, "error": null, "port": 8080, "segment": "corp", "source": "10.70.10.50", "target": "10.70.10.10", "time": "2026-11-06T09:03:50.007+00:00"}
+{"connected": false, "elapsed_ms": 1202, "error": "TimeoutError", "port": 8080, "segment": "quarantine", "source": "10.70.20.50", "target": "10.70.20.10", "time": "2026-11-06T09:03:51.209+00:00"}
+{"time": "2026-11-06T09:03:51.459+00:00", "event": "probe_end"}
