@@ -9,6 +9,22 @@
   are not supported. vEOS-lab 4.29.2F rejects `dot1x mac based
   authentication`, so they can only be validated on suitable physical Arista
   hardware.
+  - The FreeRADIUS site rejects any request without EAP in `authorize`, so
+    nacd is never asked and no policy can admit a MAC. This includes the MAC
+    of a bound endpoint. `scripts/e2e-freeradius.sh` checks it. The
+    generated EOS configuration enables no MAB.
+  - **Do not enable MAB or mac-auth fallback on NAC ports, toward any RADIUS
+    server.** MAC addresses are spoofable. ASTRA ran MikroTik CHR 7.24.6 with
+    `auth-types=dot1x,mac-auth` and a fixed MAB rule outside this product.
+    There, an endpoint whose certificate EAP-TLS rejected stopped EAP while
+    using an allowlisted printer MAC, fell back to MAB and reached that MAC's
+    VLAN (evidence: `astra/lab-evidence` @ `43980c6`,
+    `lab/runs/mikrotik-mab-20261106/`).
+  - If MAB is added later, it must:
+    - be an explicit, lower-assurance path, labelled as such in decisions
+    - be scoped to named switch ports
+    - never assign a segment an EAP-TLS identity can get
+    - define how a MAC treats a recent EAP-TLS reject on the same port.
 - **Two segments per switch** in the console form (corp, quarantine). The API
   accepts more.
 - **FreeRADIUS 3.2.5** (Ubuntu 24.04) only. 3.0.26, the earlier lab version,

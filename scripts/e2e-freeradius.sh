@@ -109,6 +109,21 @@ api "$API/api/v1/sessions/$SESS" | jq -e '.state == "active" and .requested.vlan
   || fail "session not active on VLAN 10"
 ok "bound certificate: Access-Accept with Tunnel-Private-Group-Id 10, decision on policy version 2"
 
+# ---- MAB (no EAP) with the BOUND endpoint's MAC: rejected before nacd ----
+# A switch falling back to MAB (dot1x + mac-auth) sends the MAC as
+# User-Name/User-Password. MACs are spoofable, so the pilot must never grant
+# access on one: FreeRADIUS rejects it in authorize and nacd is not asked.
+NSESS=$(api "$API/api/v1/sessions" | jq '.sessions | length')
+LASTDEC=$(api "$API/api/v1/sessions/$SESS" | jq -r .last_decision.id)
+printf '%s\n' 'User-Name = "005000000200"' 'User-Password = "005000000200"' 'Service-Type = Call-Check' \
+  'Calling-Station-Id = "00-50-00-00-02-00"' 'NAS-IP-Address = 127.0.0.1' 'NAS-Port-Type = Ethernet' 'NAS-Port-Id = "Ethernet1"' \
+  | radclient -x -r 1 -t 3 127.0.0.1:1812 auth "$SECRET" >"$WORK/mab.log" 2>&1 || true
+grep -q 'Received Access-Reject' "$WORK/mab.log" || { cat "$WORK/mab.log"; fail "MAB request must be rejected"; }
+if grep -q 'Tunnel-Private-Group-Id' "$WORK/mab.log"; then fail "MAB reject must carry no VLAN"; fi
+[ "$(api "$API/api/v1/sessions" | jq '.sessions | length')" = "$NSESS" ] || fail "MAB request created a NAC session"
+[ "$(api "$API/api/v1/sessions/$SESS" | jq -r .last_decision.id)" = "$LASTDEC" ] || fail "MAB request reached the NAC decision path"
+ok "MAB request with the bound endpoint's MAC: Access-Reject, no VLAN, no NAC session or decision"
+
 # ---- Untrusted CA: rejected by EAP-TLS, explained in NAC ----
 if eap "$WORK/eap-rogue.conf" rogue; then fail "untrusted certificate must be rejected"; fi
 pause 0.5
