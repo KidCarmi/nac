@@ -69,7 +69,7 @@ No immutable OPUS candidate, installer/operator guide or supported adapter has b
 
 ## Operator experience and defects
 
-The old baseline can be operated through direct NAC API calls and documented lab shell commands; it has no qualified pilot install, registration, policy-preview, CoA, restore or diagnosis web workflow. OPUS owns those product surfaces. A clean candidate installation time, time to diagnose a rejected endpoint and time to restore access cannot be measured honestly until the candidate guide and UI exist. The baseline regression itself was agent-operated, with approximately 17–22 second post-VLAN TCP convergence; this is a lab measurement, not a human usability result. A separate human usability trial remains necessary.
+The old baseline can be operated through direct NAC API calls and documented lab shell commands; it has no qualified pilot install, registration, policy-preview, CoA, restore or diagnosis web workflow. OPUS owns those product surfaces. A clean **candidate installation time and UI diagnosis/restore times remain BLOCKED** until the candidate guide and UI exist. Agent-operated **baseline** timings from the final run: invalid supplicant start at 08:46:59 UTC to switch EAPOL FAILED at 08:47:03 (4 seconds), with blocked corp confirmed at 08:47:06 (7 seconds); policy restore at 08:47:44 to the first open corp TCP at 08:48:10 (26 seconds), with both segment results complete at 08:48:14 (30 seconds). These measure the scripted lab, not an operator using the web UI. A separate human usability trial remains necessary.
 
 | Issue | Reproducible trigger | Expected | Actual and evidence | Affected version |
 | --- | --- | --- | --- | --- |
