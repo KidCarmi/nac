@@ -37,6 +37,12 @@ func (s *Server) buildHandler() http.Handler {
 	// Metrics endpoint for Prometheus scraping.
 	mux.Handle("GET /metrics", promhttp.HandlerFor(s.metrics.Registry(), promhttp.HandlerOpts{}))
 
+	// ---- Operator console (static; every action goes through /api/v1) ----
+	mux.Handle("GET /ui/", uiHandler())
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusFound)
+	})
+
 	// ---- Authentication ----
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 

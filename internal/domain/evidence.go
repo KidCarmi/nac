@@ -101,14 +101,15 @@ var InputCatalog = []InputSpec{
 	{Field: "identity.issuer", Sources: []string{SourceEAPTLS}, Description: "client certificate issuer DN"},
 	{Field: "identity.serial", Sources: []string{SourceEAPTLS}, Description: "client certificate serial"},
 	{Field: "identity.bound", Sources: []string{SourceBinding}, Description: `"true" when the certificate identity is bound to a device record, else "false"`},
-	{Field: "mac", Sources: []string{SourceNAS, SourceRequest}, Description: "Calling-Station-Id (switch-asserted, not endpoint-authenticated)"},
+	{Field: "mac", Sources: []string{SourceNAS, SourceRequest}, Description: "Calling-Station-Id (switch-asserted, not endpoint-authenticated); evaluate-request only on the legacy API"},
 	{Field: "mac.matches_device", Sources: []string{SourceBinding}, Description: `"true" when the session MAC equals the bound device's MAC`},
 	{Field: "nas.switch", Sources: []string{SourceNAS}, Description: "registered switch name"},
 	{Field: "nas.port", Sources: []string{SourceNAS}, Description: "NAS-Port-Id (switch interface)"},
 	{Field: "ip", Sources: []string{SourceEndpointRecord, SourceRequest}, Description: "endpoint IP"},
 	{Field: "hostname", Sources: []string{SourceEndpointRecord}, Description: "device hostname"},
 	{Field: "device_type", Sources: []string{SourceEndpointRecord}, Description: "device type"},
-	{Field: "posture", Sources: []string{SourcePosture, SourceRequest}, Description: "posture result (compliant|at_risk|noncompliant); stale after NAC_POSTURE_MAX_AGE"},
+	{Field: "posture", Sources: []string{SourcePosture, SourceRequest}, Description: "posture result (compliant|at_risk|noncompliant); stale after NAC_POSTURE_MAX_AGE. " +
+		"Source evaluate-request exists only on the legacy /access/evaluate API; the RADIUS path never accepts posture from a request"},
 	{Field: "session.override", Sources: []string{SourceOperator}, Description: `operator session override ("quarantine")`},
 }
 
