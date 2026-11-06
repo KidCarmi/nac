@@ -73,7 +73,7 @@ func TestRenderClients(t *testing.T) {
 }
 
 func TestValidateSecretRejectsConfigInjection(t *testing.T) {
-	for _, bad := range []string{"short", "has space in it 1234", `quote"quote-quote-q`, "back\\slash-back-slash", "new\nline-new-line-n"} {
+	for _, bad := range []string{"short", "has space in it 1234", `quote"quote-quote-q`, "back\\slash-back-slash", "new\nline-new-line-n", "0123456789${confdir}"} {
 		if validateSecret(bad) == nil {
 			t.Fatalf("secret %q should be rejected", bad)
 		}

@@ -330,8 +330,11 @@ func (s *Service) BindFromSession(ctx context.Context, sessionID, endpointID uui
 	if err != nil {
 		return nil, err
 	}
-	if sess.CertSerial == "" || sess.CertIssuer == "" {
-		return nil, fmt.Errorf("%w: this session has no validated certificate to bind", domain.ErrInvalidInput)
+	// Only the authorize path writes certificate identity, and it runs only
+	// after EAP-TLS succeeded; it always records a decision. Requiring both
+	// means a certificate that failed validation can never be bound.
+	if sess.CertSerial == "" || sess.CertIssuer == "" || sess.LastDecisionID == nil {
+		return nil, fmt.Errorf("%w: this session has no certificate validated by EAP-TLS to bind", domain.ErrInvalidInput)
 	}
 	return s.CreateBinding(ctx, BindingInput{EndpointID: endpointID, Issuer: sess.CertIssuer, Serial: sess.CertSerial,
 		SubjectCN: sess.CertCN, Note: "bound from session " + sess.ID.String()}, actor)

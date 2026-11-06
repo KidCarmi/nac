@@ -51,8 +51,11 @@ func validateSecret(s string) error {
 		return errors.New("must be 16-128 characters")
 	}
 	for _, r := range s {
-		if r < 0x21 || r > 0x7e || r == '"' || r == '\\' {
-			return errors.New("must be printable ASCII without spaces, quotes or backslashes (it is written into FreeRADIUS and EOS configuration)")
+		// '$' is refused because FreeRADIUS expands ${...} inside quoted
+		// configuration values, so the loaded secret would differ from the
+		// one configured on the switch.
+		if r < 0x21 || r > 0x7e || r == '"' || r == '\\' || r == '$' {
+			return errors.New("must be printable ASCII without spaces, quotes, backslashes or '$' (it is written into FreeRADIUS and EOS configuration)")
 		}
 	}
 	return nil

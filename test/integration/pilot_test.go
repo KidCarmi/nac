@@ -659,6 +659,25 @@ func TestPilotRegressions_ReviewFindings(t *testing.T) {
 	if frVal(r, "reply:Tunnel-Private-Group-Id") != "20" {
 		t.Fatalf("quarantine must survive a rejected attempt followed by a good login, got %v", r)
 	}
+
+	// --- Fifth review: a FIRST attempt that fails EAP-TLS must not create a
+	// session whose identity looks validated, and must not be bindable. ---
+	h.radiusCall("/api/v1/radius/reject", "127.0.0.1", map[string]string{"User-Name": "new", "Calling-Station-Id": "00-50-00-00-07-07",
+		"NAS-Port-Id": "Ethernet7", "TLS-Client-Cert-Serial": "C0FFEE01", "TLS-Client-Cert-Issuer": "/CN=Rogue CA",
+		"TLS-Client-Cert-Common-Name": "rogue", "Module-Failure-Message": "eap_tls: (TLS) Alert read:fatal:unknown CA"}, 204)
+	var rogueID, rogueSerial, rogueIssuer string
+	if err := conn.QueryRow(ctx, `SELECT id, cert_serial, cert_issuer FROM radius_sessions WHERE nas_port_id='Ethernet7'`).Scan(&rogueID, &rogueSerial, &rogueIssuer); err != nil {
+		t.Fatal(err)
+	}
+	if rogueSerial != "" || rogueIssuer != "" {
+		t.Fatalf("a certificate that failed EAP-TLS was stored as the session identity: %q %q", rogueSerial, rogueIssuer)
+	}
+	h.do("POST", "/api/v1/sessions/"+rogueID+"/bind", map[string]any{"endpoint_id": ep["id"]}, 422, nil, true)
+	var evs struct{ Events []map[string]any }
+	h.do("GET", "/api/v1/auth-events?stage=eap-tls&mac=00:50:00:00:07:07", nil, 200, &evs, true)
+	if len(evs.Events) != 1 || evs.Events[0]["detail"].(map[string]any)["cert_serial"] != "C0FFEE01" {
+		t.Fatalf("the failed certificate must still be visible in the rejection event: %+v", evs.Events)
+	}
 }
 
 // Third review: concurrent switch registrations must all end up in the

@@ -372,11 +372,14 @@ func (s *Service) Reject(ctx context.Context, req Request) error {
 				ev.SessionID = &cur.ID
 			}
 		case errors.Is(err, domain.ErrNotFound):
-			// No session yet: create one so the failure is visible and
-			// diagnosable in the console.
+			// No session yet: create one (without identity) so the failure
+			// is visible and diagnosable in the console.
 			sess := &domain.Session{ID: uuid.New(), SwitchID: sw.ID, SwitchName: sw.Name, NASPortID: req.NASPortID, MAC: mac,
 				CallingStationID: req.CallingStationID, NASIPAddress: req.NASIPAddress, UserName: req.UserName,
-				CertIssuer: req.CertIssuer, CertSerial: NormalizeSerial(req.CertSerial), CertCN: req.CertCN,
+				// No certificate identity: this certificate FAILED validation.
+				// Its attributes are kept only in the rejection event, so the
+				// console never presents or binds it as an authenticated
+				// identity.
 				State: domain.SessionRejected, StartedAt: now, LastAuthAt: now}
 			if err := s.store.CreateSession(ctx, sess); err == nil {
 				ev.SessionID = &sess.ID
