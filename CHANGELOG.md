@@ -6,7 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### pilot-rc4 (supersedes pilot-rc3 `74e5a1e`, which was never qualified)
+### pilot-rc5 (supersedes pilot-rc4 `76a53fd`, which was never qualified)
+- **Security: a replacement session could exist without its inherited
+  quarantine** (Codex review of rc4). The session was inserted first and the
+  override written afterwards. A failure in between left a session with an
+  identity but no override, which the next login reused without
+  inheriting, and a concurrent request could read it. The override is now
+  decided before the insert and written by the same INSERT. A session
+  created by a failed attempt gets the override before its identity.
+- **Preview used stale override evidence** (Codex, P2). After a Restore
+  whose CoA failed, the recorded `session.override` still said quarantine.
+  Preview now evaluates both versions with the session's current override.
+
+### pilot-rc4 (`76a53fd`, superseded before qualification; supersedes pilot-rc3 `74e5a1e`)
 - **Security: quarantine bypass through a failed attempt** (Codex review of
   rc3). After an accounting Stop, one deliberately failed EAP-TLS attempt
   created an identity-less session, and the next valid login reused it

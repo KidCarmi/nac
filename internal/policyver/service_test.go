@@ -344,3 +344,31 @@ func TestPreview_AppliesOperatorOverride(t *testing.T) {
 		}
 	}
 }
+
+// Codex (pilot-rc4): after a Restore whose CoA failed, the latest recorded
+// decision still carries session.override=quarantine although the session
+// has none. A rule on session.override must be evaluated with the CURRENT
+// override, or it hides a change of the ordinary rules.
+func TestPreview_UsesCurrentOverrideEvidence(t *testing.T) {
+	ctx := context.Background()
+	overrideRule := domain.Condition{Field: "session.override", Operator: domain.OpExists}
+	svc, st := newSvc(t,
+		rule("override-quarantine", 5, domain.ActionQuarantine, "quarantine", overrideRule),
+		rule("allow-bound", 10, domain.ActionAllow, "corp", boundIdentity()))
+	stale := domain.Inputs{}
+	stale.Set("identity.bound", "true", domain.SourceBinding, nil, true)
+	stale.Set("session.override", "quarantine", domain.SourceOperator, nil, true) // recorded before the Restore
+	svc.SetSources(fixedCases{{DecisionID: uuid.New(), Subject: "restored", Inputs: stale, Override: ""}}, lab)
+	st.ws = []domain.Policy{rule("override-quarantine", 5, domain.ActionQuarantine, "quarantine", overrideRule),
+		rule("deny-bound", 10, domain.ActionDeny, "", boundIdentity())}
+	p, err := svc.Preview(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Changed != 1 || len(p.Rows) != 1 || p.Rows[0].ActiveSegment != "corp" || p.Rows[0].DraftAction != domain.ActionDeny {
+		t.Fatalf("stale override evidence hid the change: changed=%d rows=%+v", p.Changed, p.Rows)
+	}
+	if _, ok := stale["session.override"]; !ok {
+		t.Fatal("preview mutated the recorded case inputs")
+	}
+}

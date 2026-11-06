@@ -315,10 +315,10 @@ func (r *PilotRepo) GetSession(ctx context.Context, id uuid.UUID) (*domain.Sessi
 func (r *PilotRepo) CreateSession(ctx context.Context, s *domain.Session) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO radius_sessions (id, switch_id, nas_port_id, mac, calling_station_id, nas_ip_address, user_name, acct_session_id,
-			cert_issuer, cert_serial, cert_cn, state, started_at, last_auth_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+			cert_issuer, cert_serial, cert_cn, state, started_at, last_auth_at, override, override_by, override_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
 		s.ID, s.SwitchID, s.NASPortID, s.MAC, s.CallingStationID, s.NASIPAddress, s.UserName, s.AcctSessionID,
-		s.CertIssuer, s.CertSerial, s.CertCN, s.State, s.StartedAt, s.LastAuthAt)
+		s.CertIssuer, s.CertSerial, s.CertCN, s.State, s.StartedAt, s.LastAuthAt, s.Override, s.OverrideBy, s.OverrideAt)
 	if isUniqueViolation(err) {
 		return domain.ErrConflict
 	}
@@ -329,7 +329,10 @@ func (r *PilotRepo) CreateSession(ctx context.Context, s *domain.Session) error 
 // each read the row earlier cannot undo one another:
 //   - UpdateSession (RADIUS authorize/reject/accounting): identity, state,
 //     requested authorization, timestamps.
-//   - SetSessionOverride (operator CoA actions): override_*.
+//   - SetSessionOverride (operator CoA actions, and inheritance by an
+//     identity-less session acquiring an identity): override_*.
+//   - CreateSession writes every column once, including an inherited
+//     override_*, so a new session is never visible without it.
 //   - UpdateSessionObservation (eAPI poller): observed_*.
 
 // UpdateSession writes the fields owned by the RADIUS path. It never writes

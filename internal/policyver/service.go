@@ -327,8 +327,9 @@ func (s *Service) Preview(ctx context.Context) (*Preview, error) {
 	activeEngine, draftEngine := access.NewEngine(), access.NewEngine()
 	activeEngine.DefaultAction, draftEngine.DefaultAction = active.DefaultAction, def
 	for _, c := range cases {
-		a := activeEngine.EvaluateInputs(c.Subject, c.Inputs, active.Rules)
-		d := draftEngine.EvaluateInputs(c.Subject, c.Inputs, ws)
+		in := withCurrentOverride(c.Inputs, c.Override)
+		a := activeEngine.EvaluateInputs(c.Subject, in, active.Rules)
+		d := draftEngine.EvaluateInputs(c.Subject, in, ws)
 		policyChanged := a.Action != d.Action || a.Segment != d.Segment
 		row := PreviewRow{Case: c,
 			ActiveAction: a.Action, ActiveSegment: a.Segment, ActiveRule: a.MatchedRule,
@@ -509,4 +510,22 @@ func sortedStrings[V any](m map[string]V) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// withCurrentOverride returns a copy of recorded inputs whose
+// session.override evidence is the session's CURRENT override, built the way
+// radiusauth.buildInputs does. The recorded value may be stale: an operator
+// may have restored (or quarantined) the session after that decision, for
+// example when the CoA failed.
+func withCurrentOverride(recorded domain.Inputs, override string) domain.Inputs {
+	in := make(domain.Inputs, len(recorded)+1)
+	for k, v := range recorded {
+		in[k] = v
+	}
+	if override != "" {
+		in.Set("session.override", override, domain.SourceOperator, nil, true)
+	} else {
+		in["session.override"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourceOperator, Note: "no operator override"}
+	}
+	return in
 }

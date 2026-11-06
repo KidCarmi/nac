@@ -90,9 +90,10 @@
   - **`pilot-rc1` (`fe7c981`) and `pilot-rc2` (`c121a95`) lose the override**
     when the switch sends accounting Stop before re-authenticating: the
     endpoint is re-authorized by policy (ASTRA, rc2, accounting enabled).
-    Fixed in `pilot-rc4`, which also closes the variant where one failed
-    attempt comes between the Stop and the valid login (found in
-    `pilot-rc3`). Do not enable switch accounting with earlier candidates.
+    Fixed in `pilot-rc5`, which also closes the variants found in review of
+    `pilot-rc3` (a failed attempt between the Stop and the valid login) and
+    `pilot-rc4` (a replacement briefly stored without the override). Do not
+    enable switch accounting with earlier candidates.
 
 ## Endpoint addressing after a VLAN change
 

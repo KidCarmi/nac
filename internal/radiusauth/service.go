@@ -229,6 +229,18 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		CallingStationID: req.CallingStationID, NASIPAddress: req.NASIPAddress, UserName: req.UserName,
 		AcctSessionID: req.AcctSessionID, CertIssuer: req.CertIssuer, CertSerial: serial, CertCN: req.CertCN,
 		State: domain.SessionRejected, StartedAt: now, LastAuthAt: now}
+	// The override is decided BEFORE the insert and written by the same
+	// INSERT: a session carrying a validated identity is never visible (to
+	// a concurrent request, or after a failure) without its inherited
+	// override (Codex, pilot-rc4).
+	if serial != "" && req.CertIssuer != "" {
+		if prev, err = s.predecessor(ctx, sw, req, mac, serial, sess.ID); err != nil {
+			return nil, nil, false, err
+		}
+		if prev != nil && prev.Override != "" {
+			sess.Override, sess.OverrideBy, sess.OverrideAt = prev.Override, prev.OverrideBy, prev.OverrideAt
+		}
+	}
 	if err := s.store.CreateSession(ctx, sess); err != nil {
 		if errors.Is(err, domain.ErrConflict) { // concurrent creation: use the winner
 			cur, gerr := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
@@ -236,41 +248,44 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		}
 		return nil, nil, false, err
 	}
-	if serial == "" || req.CertIssuer == "" {
-		return sess, nil, true, nil
-	}
-	prev, err = s.inheritOverride(ctx, sw, req, mac, serial, sess)
-	if err != nil {
-		return nil, nil, false, err
+	if sess.Override != "" {
+		s.carriedOverEvent(ctx, sw, req, mac, sess, prev)
 	}
 	return sess, prev, true, nil
 }
 
-// inheritOverride gives sess (which is just acquiring this validated
-// identity) the override state of the most recent earlier session of the
-// same identity on this port: switch + port + MAC + certificate issuer and
-// serial. A switch that sends accounting Stop before re-authenticating (CoA,
-// reconnect) must not drop a quarantine (ASTRA, pilot-rc2), and neither may
-// a failed attempt in between (Codex, pilot-rc3). It returns the
-// predecessor (nil if none) so a pending CoA can be correlated with it.
-func (s *Service) inheritOverride(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, sess *domain.Session) (*domain.Session, error) {
-	prev, err := s.store.PreviousSession(ctx, sess.ID, sw.ID, req.NASPortID, mac, req.CertIssuer, serial)
+// predecessor returns the most recent earlier session of the same identity
+// on this port (switch + port + MAC + certificate issuer and serial), or nil.
+func (s *Service) predecessor(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, exclude uuid.UUID) (*domain.Session, error) {
+	prev, err := s.store.PreviousSession(ctx, exclude, sw.ID, req.NASPortID, mac, req.CertIssuer, serial)
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	if prev.Override == "" || sess.Override != "" {
-		return prev, nil
+	return prev, err
+}
+
+func (s *Service) carriedOverEvent(ctx context.Context, sw *domain.Switch, req Request, mac string, sess, prev *domain.Session) {
+	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
+		Result: "info", Source: "nacd", Reason: fmt.Sprintf("operator %s override (set by %s) carried over from session %s: same certificate on this port and MAC",
+			prev.Override, prev.OverrideBy, prev.ID)})
+}
+
+// inheritOverride gives an EXISTING identity-less session (created by a
+// failed attempt), which is acquiring this validated identity now, the
+// override state of the identity's predecessor on this port. The override
+// is written before the identity is (Authorize persists the certificate
+// fields later), so a failure in between leaves a session that inherits
+// again on the next attempt instead of one that skips inheritance.
+func (s *Service) inheritOverride(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, sess *domain.Session) (*domain.Session, error) {
+	prev, err := s.predecessor(ctx, sw, req, mac, serial, sess.ID)
+	if err != nil || prev == nil || prev.Override == "" || sess.Override != "" {
+		return prev, err
 	}
 	if err := s.store.SetSessionOverride(ctx, sess.ID, prev.Override, prev.OverrideBy, prev.OverrideAt); err != nil {
 		return nil, err
 	}
 	sess.Override, sess.OverrideBy, sess.OverrideAt = prev.Override, prev.OverrideBy, prev.OverrideAt
-	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
-		Result: "info", Source: "nacd", Reason: fmt.Sprintf("operator %s override (set by %s) carried over from session %s: same certificate on this port and MAC",
-			prev.Override, prev.OverrideBy, prev.ID)})
+	s.carriedOverEvent(ctx, sw, req, mac, sess, prev)
 	return prev, nil
 }
 
