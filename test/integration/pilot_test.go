@@ -586,4 +586,26 @@ func TestPilotRegressions_ReviewFindings(t *testing.T) {
 	if state() != "ended" {
 		t.Fatalf("the matching Stop should end the session")
 	}
+
+	// --- Re-review finding: same serial from a DIFFERENT issuer is a
+	// different certificate and must not inherit the session (override). ---
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200) // fresh session for cert A
+	h.do("GET", "/api/v1/sessions?state=active", nil, 200, &list, true)
+	sessA := list.Sessions[0]["id"].(string)
+	h.do("POST", "/api/v1/sessions/"+sessA+"/quarantine", nil, 202, nil, true)
+	h.app.Pilot().Wait()
+	other := authAttrs()
+	other["TLS-Client-Cert-Issuer"] = "/CN=Another Trusted CA"
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", other, 200)
+	var endedA string
+	if err := conn.QueryRow(ctx, `SELECT state FROM radius_sessions WHERE id=$1`, sessA).Scan(&endedA); err != nil || endedA != "ended" {
+		t.Fatalf("same serial from another issuer must end session A, got %q %v", endedA, err)
+	}
+	var newOverride, newIssuer string
+	if err := conn.QueryRow(ctx, `SELECT override, cert_issuer FROM radius_sessions WHERE state <> 'ended'`).Scan(&newOverride, &newIssuer); err != nil {
+		t.Fatal(err)
+	}
+	if newOverride != "" || newIssuer != "/CN=Another Trusted CA" {
+		t.Fatalf("new session inherited state: override=%q issuer=%q", newOverride, newIssuer)
+	}
 }

@@ -172,10 +172,13 @@ function switchForm(sw) {
     eu: h("input", { value: sw?.eapi_username || "", placeholder: "optional" }),
     ep: h("input", { type: "password", autocomplete: "new-password", placeholder: sw?.eapi_password_set ? "leave empty to keep" : "optional" }),
   };
+  // Segments other than corp/quarantine (added through the API) are not
+  // editable here and must survive a save unchanged.
+  const extraSegments = Object.fromEntries(Object.entries(sw?.segment_vlans || {}).filter(([k]) => k !== "corp" && k !== "quarantine"));
   const submit = async (e) => {
     e.preventDefault();
     const body = { name: f.name.value.trim(), radius_source_ip: f.src.value.trim(), nas_ip: f.nas.value.trim(),
-      radius_secret: f.secret.value, coa_port: Number(f.coa.value), segment_vlans: { corp: Number(f.corp.value), quarantine: Number(f.quar.value) },
+      radius_secret: f.secret.value, coa_port: Number(f.coa.value), segment_vlans: { ...extraSegments, corp: Number(f.corp.value), quarantine: Number(f.quar.value) },
       access_ports: f.ports.value.split(",").map((s) => s.trim()).filter(Boolean), radius_server_ip: f.server.value.trim(),
       eapi_url: f.eapi.value.trim(), eapi_username: f.eu.value.trim(), eapi_password: f.ep.value, clear_eapi: false };
     const r = await act(() => sw ? api("PUT", "/switches/" + sw.id, body) : api("POST", "/switches", body),
@@ -187,6 +190,8 @@ function switchForm(sw) {
       h("div", { class: "form" },
         field("Name", f.name), field("RADIUS source IP (as FreeRADIUS sees it)", f.src), field("NAS-IP-Address for CoA", f.nas),
         field("RADIUS shared secret", f.secret), field("Corp VLAN", f.corp), field("Quarantine VLAN", f.quar),
+        Object.keys(extraSegments).length ? field("Other segments (kept on save; edit through the API)",
+          h("div", { class: "mono" }, vlans(extraSegments))) : null,
         field("Access ports (comma-separated)", f.ports), field("FreeRADIUS address for the switch config", f.server),
         field("CoA UDP port", f.coa), field("eAPI URL (session observation)", f.eapi), field("eAPI username", f.eu), field("eAPI password", f.ep)),
       h("p", {}, h("button", { class: "primary", type: "submit" }, sw ? "Save" : "Register"))));

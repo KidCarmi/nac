@@ -186,7 +186,9 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (*domain.Session, bool, error) {
 	cur, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
 	switch {
-	case err == nil && cur.CertSerial != "" && serial != "" && cur.CertSerial != serial:
+	// A certificate is identified by issuer AND serial (two CAs can issue the
+	// same serial), exactly as identity bindings key it.
+	case err == nil && cur.CertSerial != "" && serial != "" && (cur.CertSerial != serial || cur.CertIssuer != req.CertIssuer):
 		cur.State, cur.EndedAt = domain.SessionEnded, &now
 		if err := s.store.UpdateSession(ctx, cur); err != nil {
 			return nil, false, err
