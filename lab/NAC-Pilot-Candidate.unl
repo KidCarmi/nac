@@ -4,30 +4,30 @@
   <body>Only isolated internal EVE bridges. Start only after stopping baseline nodes because both use the same lab address plan.</body>
   <topology>
     <nodes>
-      <node id="1" name="vEOS-access" type="qemu" template="veos" image="veos-4.29.2F" console="telnet" cpu="1" cpulimit="1" ram="4096" ethernet="9" uuid="b67c7427-05d9-4fc2-a230-6f5eaa7d0054" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=d -cpu Haswell" qemu_version="8.2.1" qemu_arch="x86_64" delay="0" icon="Router.png" config="0" left="420" top="250">
-        <interface id="1" name="Eth1" type="ethernet" network_id="1" />
-        <interface id="2" name="Eth2" type="ethernet" network_id="2" />
-        <interface id="3" name="Eth3" type="ethernet" network_id="3" />
-        <interface id="4" name="Eth4" type="ethernet" network_id="4" />
+      <node id="11" name="vEOS-access" type="qemu" template="veos" image="veos-4.29.2F" console="telnet" cpu="1" cpulimit="1" ram="4096" ethernet="9" uuid="b67c7427-05d9-4fc2-a230-6f5eaa7d0054" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=d -cpu Haswell" qemu_version="8.2.1" qemu_arch="x86_64" delay="0" icon="Router.png" config="0" left="420" top="250">
+        <interface id="1" name="Eth1" type="ethernet" network_id="11" />
+        <interface id="2" name="Eth2" type="ethernet" network_id="12" />
+        <interface id="3" name="Eth3" type="ethernet" network_id="13" />
+        <interface id="4" name="Eth4" type="ethernet" network_id="14" />
       </node>
-      <node id="2" name="nac-endpoint" type="qemu" template="linux" image="linux-nac-endpoint" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="c738f8e4-487b-4a02-a0c6-611d4126da13" firstmac="00:50:00:00:02:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="250">
-        <interface id="0" name="e0" type="ethernet" network_id="1" />
+      <node id="12" name="nac-endpoint" type="qemu" template="linux" image="linux-nac-endpoint" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="c738f8e4-487b-4a02-a0c6-611d4126da13" firstmac="00:50:00:00:02:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="250">
+        <interface id="0" name="e0" type="ethernet" network_id="11" />
       </node>
-      <node id="3" name="nac-corp" type="qemu" template="linux" image="linux-nac-corp" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="aedf2763-4c7d-46e0-9326-9d3c31aa3af4" firstmac="00:50:00:00:03:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="140">
-        <interface id="0" name="e0" type="ethernet" network_id="2" />
+      <node id="13" name="nac-corp" type="qemu" template="linux" image="linux-nac-corp" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="aedf2763-4c7d-46e0-9326-9d3c31aa3af4" firstmac="00:50:00:00:03:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="140">
+        <interface id="0" name="e0" type="ethernet" network_id="12" />
       </node>
-      <node id="4" name="nac-quarantine" type="qemu" template="linux" image="linux-nac-quarantine" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="248d7872-b0e8-447c-acb9-3687cc35ab67" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="380">
-        <interface id="0" name="e0" type="ethernet" network_id="3" />
+      <node id="14" name="nac-quarantine" type="qemu" template="linux" image="linux-nac-quarantine" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="248d7872-b0e8-447c-acb9-3687cc35ab67" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="380">
+        <interface id="0" name="e0" type="ethernet" network_id="13" />
       </node>
-      <node id="5" name="nac-pilot-control" type="qemu" template="linux" image="linux-nac24-control" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="385c6b21-f5d5-4bd2-8cdc-4e54933ee6a5" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host -bios /usr/share/OVMF/OVMF_CODE.fd" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
-        <interface id="0" name="e0" type="ethernet" network_id="4" />
+      <node id="15" name="nac-pilot-control" type="qemu" template="linux" image="linux-nac24-control-bios" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="385c6b21-f5d5-4bd2-8cdc-4e54933ee6a5" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
+        <interface id="0" name="e0" type="ethernet" network_id="14" />
       </node>
     </nodes>
     <networks>
-      <network id="1" type="bridge" name="nac-access-link" left="307" top="268" visibility="1" icon="lan.png" />
-      <network id="2" type="bridge" name="nac-corp-link" left="614" top="153" visibility="1" icon="lan.png" />
-      <network id="3" type="bridge" name="nac-quarantine-link" left="614" top="384" visibility="1" icon="lan.png" />
-      <network id="4" type="bridge" name="nac-control-link" left="307" top="499" visibility="1" icon="lan.png" />
+      <network id="11" type="bridge" name="nac-access-link" left="307" top="268" visibility="1" icon="lan.png" />
+      <network id="12" type="bridge" name="nac-corp-link" left="614" top="153" visibility="1" icon="lan.png" />
+      <network id="13" type="bridge" name="nac-quarantine-link" left="614" top="384" visibility="1" icon="lan.png" />
+      <network id="14" type="bridge" name="nac-control-link" left="307" top="499" visibility="1" icon="lan.png" />
     </networks>
   </topology>
 </lab>

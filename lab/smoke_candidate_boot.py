@@ -10,9 +10,12 @@ import time
 firmware = os.environ.get('BOOT_FIRMWARE', 'bios')
 if firmware not in {'bios', 'uefi'}:
     raise SystemExit('BOOT_FIRMWARE must be bios or uefi')
-base = Path('/opt/unetlab/addons/qemu/linux-nac24-control/virtioa.qcow2')
-overlay = Path('/root/nac-pilot-boot-smoke-' + firmware + '.qcow2')
-log = Path('/root/nac-pilot-boot-smoke-' + firmware + '.log')
+image_name = os.environ.get('BOOT_IMAGE', 'linux-nac24-control')
+if image_name not in {'linux-nac24-control', 'linux-nac24-control-bios'}:
+    raise SystemExit('invalid BOOT_IMAGE')
+base = Path('/opt/unetlab/addons/qemu') / image_name / 'virtioa.qcow2'
+overlay = Path('/root/nac-pilot-boot-smoke-' + image_name + '-' + firmware + '.qcow2')
+log = Path('/root/nac-pilot-boot-smoke-' + image_name + '-' + firmware + '.log')
 if overlay.exists():
     raise SystemExit('boot-smoke overlay already exists; inspect before replacing')
 subprocess.run(['qemu-img','create','-f','qcow2','-F','qcow2','-b',str(base),str(overlay)],check=True,stdout=subprocess.DEVNULL)

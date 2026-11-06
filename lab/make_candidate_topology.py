@@ -18,14 +18,20 @@ lab.set('name', 'NAC-Pilot-Candidate')
 lab.set('id', str(uuid.uuid4()))
 lab.find('description').text = 'Separate clean Ubuntu 24.04 pilot candidate qualification; baseline lab preserved'
 lab.find('body').text = 'Only isolated internal EVE bridges. Start only after stopping baseline nodes because both use the same lab address plan.'
+node_ids = {str(n): str(n+10) for n in range(1,6)}
+network_ids = {str(n): str(n+10) for n in range(1,5)}
+for network in lab.findall('./topology/networks/network'):
+    network.set('id', network_ids[network.get('id')])
 for node in lab.findall('./topology/nodes/node'):
+    node.set('id', node_ids[node.get('id')])
     node.set('uuid', str(uuid.uuid4()))
+    for interface in node.findall('interface'):
+        interface.set('network_id', network_ids[interface.get('network_id')])
     if node.get('name') == 'nac-control':
         node.set('name', 'nac-pilot-control')
-        node.set('image', 'linux-nac24-control')
+        node.set('image', 'linux-nac24-control-bios')
         node.set('ram', '3072')
         node.set('cpu', '2')
-        node.set('qemu_options', node.get('qemu_options') + ' -bios /usr/share/OVMF/OVMF_CODE.fd')
 ET.indent(tree, space='  ')
 tree.write(target, encoding='utf-8', xml_declaration=True)
 print('CANDIDATE_TOPOLOGY', target)
