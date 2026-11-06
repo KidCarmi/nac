@@ -1,7 +1,7 @@
 # Binaries
 /bin/
 *.exe
-nacd
+/nacd
 
 # Test & coverage artifacts
 coverage.out

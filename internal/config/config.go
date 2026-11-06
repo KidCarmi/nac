@@ -23,6 +23,8 @@ type Config struct {
 	Redis RedisConfig
 	Auth  AuthConfig
 	Log   LogConfig
+	// Bootstrap seeds the first administrator on an empty installation.
+	Bootstrap BootstrapConfig
 	// DefaultAction is the access-engine fallback when no policy matches.
 	DefaultAction domain.PolicyAction
 }
@@ -64,6 +66,12 @@ type AuthConfig struct {
 	// ServiceToken authenticates trusted enforcement points calling the
 	// access-evaluation endpoint. It is compared in constant time.
 	ServiceToken string
+}
+
+// BootstrapConfig seeds the first administrator. Both empty disables it.
+type BootstrapConfig struct {
+	AdminEmail    string
+	AdminPassword string
 }
 
 // LogConfig configures structured logging.
@@ -113,6 +121,10 @@ func Load() (*Config, error) {
 		Log: LogConfig{
 			Level:  getEnv("NAC_LOG_LEVEL", "info"),
 			Format: getEnv("NAC_LOG_FORMAT", "json"),
+		},
+		Bootstrap: BootstrapConfig{
+			AdminEmail:    os.Getenv("NAC_BOOTSTRAP_ADMIN_EMAIL"),
+			AdminPassword: os.Getenv("NAC_BOOTSTRAP_ADMIN_PASSWORD"),
 		},
 		DefaultAction: domain.PolicyAction(getEnv("NAC_DEFAULT_ACTION", string(domain.ActionDeny))),
 	}
