@@ -22,9 +22,17 @@ type sessStore struct {
 	created    []domain.Session
 	overrides  int
 	currentErr error
+	// winner, when set, is what CurrentSession returns after the first
+	// CreateSession conflicts (a concurrent Reject inserted it first).
+	winner    *domain.Session
+	conflicts int
 }
 
 func (f *sessStore) CurrentSession(context.Context, uuid.UUID, string, string) (*domain.Session, error) {
+	if f.winner != nil && f.conflicts > 0 {
+		c := *f.winner
+		return &c, nil
+	}
 	return nil, f.currentErr
 }
 func (f *sessStore) PreviousSession(context.Context, uuid.UUID, uuid.UUID, string, string, string, string) (*domain.Session, error) {
@@ -37,6 +45,10 @@ func (f *sessStore) PreviousSession(context.Context, uuid.UUID, uuid.UUID, strin
 	return f.prev, nil
 }
 func (f *sessStore) CreateSession(_ context.Context, s *domain.Session) error {
+	if f.winner != nil && f.conflicts == 0 {
+		f.conflicts++
+		return domain.ErrConflict
+	}
 	f.created = append(f.created, *s)
 	return nil
 }
@@ -81,5 +93,28 @@ func TestPredecessorLookupFailurePersistsNothing(t *testing.T) {
 	}
 	if len(st.created) != 0 {
 		t.Fatalf("a session with an identity but no inherited override was persisted: %+v", st.created)
+	}
+}
+
+// Codex (pilot-rc5): a concurrent Reject inserts an identity-less session
+// first; the valid exchange's insert conflicts. The winner must go through
+// full resolution (identity + override inheritance), not be used as-is.
+func TestInsertConflictResolvesWinnerWithInheritance(t *testing.T) {
+	at := time.Now()
+	st := &sessStore{currentErr: domain.ErrNotFound,
+		winner: &domain.Session{ID: uuid.New(), State: domain.SessionRejected}, // identity-less, no override
+		prev:   &domain.Session{ID: uuid.New(), Override: domain.CoAQuarantine, OverrideBy: "op@x", OverrideAt: &at}}
+	sess, _, _, err := newSessService(st).session(context.Background(), &domain.Switch{ID: uuid.New()}, testReq, "00:50:00:00:02:00", "AB", at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess.ID != st.winner.ID {
+		t.Fatalf("expected the winning session, got %v", sess.ID)
+	}
+	if sess.Override != domain.CoAQuarantine || st.overrides != 1 {
+		t.Fatalf("winner used without inheriting the quarantine: override=%q writes=%d", sess.Override, st.overrides)
+	}
+	if sess.CertSerial != "AB" || sess.CertIssuer != "/CN=CA" {
+		t.Fatalf("winner did not acquire the validated identity: %q %q", sess.CertIssuer, sess.CertSerial)
 	}
 }

@@ -185,7 +185,25 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 
 // session finds or creates the session for switch+port+MAC. A different
 // certificate on the same port and MAC starts a new session.
-func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (sess *domain.Session, prev *domain.Session, isNew bool, err error) {
+// errSessionRace means a concurrent request inserted the current session
+// first; resolution must start over so the winner gets the same treatment
+// as any existing session (identity, override inheritance).
+var errSessionRace = errors.New("concurrent session creation")
+
+// session resolves the session for this request. After an insert conflict it
+// re-runs the full resolution (bounded); if the race persists it fails
+// closed.
+func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (*domain.Session, *domain.Session, bool, error) {
+	for attempt := 0; ; attempt++ {
+		sess, prev, isNew, err := s.sessionOnce(ctx, sw, req, mac, serial, now)
+		if errors.Is(err, errSessionRace) && attempt < 2 {
+			continue
+		}
+		return sess, prev, isNew, err
+	}
+}
+
+func (s *Service) sessionOnce(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (sess *domain.Session, prev *domain.Session, isNew bool, err error) {
 	cur, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
 	switch {
 	// A certificate is identified by issuer AND serial (two CAs can issue the
@@ -242,9 +260,11 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		}
 	}
 	if err := s.store.CreateSession(ctx, sess); err != nil {
-		if errors.Is(err, domain.ErrConflict) { // concurrent creation: use the winner
-			cur, gerr := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
-			return cur, nil, false, gerr
+		if errors.Is(err, domain.ErrConflict) {
+			// A concurrent request (e.g. a Reject) created the current
+			// session first. Never use the winner as-is: it may lack this
+			// identity and its inherited override (Codex, pilot-rc5).
+			return nil, nil, false, errSessionRace
 		}
 		return nil, nil, false, err
 	}

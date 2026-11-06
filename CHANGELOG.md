@@ -6,7 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### pilot-rc5 (supersedes pilot-rc4 `76a53fd`, which was never qualified)
+### pilot-rc6 (supersedes pilot-rc5 `23349b7`, which was never qualified)
+- **Security: concurrent exchanges could bypass quarantine** (Codex review
+  of rc5). After an accounting Stop, a rejected and a valid exchange could
+  race to create the session. When the Reject won, the valid exchange used
+  the identity-less winner as-is, without its identity or inherited
+  override. An insert conflict now re-runs the full session resolution
+  (bounded, failing closed), so the winner is treated like any existing
+  session.
+
+### pilot-rc5 (`23349b7`, superseded before qualification; supersedes pilot-rc4 `76a53fd`)
 - **Security: a replacement session could exist without its inherited
   quarantine** (Codex review of rc4). The session was inserted first and the
   override written afterwards. A failure in between left a session with an
