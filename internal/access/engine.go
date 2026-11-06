@@ -18,7 +18,10 @@ package access
 
 import (
 	"sort"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/kidcarmi/nac/internal/domain"
 )
@@ -48,17 +51,53 @@ func (e *Engine) WithClock(now func() time.Time) *Engine {
 	return e
 }
 
-// Evaluate returns the access decision for ep given policies. The policies
-// slice is not mutated.
+// Evaluate returns the access decision for ep given policies. It converts the
+// endpoint record into evidence and delegates to EvaluateInputs, so the legacy
+// /access/evaluate path and the RADIUS path share one set of semantics.
 func (e *Engine) Evaluate(ep domain.Endpoint, policies []domain.Policy) domain.AccessDecision {
+	return e.EvaluateInputs(ep.MAC, EndpointInputs(ep), policies)
+}
+
+// EndpointInputs flattens an endpoint record into evidence. Empty values and
+// posture "unknown" are recorded as missing, never as a comparable value.
+func EndpointInputs(ep domain.Endpoint) domain.Inputs {
+	in := domain.Inputs{}
+	updated := ep.UpdatedAt
+	var at *time.Time
+	if !updated.IsZero() {
+		at = &updated
+	}
+	in.Set("mac", ep.MAC, domain.SourceRequest, nil, false)
+	in.Set("ip", ep.IP, domain.SourceEndpointRecord, at, false)
+	in.Set("hostname", ep.Hostname, domain.SourceEndpointRecord, at, false)
+	in.Set("device_type", ep.DeviceType, domain.SourceEndpointRecord, at, false)
+	if ep.Posture != "" && ep.Posture != domain.PostureUnknown {
+		in.Set("posture", string(ep.Posture), domain.SourcePosture, at, false)
+	} else {
+		in["posture"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourcePosture, Note: "no posture result recorded"}
+	}
+	for k, v := range ep.Attributes {
+		in.Set("attr."+k, v, domain.SourceEndpointRecord, at, false)
+	}
+	return in
+}
+
+// EvaluateInputs evaluates explicit evidence against policies.
+//
+// Each condition is three-valued: match, no_match, or insufficient_evidence.
+// A condition on a missing or stale input is insufficient_evidence for eq, ne
+// and in; "exists" is a definite no_match and "absent" a definite match. A
+// rule applies only when every condition matches; a rule with insufficient
+// evidence is skipped (recorded in the trace) and evaluation continues. If no
+// rule applies the default action is used.
+func (e *Engine) EvaluateInputs(subject string, inputs domain.Inputs, policies []domain.Policy) domain.AccessDecision {
 	now := time.Now
 	if e.now != nil {
 		now = e.now
 	}
 
 	// Defensive copy + stable sort so callers cannot make the decision
-	// depend on input ordering. Ties on priority are broken by name to keep
-	// the result deterministic.
+	// depend on input ordering. Ties on priority are broken by name.
 	sorted := make([]domain.Policy, len(policies))
 	copy(sorted, policies)
 	sort.SliceStable(sorted, func(i, j int) bool {
@@ -68,35 +107,60 @@ func (e *Engine) Evaluate(ep domain.Endpoint, policies []domain.Policy) domain.A
 		return sorted[i].Name < sorted[j].Name
 	})
 
-	ctx := buildContext(ep)
+	trace := make([]domain.RuleTrace, 0, len(sorted))
+	insufficient := map[string]bool{}
+	var matched *domain.Policy
 
 	for i := range sorted {
 		p := sorted[i]
-		if !p.Enabled {
-			continue
+		rt := domain.RuleTrace{Rule: p.Name, Priority: p.Priority, Action: p.Action}
+		if p.ID != uuid.Nil {
+			rt.RuleID = p.ID.String()
 		}
-		if policyMatches(p, ctx) {
-			id := p.ID
-			return domain.AccessDecision{
-				Endpoint:        ep.MAC,
-				Status:          statusForAction(p.Action),
-				Action:          p.Action,
-				Segment:         p.Segment,
-				MatchedPolicyID: &id,
-				Reason:          "matched policy " + p.Name,
-				EvaluatedAt:     now().UTC(),
+		switch {
+		case matched != nil:
+			rt.Outcome = domain.RuleNotReached
+		case !p.Enabled:
+			rt.Outcome = domain.RuleDisabled
+		default:
+			outcome, conds, missing := evaluateRule(p, inputs)
+			rt.Outcome, rt.Conditions = outcome, conds
+			switch outcome {
+			case domain.RuleMatched:
+				matched = &sorted[i]
+			case domain.RuleInsufficient:
+				for _, f := range missing {
+					insufficient[f] = true
+				}
 			}
 		}
+		trace = append(trace, rt)
 	}
 
-	return domain.AccessDecision{
-		Endpoint:    ep.MAC,
-		Status:      statusForAction(e.DefaultAction),
-		Action:      e.defaultAction(),
-		Segment:     e.DefaultSegment,
-		Reason:      "no policy matched; applied default action",
-		EvaluatedAt: now().UTC(),
+	d := domain.AccessDecision{
+		Endpoint:             subject,
+		EvaluatedAt:          now().UTC(),
+		Trace:                trace,
+		InsufficientEvidence: sortedKeys(insufficient),
 	}
+	if matched != nil {
+		id := matched.ID
+		d.Action = matched.Action
+		d.Status = statusForAction(matched.Action)
+		d.Segment = matched.Segment
+		d.MatchedPolicyID = &id
+		d.MatchedRule = matched.Name
+		d.Reason = "matched policy " + matched.Name
+		return d
+	}
+	d.Action = e.defaultAction()
+	d.Status = statusForAction(d.Action)
+	d.Segment = e.DefaultSegment
+	d.Reason = "no policy matched; applied default action"
+	if len(d.InsufficientEvidence) > 0 {
+		d.Reason += " (some rules could not be decided: missing or stale " + strings.Join(d.InsufficientEvidence, ", ") + ")"
+	}
+	return d
 }
 
 func (e *Engine) defaultAction() domain.PolicyAction {
@@ -106,63 +170,90 @@ func (e *Engine) defaultAction() domain.PolicyAction {
 	return domain.ActionDeny
 }
 
-// buildContext flattens an endpoint into a string keyspace that conditions
-// reference by field name. Custom attributes are namespaced under
-// "attr.<key>" to avoid collisions with well-known fields.
-func buildContext(ep domain.Endpoint) map[string]string {
-	ctx := map[string]string{
-		"mac":         ep.MAC,
-		"ip":          ep.IP,
-		"hostname":    ep.Hostname,
-		"device_type": ep.DeviceType,
-		"posture":     string(ep.Posture),
-	}
-	for k, v := range ep.Attributes {
-		ctx["attr."+k] = v
-	}
-	return ctx
-}
-
-func policyMatches(p domain.Policy, ctx map[string]string) bool {
-	// A policy with no conditions is a catch-all. This is a deliberate,
-	// documented behavior used for default/fallback policies.
+// evaluateRule evaluates every condition (no short-circuit, so the trace is
+// complete). A definite no_match anywhere wins over insufficient evidence:
+// the rule provably does not apply.
+func evaluateRule(p domain.Policy, in domain.Inputs) (domain.RuleOutcome, []domain.ConditionTrace, []string) {
+	traces := make([]domain.ConditionTrace, 0, len(p.Conditions))
+	noMatch := false
+	var missing []string
 	for _, c := range p.Conditions {
-		if !conditionMatches(c, ctx) {
-			return false
+		ev := in.Get(c.Field)
+		outcome := conditionOutcome(c, ev)
+		traces = append(traces, domain.ConditionTrace{
+			Field: c.Field, Operator: c.Operator, Values: c.Values,
+			Observed: ev.Value, Evidence: ev.Status, Outcome: outcome,
+		})
+		switch outcome {
+		case domain.CondNoMatch:
+			noMatch = true
+		case domain.CondInsufficient:
+			missing = append(missing, c.Field)
 		}
 	}
-	return true
+	switch {
+	case noMatch:
+		return domain.RuleNotMatched, traces, nil
+	case len(missing) > 0:
+		return domain.RuleInsufficient, traces, missing
+	default:
+		// A policy with no conditions is a catch-all (documented behavior).
+		return domain.RuleMatched, traces, nil
+	}
 }
 
-func conditionMatches(c domain.Condition, ctx map[string]string) bool {
-	val, present := ctx[c.Field]
+func conditionOutcome(c domain.Condition, ev domain.Evidence) domain.ConditionOutcome {
+	usable := ev.Usable()
 	switch c.Operator {
 	case domain.OpExists:
-		return present && val != ""
+		return boolOutcome(usable)
+	case domain.OpAbsent:
+		return boolOutcome(!usable)
 	case domain.OpEquals:
-		return present && len(c.Values) == 1 && val == c.Values[0]
-	case domain.OpNotEqual:
-		// Not-equal is true when the field is absent or differs from the
-		// operand. This treats "missing" as "not equal", which is the least
-		// surprising behavior for exclusion rules.
-		if len(c.Values) != 1 {
-			return false
+		if !usable {
+			return domain.CondInsufficient
 		}
-		return val != c.Values[0]
+		return boolOutcome(len(c.Values) == 1 && ev.Value == c.Values[0])
+	case domain.OpNotEqual:
+		// Absent evidence is NOT "not equal": that would let a missing
+		// posture satisfy "posture ne noncompliant -> allow".
+		if !usable {
+			return domain.CondInsufficient
+		}
+		return boolOutcome(len(c.Values) == 1 && ev.Value != c.Values[0])
 	case domain.OpIn:
-		if !present {
-			return false
+		if !usable {
+			return domain.CondInsufficient
 		}
 		for _, v := range c.Values {
-			if val == v {
-				return true
+			if ev.Value == v {
+				return domain.CondMatch
 			}
 		}
-		return false
+		return domain.CondNoMatch
 	default:
 		// Unknown operators never match; fail closed.
-		return false
+		return domain.CondNoMatch
 	}
+}
+
+func boolOutcome(b bool) domain.ConditionOutcome {
+	if b {
+		return domain.CondMatch
+	}
+	return domain.CondNoMatch
+}
+
+func sortedKeys(m map[string]bool) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func statusForAction(a domain.PolicyAction) domain.AccessStatus {

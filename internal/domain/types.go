@@ -93,12 +93,15 @@ const (
 	OpNotEqual MatchOperator = "ne"
 	OpIn       MatchOperator = "in"
 	OpExists   MatchOperator = "exists"
+	// OpAbsent matches when the field has no usable (present and fresh)
+	// evidence, so a policy can act explicitly on missing evidence.
+	OpAbsent MatchOperator = "absent"
 )
 
 // Valid reports whether o is a recognized match operator.
 func (o MatchOperator) Valid() bool {
 	switch o {
-	case OpEquals, OpNotEqual, OpIn, OpExists:
+	case OpEquals, OpNotEqual, OpIn, OpExists, OpAbsent:
 		return true
 	default:
 		return false
@@ -139,8 +142,14 @@ type AccessDecision struct {
 	Action          PolicyAction `json:"action"`
 	Segment         string       `json:"segment,omitempty"`
 	MatchedPolicyID *uuid.UUID   `json:"matched_policy_id,omitempty"`
+	MatchedRule     string       `json:"matched_rule,omitempty"`
 	Reason          string       `json:"reason"`
 	EvaluatedAt     time.Time    `json:"evaluated_at"`
+	// Trace lists every rule in evaluation order with its outcome.
+	Trace []RuleTrace `json:"trace,omitempty"`
+	// InsufficientEvidence lists fields whose missing or stale evidence
+	// prevented a higher-priority rule from being decided.
+	InsufficientEvidence []string `json:"insufficient_evidence,omitempty"`
 }
 
 // Role is an operator's authorization role within the platform.

@@ -143,6 +143,10 @@ func (s *Service) invalidate(ctx context.Context) {
 	}
 }
 
+// ValidateRule applies the single-rule validation used by create/update. It is
+// exported so policy versions validate every rule with identical rules.
+func ValidateRule(in Input) error { return validatePolicy(in) }
+
 func validatePolicy(in Input) error {
 	ve := validation.NewErrors()
 	if !validation.NonEmpty(in.Name) || !validation.MaxLen(in.Name, maxNameLen) {
@@ -163,6 +167,10 @@ func validatePolicy(in Input) error {
 	for i, c := range in.Conditions {
 		if !validation.NonEmpty(c.Field) || !validation.MaxLen(c.Field, 128) {
 			ve.Add(fmt.Sprintf("conditions[%d].field", i), "required, max 128 characters")
+		} else if !domain.KnownField(c.Field) {
+			// A typo would otherwise create a rule that silently never
+			// matches (or, with "absent", always matches).
+			ve.Add(fmt.Sprintf("conditions[%d].field", i), "unknown input field; see GET /api/v1/policy-inputs")
 		}
 		if !c.Operator.Valid() {
 			ve.Add(fmt.Sprintf("conditions[%d].operator", i), "invalid operator")
@@ -178,6 +186,10 @@ func validatePolicy(in Input) error {
 		case domain.OpIn:
 			if len(c.Values) == 0 {
 				ve.Add(fmt.Sprintf("conditions[%d].values", i), "in requires at least one value")
+			}
+		case domain.OpExists, domain.OpAbsent:
+			if len(c.Values) != 0 {
+				ve.Add(fmt.Sprintf("conditions[%d].values", i), "exists/absent take no values")
 			}
 		}
 	}
