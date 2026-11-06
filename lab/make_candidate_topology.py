@@ -25,6 +25,7 @@ for node in lab.findall('./topology/nodes/node'):
         node.set('image', 'linux-nac24-control')
         node.set('ram', '3072')
         node.set('cpu', '2')
+        node.set('qemu_options', node.get('qemu_options') + ' -bios /usr/share/OVMF/OVMF_CODE.fd')
 ET.indent(tree, space='  ')
 tree.write(target, encoding='utf-8', xml_declaration=True)
 print('CANDIDATE_TOPOLOGY', target)

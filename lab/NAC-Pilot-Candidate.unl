@@ -19,7 +19,7 @@
       <node id="4" name="nac-quarantine" type="qemu" template="linux" image="linux-nac-quarantine" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="248d7872-b0e8-447c-acb9-3687cc35ab67" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="380">
         <interface id="0" name="e0" type="ethernet" network_id="3" />
       </node>
-      <node id="5" name="nac-pilot-control" type="qemu" template="linux" image="linux-nac24-control" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="385c6b21-f5d5-4bd2-8cdc-4e54933ee6a5" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
+      <node id="5" name="nac-pilot-control" type="qemu" template="linux" image="linux-nac24-control" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="385c6b21-f5d5-4bd2-8cdc-4e54933ee6a5" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host -bios /usr/share/OVMF/OVMF_CODE.fd" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
         <interface id="0" name="e0" type="ethernet" network_id="4" />
       </node>
     </nodes>
