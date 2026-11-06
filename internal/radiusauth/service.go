@@ -356,11 +356,29 @@ func (s *Service) Reject(ctx context.Context, req Request) error {
 			"cert_expiration": req.CertExpiration}}
 
 	if sw != nil && mac != "" && req.NASPortID != "" {
-		sess, _, err := s.session(ctx, sw, req, mac, NormalizeSerial(req.CertSerial), now)
-		if err == nil {
-			sess.State, sess.LastAuthAt = domain.SessionRejected, now
-			sess.RequestedAction, sess.RequestedSegment, sess.RequestedVLAN = "", "", nil
-			if err := s.store.UpdateSession(ctx, sess); err == nil {
+		// A rejected exchange must never replace or rename the session on
+		// this port: otherwise presenting a bad certificate once would end a
+		// quarantined session, and the next good login would start a fresh
+		// session without the operator override. The failed certificate is
+		// recorded in the event detail only. The current session (if any)
+		// keeps its identity and override and is marked rejected, because
+		// the switch has just failed authentication on the port.
+		cur, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
+		switch {
+		case err == nil:
+			cur.State, cur.LastAuthAt = domain.SessionRejected, now
+			cur.RequestedAction, cur.RequestedSegment, cur.RequestedVLAN = "", "", nil
+			if err := s.store.UpdateSession(ctx, cur); err == nil {
+				ev.SessionID = &cur.ID
+			}
+		case errors.Is(err, domain.ErrNotFound):
+			// No session yet: create one so the failure is visible and
+			// diagnosable in the console.
+			sess := &domain.Session{ID: uuid.New(), SwitchID: sw.ID, SwitchName: sw.Name, NASPortID: req.NASPortID, MAC: mac,
+				CallingStationID: req.CallingStationID, NASIPAddress: req.NASIPAddress, UserName: req.UserName,
+				CertIssuer: req.CertIssuer, CertSerial: NormalizeSerial(req.CertSerial), CertCN: req.CertCN,
+				State: domain.SessionRejected, StartedAt: now, LastAuthAt: now}
+			if err := s.store.CreateSession(ctx, sess); err == nil {
 				ev.SessionID = &sess.ID
 			}
 		}

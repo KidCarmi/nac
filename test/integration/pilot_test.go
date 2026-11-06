@@ -635,6 +635,30 @@ func TestPilotRegressions_ReviewFindings(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT override FROM radius_sessions WHERE state <> 'ended'`).Scan(&newOverride); err != nil || newOverride != "" {
 		t.Fatalf("the new certificate inherited the old session's override: %q %v", newOverride, err)
 	}
+
+	// --- Fourth review: a REJECTED exchange that carries a different
+	// certificate must not replace the session (quarantine bypass). ---
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200) // bound cert A: active session
+	var sessQ string
+	if err := conn.QueryRow(ctx, `SELECT id FROM radius_sessions WHERE state = 'active'`).Scan(&sessQ); err != nil {
+		t.Fatal(err)
+	}
+	h.do("POST", "/api/v1/sessions/"+sessQ+"/quarantine", nil, 202, nil, true)
+	h.app.Pilot().Wait()
+	h.radiusCall("/api/v1/radius/reject", "127.0.0.1", map[string]string{"User-Name": "x", "Calling-Station-Id": "00-50-00-00-02-00",
+		"NAS-Port-Id": "Ethernet1", "TLS-Client-Cert-Serial": "DEADBEEF01", "TLS-Client-Cert-Issuer": "/CN=Rogue CA",
+		"Module-Failure-Message": "eap_tls: (TLS) Alert read:fatal:unknown CA"}, 204)
+	var qState, qSerial, qOverride string
+	if err := conn.QueryRow(ctx, `SELECT state, cert_serial, override FROM radius_sessions WHERE id=$1`, sessQ).Scan(&qState, &qSerial, &qOverride); err != nil {
+		t.Fatal(err)
+	}
+	if qState == "ended" || qSerial != certSerial || qOverride != "quarantine" {
+		t.Fatalf("a rejected certificate replaced the session: state=%q serial=%q override=%q", qState, qSerial, qOverride)
+	}
+	r = h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200)
+	if frVal(r, "reply:Tunnel-Private-Group-Id") != "20" {
+		t.Fatalf("quarantine must survive a rejected attempt followed by a good login, got %v", r)
+	}
 }
 
 // Third review: concurrent switch registrations must all end up in the

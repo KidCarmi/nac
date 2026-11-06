@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/kidcarmi/nac/internal/domain"
 	"github.com/kidcarmi/nac/internal/observability"
 	"github.com/kidcarmi/nac/internal/radiusauth"
 )
@@ -98,6 +99,13 @@ func (s *Server) handleRadiusAccounting(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := s.radius.Accounting(r.Context(), req); err != nil {
 		observability.LoggerFrom(r.Context()).Warn("accounting not recorded", "error", err, "client", req.ClientIP)
+		if !errors.Is(err, domain.ErrNotFound) {
+			// Not persisted: answer with an error so FreeRADIUS records
+			// "accounting-not-forwarded" in its outage log. FreeRADIUS still
+			// answers the switch itself.
+			writeProblem(w, r, err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -54,6 +54,15 @@
   Neither proves reachability: ASTRA measured 17–22 s from switch SUCCESS to
   TCP reachability in the virtual lab.
 
+- **Quarantine is per session.** An operator override belongs to one session:
+  switch + port + MAC + certificate (issuer and serial). A *rejected*
+  certificate never replaces that session, so a failed attempt cannot clear a
+  quarantine. A *different valid* certificate on the same port and MAC is a
+  different authenticated identity and starts a new session, which the active
+  policy decides without the override. To keep a device quarantined
+  regardless of certificate, remove its identity bindings or publish a
+  policy for it.
+
 ## Endpoint addressing after a VLAN change
 
 After a CoA or a re-authentication moves an endpoint between VLANs, the
