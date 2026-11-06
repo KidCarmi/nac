@@ -298,10 +298,12 @@ func (r *PilotRepo) CurrentSession(ctx context.Context, switchID uuid.UUID, port
 // the same port: switch + port + MAC + certificate issuer + serial (any
 // state). An operator override follows this identity across session
 // replacement (accounting Stop, reconnect) until an operator restores it.
-func (r *PilotRepo) PreviousSession(ctx context.Context, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error) {
+// exclude is the session that is acquiring the identity (never its own
+// predecessor).
+func (r *PilotRepo) PreviousSession(ctx context.Context, exclude, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error) {
 	return scanSession(r.pool.QueryRow(ctx, `SELECT `+sessionColumns+sessionFrom+
-		` WHERE s.switch_id=$1 AND s.nas_port_id=$2 AND s.mac=$3 AND s.cert_issuer=$4 AND s.cert_serial=$5
-		ORDER BY s.started_at DESC LIMIT 1`, switchID, port, mac, issuer, serial))
+		` WHERE s.id <> $1 AND s.switch_id=$2 AND s.nas_port_id=$3 AND s.mac=$4 AND s.cert_issuer=$5 AND s.cert_serial=$6
+		ORDER BY s.started_at DESC LIMIT 1`, exclude, switchID, port, mac, issuer, serial))
 }
 
 // GetSession returns a session by ID.

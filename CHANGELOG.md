@@ -6,7 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### pilot-rc3 (after pilot-rc2 `c121a95`)
+### pilot-rc4 (supersedes pilot-rc3 `74e5a1e`, which was never qualified)
+- **Security: quarantine bypass through a failed attempt** (Codex review of
+  rc3). After an accounting Stop, one deliberately failed EAP-TLS attempt
+  created an identity-less session, and the next valid login reused it
+  without inheriting the override, so policy decided. Inheritance now
+  applies whenever a session first acquires a validated identity, not only
+  when it is created.
+
+### pilot-rc3 (`74e5a1e`, superseded before qualification; after pilot-rc2 `c121a95`)
 
 Fixed (from ASTRA's rc2 qualification):
 - **Quarantine lost on session replacement.** With switch accounting on, the

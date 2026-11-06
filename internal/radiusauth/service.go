@@ -23,7 +23,7 @@ type Store interface {
 	BindingByCert(ctx context.Context, issuer, serial string) (*domain.IdentityBinding, error)
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 	CurrentSession(ctx context.Context, switchID uuid.UUID, port, mac string) (*domain.Session, error)
-	PreviousSession(ctx context.Context, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error)
+	PreviousSession(ctx context.Context, exclude, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error)
 	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
 	CreateSession(ctx context.Context, s *domain.Session) error
 	UpdateSession(ctx context.Context, s *domain.Session) error
@@ -202,29 +202,28 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		// session's identity. A failed attempt without certificate attributes
 		// must not erase it, or a later different certificate would no longer
 		// be recognised as a replacement (and would inherit this session).
+		var prev *domain.Session
 		if serial != "" && req.CertIssuer != "" {
+			// A session created by a failed attempt (no identity) acquires
+			// its identity now: it must inherit that identity's override
+			// exactly like a newly created session, or a deliberate failed
+			// attempt before the valid login would bypass a quarantine.
+			if cur.CertSerial == "" {
+				p, err := s.inheritOverride(ctx, sw, req, mac, serial, cur)
+				if err != nil {
+					return nil, nil, false, err
+				}
+				prev = p
+			}
 			cur.CertIssuer, cur.CertSerial, cur.CertCN = req.CertIssuer, serial, req.CertCN
 		}
 		cur.UserName, cur.CallingStationID, cur.NASIPAddress = req.UserName, req.CallingStationID, req.NASIPAddress
 		if req.AcctSessionID != "" {
 			cur.AcctSessionID = req.AcctSessionID
 		}
-		return cur, nil, false, nil
+		return cur, prev, false, nil
 	case !errors.Is(err, domain.ErrNotFound):
 		return nil, nil, false, err
-	}
-	// The predecessor of the same identity on this port (if any) carries
-	// the operator override across session replacement: a switch that sends
-	// accounting Stop before re-authenticating (CoA, reconnect) must not
-	// drop a quarantine (ASTRA, pilot-rc2).
-	if serial != "" && req.CertIssuer != "" {
-		p, perr := s.store.PreviousSession(ctx, sw.ID, req.NASPortID, mac, req.CertIssuer, serial)
-		switch {
-		case perr == nil:
-			prev = p
-		case !errors.Is(perr, domain.ErrNotFound):
-			return nil, nil, false, perr
-		}
 	}
 	sess = &domain.Session{ID: uuid.New(), SwitchID: sw.ID, SwitchName: sw.Name, NASPortID: req.NASPortID, MAC: mac,
 		CallingStationID: req.CallingStationID, NASIPAddress: req.NASIPAddress, UserName: req.UserName,
@@ -237,16 +236,42 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		}
 		return nil, nil, false, err
 	}
-	if prev != nil && prev.Override != "" {
-		if err := s.store.SetSessionOverride(ctx, sess.ID, prev.Override, prev.OverrideBy, prev.OverrideAt); err != nil {
-			return nil, nil, false, err
-		}
-		sess.Override, sess.OverrideBy, sess.OverrideAt = prev.Override, prev.OverrideBy, prev.OverrideAt
-		s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
-			Result: "info", Source: "nacd", Reason: fmt.Sprintf("operator %s override (set by %s) carried over from session %s: same certificate on this port and MAC",
-				prev.Override, prev.OverrideBy, prev.ID)})
+	if serial == "" || req.CertIssuer == "" {
+		return sess, nil, true, nil
+	}
+	prev, err = s.inheritOverride(ctx, sw, req, mac, serial, sess)
+	if err != nil {
+		return nil, nil, false, err
 	}
 	return sess, prev, true, nil
+}
+
+// inheritOverride gives sess (which is just acquiring this validated
+// identity) the override state of the most recent earlier session of the
+// same identity on this port: switch + port + MAC + certificate issuer and
+// serial. A switch that sends accounting Stop before re-authenticating (CoA,
+// reconnect) must not drop a quarantine (ASTRA, pilot-rc2), and neither may
+// a failed attempt in between (Codex, pilot-rc3). It returns the
+// predecessor (nil if none) so a pending CoA can be correlated with it.
+func (s *Service) inheritOverride(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, sess *domain.Session) (*domain.Session, error) {
+	prev, err := s.store.PreviousSession(ctx, sess.ID, sw.ID, req.NASPortID, mac, req.CertIssuer, serial)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if prev.Override == "" || sess.Override != "" {
+		return prev, nil
+	}
+	if err := s.store.SetSessionOverride(ctx, sess.ID, prev.Override, prev.OverrideBy, prev.OverrideAt); err != nil {
+		return nil, err
+	}
+	sess.Override, sess.OverrideBy, sess.OverrideAt = prev.Override, prev.OverrideBy, prev.OverrideAt
+	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
+		Result: "info", Source: "nacd", Reason: fmt.Sprintf("operator %s override (set by %s) carried over from session %s: same certificate on this port and MAC",
+			prev.Override, prev.OverrideBy, prev.ID)})
+	return prev, nil
 }
 
 // buildInputs assembles evidence. Each input is taken ONLY from its allowed

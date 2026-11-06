@@ -98,12 +98,23 @@ func TestQuarantineSurvivesAccountingStopAndSessionReplacement(t *testing.T) {
 		t.Fatalf("quarantine bypassed by reconnecting: VLAN %s", v)
 	}
 	acct("Start", "acct-3")
+
+	// Codex (rc3): after the Stop, one deliberately FAILED EAP-TLS attempt
+	// creates an identity-less session; the next valid login reuses it and
+	// must still inherit the quarantine.
+	acct("Stop", "acct-3")
+	h.radiusCall("/api/v1/radius/reject", "127.0.0.1", map[string]string{"User-Name": "x", "Calling-Station-Id": "00-50-00-00-02-00",
+		"NAS-Port-Id": "Ethernet1", "Module-Failure-Message": "eap_tls: (TLS) Alert write:fatal:unknown CA"}, 204)
+	if v := auth("acct-3b"); v != "20" {
+		t.Fatalf("quarantine bypassed by a failed attempt before the valid login: VLAN %s", v)
+	}
+	acct("Start", "acct-3b")
 	h.do("GET", "/api/v1/sessions?state=active", nil, 200, &list, true)
 	s3 := list.Sessions[0]["id"].(string)
 
 	// Restore clears it, also across the same replacement pattern.
 	veos.mu.Lock()
-	veos.onACK = reauthAs("acct-3", "acct-4")
+	veos.onACK = reauthAs("acct-3b", "acct-4")
 	veos.mu.Unlock()
 	h.do("POST", "/api/v1/sessions/"+s3+"/restore", nil, 202, nil, true)
 	var s4 string
