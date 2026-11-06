@@ -294,6 +294,16 @@ func (r *PilotRepo) CurrentSession(ctx context.Context, switchID uuid.UUID, port
 		` WHERE s.switch_id=$1 AND s.nas_port_id=$2 AND s.mac=$3 AND s.state <> 'ended'`, switchID, port, mac))
 }
 
+// PreviousSession returns the most recent session of the same identity on
+// the same port: switch + port + MAC + certificate issuer + serial (any
+// state). An operator override follows this identity across session
+// replacement (accounting Stop, reconnect) until an operator restores it.
+func (r *PilotRepo) PreviousSession(ctx context.Context, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error) {
+	return scanSession(r.pool.QueryRow(ctx, `SELECT `+sessionColumns+sessionFrom+
+		` WHERE s.switch_id=$1 AND s.nas_port_id=$2 AND s.mac=$3 AND s.cert_issuer=$4 AND s.cert_serial=$5
+		ORDER BY s.started_at DESC LIMIT 1`, switchID, port, mac, issuer, serial))
+}
+
 // GetSession returns a session by ID.
 func (r *PilotRepo) GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error) {
 	return scanSession(r.pool.QueryRow(ctx, `SELECT `+sessionColumns+sessionFrom+` WHERE s.id=$1`, id))
@@ -693,7 +703,10 @@ func (r *PilotRepo) GetCoA(ctx context.Context, id uuid.UUID) (*domain.CoAReques
 
 // SessionCoAs lists a session's CoA requests, oldest first.
 func (r *PilotRepo) SessionCoAs(ctx context.Context, sessionID uuid.UUID) ([]domain.CoARequest, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+coaColumns+` FROM coa_requests WHERE session_id=$1 ORDER BY created_at`, sessionID)
+	// A CoA belongs to the session it targeted, and also to the session whose
+	// re-authentication observed it (the switch may replace the session).
+	rows, err := r.pool.Query(ctx, `SELECT `+coaColumns+` FROM coa_requests WHERE session_id=$1
+		OR observed_decision_id IN (SELECT id FROM auth_decisions WHERE session_id=$1) ORDER BY created_at`, sessionID)
 	if err != nil {
 		return nil, err
 	}

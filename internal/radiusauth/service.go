@@ -23,6 +23,8 @@ type Store interface {
 	BindingByCert(ctx context.Context, issuer, serial string) (*domain.IdentityBinding, error)
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 	CurrentSession(ctx context.Context, switchID uuid.UUID, port, mac string) (*domain.Session, error)
+	PreviousSession(ctx context.Context, switchID uuid.UUID, port, mac, issuer, serial string) (*domain.Session, error)
+	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
 	CreateSession(ctx context.Context, s *domain.Session) error
 	UpdateSession(ctx context.Context, s *domain.Session) error
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
@@ -94,7 +96,7 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 	}
 
 	serial := NormalizeSerial(req.CertSerial)
-	sess, isNew, err := s.session(ctx, sw, req, mac, serial, now)
+	sess, prev, isNew, err := s.session(ctx, sw, req, mac, serial, now)
 	if err != nil {
 		return Reply{}, err
 	}
@@ -169,7 +171,7 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 		ev.Detail["vlan"] = fmt.Sprint(*rec.VLAN)
 	}
 	s.event(ctx, ev)
-	s.correlateCoA(ctx, sess, rec)
+	s.correlateCoA(ctx, sess, prev, rec)
 
 	reply := Reply{Accept: rec.Result == "accept", Segment: rec.Segment, DecisionID: rec.ID, SessionID: sess.ID}
 	if rec.VLAN != nil {
@@ -183,7 +185,7 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 
 // session finds or creates the session for switch+port+MAC. A different
 // certificate on the same port and MAC starts a new session.
-func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (*domain.Session, bool, error) {
+func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, mac, serial string, now time.Time) (sess *domain.Session, prev *domain.Session, isNew bool, err error) {
 	cur, err := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
 	switch {
 	// A certificate is identified by issuer AND serial (two CAs can issue the
@@ -191,7 +193,7 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 	case err == nil && cur.CertSerial != "" && serial != "" && (cur.CertSerial != serial || cur.CertIssuer != req.CertIssuer):
 		cur.State, cur.EndedAt = domain.SessionEnded, &now
 		if err := s.store.UpdateSession(ctx, cur); err != nil {
-			return nil, false, err
+			return nil, nil, false, err
 		}
 		s.event(ctx, &domain.AuthEvent{SessionID: &cur.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
 			Result: "info", Reason: "session ended: a different certificate authenticated on this port and MAC", Source: "nacd"})
@@ -207,22 +209,44 @@ func (s *Service) session(ctx context.Context, sw *domain.Switch, req Request, m
 		if req.AcctSessionID != "" {
 			cur.AcctSessionID = req.AcctSessionID
 		}
-		return cur, false, nil
+		return cur, nil, false, nil
 	case !errors.Is(err, domain.ErrNotFound):
-		return nil, false, err
+		return nil, nil, false, err
 	}
-	sess := &domain.Session{ID: uuid.New(), SwitchID: sw.ID, SwitchName: sw.Name, NASPortID: req.NASPortID, MAC: mac,
+	// The predecessor of the same identity on this port (if any) carries
+	// the operator override across session replacement: a switch that sends
+	// accounting Stop before re-authenticating (CoA, reconnect) must not
+	// drop a quarantine (ASTRA, pilot-rc2).
+	if serial != "" && req.CertIssuer != "" {
+		p, perr := s.store.PreviousSession(ctx, sw.ID, req.NASPortID, mac, req.CertIssuer, serial)
+		switch {
+		case perr == nil:
+			prev = p
+		case !errors.Is(perr, domain.ErrNotFound):
+			return nil, nil, false, perr
+		}
+	}
+	sess = &domain.Session{ID: uuid.New(), SwitchID: sw.ID, SwitchName: sw.Name, NASPortID: req.NASPortID, MAC: mac,
 		CallingStationID: req.CallingStationID, NASIPAddress: req.NASIPAddress, UserName: req.UserName,
 		AcctSessionID: req.AcctSessionID, CertIssuer: req.CertIssuer, CertSerial: serial, CertCN: req.CertCN,
 		State: domain.SessionRejected, StartedAt: now, LastAuthAt: now}
 	if err := s.store.CreateSession(ctx, sess); err != nil {
 		if errors.Is(err, domain.ErrConflict) { // concurrent creation: use the winner
 			cur, gerr := s.store.CurrentSession(ctx, sw.ID, req.NASPortID, mac)
-			return cur, false, gerr
+			return cur, nil, false, gerr
 		}
-		return nil, false, err
+		return nil, nil, false, err
 	}
-	return sess, true, nil
+	if prev != nil && prev.Override != "" {
+		if err := s.store.SetSessionOverride(ctx, sess.ID, prev.Override, prev.OverrideBy, prev.OverrideAt); err != nil {
+			return nil, nil, false, err
+		}
+		sess.Override, sess.OverrideBy, sess.OverrideAt = prev.Override, prev.OverrideBy, prev.OverrideAt
+		s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageDecision,
+			Result: "info", Source: "nacd", Reason: fmt.Sprintf("operator %s override (set by %s) carried over from session %s: same certificate on this port and MAC",
+				prev.Override, prev.OverrideBy, prev.ID)})
+	}
+	return sess, prev, true, nil
 }
 
 // buildInputs assembles evidence. Each input is taken ONLY from its allowed
@@ -314,8 +338,14 @@ func subjectFor(req Request, mac string) string {
 
 // correlateCoA marks a pending CoA observed when this authentication (the
 // switch-initiated re-authentication) returned the VLAN it requested.
-func (s *Service) correlateCoA(ctx context.Context, sess *domain.Session, rec *domain.DecisionRecord) {
+func (s *Service) correlateCoA(ctx context.Context, sess, prev *domain.Session, rec *domain.DecisionRecord) {
 	c, err := s.store.PendingCoA(ctx, sess.ID)
+	if err == nil && c == nil && prev != nil {
+		// The switch replaced the session (accounting Stop, then a new
+		// authentication): this re-authentication answers the CoA sent to
+		// the predecessor of the same identity on this port.
+		c, err = s.store.PendingCoA(ctx, prev.ID)
+	}
 	if err != nil || c == nil {
 		return
 	}

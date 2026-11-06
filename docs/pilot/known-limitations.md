@@ -73,14 +73,25 @@
   17–22 s from switch SUCCESS to TCP reachability, and 21.3 s from a Restore
   request to permitted TCP on `fe7c981`.
 
-- **Quarantine is per session.** An operator override belongs to one session:
-  switch + port + MAC + certificate (issuer and serial). A *rejected*
-  certificate never replaces that session, so a failed attempt cannot clear a
-  quarantine. A *different valid* certificate on the same port and MAC is a
-  different authenticated identity and starts a new session, which the active
-  policy decides without the override. To keep a device quarantined
-  regardless of certificate, remove its identity bindings or publish a
-  policy for it.
+- **Quarantine follows one identity on one port.** An operator override
+  applies to switch + port + MAC + certificate (issuer and serial).
+  - It lasts until an operator clicks **Restore**. It survives
+    re-authentication, an accounting Stop followed by a new session (as EOS
+    sends around a CoA re-authentication with accounting on), and unplugging
+    and reconnecting. Each new session for that identity inherits it, and the
+    timeline says so.
+  - A *rejected* certificate never replaces the session, so a failed attempt
+    cannot clear a quarantine.
+  - A *different valid* certificate on the same port and MAC, or the same
+    certificate on a different port, is a different identity and is decided
+    by the active policy without the override. To keep a device quarantined
+    regardless of certificate or port, remove its identity bindings or
+    publish a policy for it.
+  - **`pilot-rc1` (`fe7c981`) and `pilot-rc2` (`c121a95`) lose the override**
+    when the switch sends accounting Stop before re-authenticating: the
+    endpoint is re-authorized by policy (ASTRA, rc2, accounting enabled).
+    Fixed in `pilot-rc3`. Do not enable switch accounting with those
+    candidates.
 
 ## Endpoint addressing after a VLAN change
 
