@@ -27,7 +27,7 @@ The [detailed clarification](clarifications.md) and its [outage action transcrip
 | New authentication while down | Fail closed, no corp | Operator cleared Et1 and invoked `wpa_cli reauthenticate`; switch began RADIUS on the clear, Access-Reject/EAPOL Failure followed, Et1 FAILED, corp TCP timed out. Both manual actions are in the transcript. | **PASS** |
 | After recovery | Fresh successful authorization restores corp | NAC returned ready; without another manual reconnect, the supplicant retried, Access-Accept VLAN 10 and Et1 SUCCESS followed. The first fresh corp probe after switch SUCCESS still timed out; a later probe opened. | **PASS**, with unbounded short convergence delay in this run |
 
-The old adapter calls NAC for each successful EAP-TLS post-auth event and has no authorization-result cache. OPUS's draft pilot contract proposes a **new** FreeRADIUS outage cache with a TTL and fallback. That behavior remains to be specified and tested on the candidate; it must not be inferred from this baseline.
+The old adapter calls NAC for each successful EAP-TLS post-auth event and has no authorization-result cache. OPUS's pilot contract v2 (`df0f1a9`) also specifies **no** authorization cache: existing switch sessions persist, new logins fail closed, and outage rejects are imported from the FreeRADIUS outage log with distinct provenance. The candidate implementation and operator timeline remain untested.
 
 The original active-session CoA was sent by a lab script, **not** a product UI/API action. First request ID 233 omitted the observed NAS port and received CoA-NAK Error-Cause 402. Corrected request ID 172 targeted identity `wired-endpoint-01`, MAC `00-50-00-00-02-00`, NAS-Port-Id `Ethernet1`, NAS-IP-Address `10.70.99.1`, and VLAN 10; it received CoA-ACK Error-Cause 200 at 08:12:13.288 UTC. vEOS then initiated its own Access-Request at 08:12:13.503, which received Access-Accept VLAN 10 at 08:12:13.696. There was **no operator-triggered reauthentication or endpoint reconnect after that corrected CoA**. The operator did manually change endpoint IP from the VLAN 20 to VLAN 10 subnet before post-change probes; corp opened and quarantine timed out. The old test had no continuous probes or established TCP stream observation. [Source capture](baseline-4911d2d/radius.pcap), [CoA explanation](clarifications.md).
 
@@ -45,11 +45,11 @@ The final run needed about 21.6 seconds for corp TCP after switch VLAN 10 SUCCES
 
 ## Pilot candidate qualification matrix
 
-No immutable OPUS candidate, installer/operator guide or supported adapter has been handed off. `fd604b0` is explicitly a foundation commit. The status below is for the **pilot candidate**, not the already proven baseline. Expected results are recorded before execution.
+No immutable OPUS candidate, installer/operator guide or supported adapter has been handed off. OPUS's candidate register requires both a named SHA and an annotated `pilot-rc<N>` tag; `fd604b0`, `94ee467` and `44a3e95` are explicitly non-candidates. The status below is for the **pilot candidate**, not the already proven baseline. Expected results are recorded before execution. The candidate targets FreeRADIUS 3.2.5 on Ubuntu 24.04; upgrading from this lab's 3.0.26 is a separate installation step.
 
 | Step | Expected result | Candidate status | Current evidence or prerequisite |
 | --- | --- | --- | --- |
-| 1. Clean install | Documented install starts candidate and reports ready | **BLOCKED** | Await OPUS candidate SHA and installation guide |
+| 1. Clean install | Documented FreeRADIUS 3.2.5 upgrade and candidate install report ready | **BLOCKED** | Await OPUS candidate SHA, annotated tag and installation guide |
 | 2. Register switch and map segments | Operator workflow registers source IP and corp=10/quarantine=20 | **BLOCKED** | Await documented product workflow |
 | 3. Service health | HTTP 200 from each service's own segment | **PASS** lab preflight | Final baseline run verified both; repeat after candidate install |
 | 4. Fresh unauthenticated | Corp TCP blocked | **BLOCKED** | Pass on old baseline; candidate run pending |
@@ -59,7 +59,7 @@ No immutable OPUS candidate, installer/operator guide or supported adapter has b
 | 8. Publish quarantine | Only rule changes; new auth gives VLAN 20, quarantine open, corp blocked | **BLOCKED** | Old baseline passed; versioned publish pending |
 | 9. Product CoA | Action targets active session; ACK, switch-initiated reauth and live probes show new access | **BLOCKED** | Old lab-script CoA passed after manual IP change; product action/continuous probes pending |
 | 10. Restore policy/session | Documented restore returns corp access | **BLOCKED** | Old baseline passed; candidate workflow pending |
-| 11. Outage/recovery | Existing/new/recovered sessions meet OPUS's documented cache/fallback semantics | **BLOCKED** | Draft proposes cache, not implemented/qualified here |
+| 11. Outage/recovery | Existing switch session persists; new login fails closed with the specified reply; recovery succeeds without manual action; imported outage event has distinct provenance | **BLOCKED** | OPUS contract v2 defines no cache; candidate implementation/qualification pending |
 | 12. Restart and rerun | Core admission, policy change and restore pass after restart | **BLOCKED** | Await installed candidate and restart guide |
 | MAB printer and rejected-EAP fallback | Printer limited to quarantine; invalid cert cannot fall back to corp | **BLOCKED** | vEOS-lab 4.29.2F rejects the MAB enable command; authorized physical Arista with supported MAB is prerequisite |
 
@@ -72,7 +72,7 @@ The old baseline can be operated through direct NAC API calls and documented lab
 | Runner parser defect, fixed | Use the initial trial's substring `OPEN` match on an echoed `nc` command | Only the result line decides TCP status | Timeouts appeared as open in the invalid [08:37 trial](baseline-20261106T083719Z-results.json); corrected parser and [08:45 run](runs/baseline-20261106T084558Z/results.json) pass | ASTRA runner only, no NAC product commit |
 | Virtual VLAN convergence delay, under observation | Authenticate or reassign VLAN, then probe immediately after `show dot1x hosts` SUCCESS | Eventually permitted service opens; candidate deadline to be agreed | First probes may still time out; final run measured 17–22 seconds. [Events](runs/baseline-20261106T084558Z/events.jsonl) distinguish state from reachability | vEOS-lab 4.29.2F, NAC baseline 4911d2d; cause not isolated to product |
 
-OPUS's [draft API/evidence contract](api-evidence-contract.md) and his `docs/pilot/astra-contract.md` require stable authenticated identity, policy version, matched rule, source/freshness of inputs, RADIUS Class/decision ID, switch-observed state and CoA action state. ASTRA has raised two explicit contract differences with OPUS: the current FreeRADIUS is 3.0.26 while the draft says 3.2, and the proposed outage cache differs from the old no-cache adapter. Candidate defects will be filed with trigger, expected/actual result, evidence and exact commit, then retested against the replacement commit only.
+OPUS's contract v2 (`df0f1a9`, `docs/pilot/astra-contract.md`) and ASTRA's [local evidence contract](api-evidence-contract.md) require stable authenticated identity, policy version, matched rule, source/freshness of inputs, RADIUS Class/decision ID, switch-observed state and CoA action state. OPUS resolved two contract differences: FreeRADIUS 3.2.5 is an explicit candidate upgrade and 3.0.26 is unsupported by that candidate; the proposed cache was removed, with outage log provenance required. Candidate defects will be filed with trigger, expected/actual result, evidence and exact commit, then retested against the replacement commit only.
 
 ## Physical hardware and handoff
 
