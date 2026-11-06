@@ -53,7 +53,7 @@ No immutable OPUS candidate, installer/operator guide or supported adapter has b
 
 | Step | Expected result | Candidate status | Current evidence or prerequisite |
 | --- | --- | --- | --- |
-| 1. Clean install | Documented FreeRADIUS 3.2.5 upgrade and candidate install report ready | **BLOCKED** | Clean Ubuntu 24.04 control template booted successfully in EVE, then wiped; separate topology ready with all nodes stopped. Await OPUS candidate SHA, annotated tag and installation guide |
+| 1. Clean install | Documented FreeRADIUS 3.2.5 upgrade and candidate install report ready | **BLOCKED** | Clean Ubuntu 24.04 control template booted successfully in EVE, then wiped; separate topology ready with all nodes stopped. Await OPUS candidate SHA, annotated tag and installation guide, including package delivery to the isolated control NIC |
 | 2. Register switch and map segments | Operator workflow registers source IP and corp=10/quarantine=20 | **BLOCKED** | Await documented product workflow |
 | 3. Service health | HTTP 200 from each service's own segment | **PASS** lab preflight | Final baseline run verified both; repeat after candidate install |
 | 4. Fresh unauthenticated | Corp TCP blocked | **BLOCKED** | Pass on old baseline; candidate run pending |
