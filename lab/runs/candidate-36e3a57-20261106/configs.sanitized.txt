@@ -1,0 +1,46 @@
+# Exact lab-relevant settings for candidate 36e3a57. Values in angle brackets
+# are generated lab secrets retained only inside EVE/control node.
+# Product-generated EOS lines were applied through candidate_switch_guest.py;
+# service ports and routed control Ethernet4 are EVE-only wiring.
+hostname nac-veos-rc1
+vlan 10
+   name corp
+vlan 20
+   name quarantine
+radius-server host 10.70.99.2 key <REDACTED>
+aaa authentication dot1x default group radius
+dot1x system-auth-control
+dot1x dynamic-authorization
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+
+# NAC operator configuration
+switch source/NAS IP: 10.70.99.1
+FreeRADIUS address: 10.70.99.2
+CoA UDP port: 3799
+access port: Ethernet1
+segment mapping: corp=VLAN 10, quarantine=VLAN 20
+policy v2: rule bound-eap-corp, priority 100, enabled, conditions
+  identity.bound eq true AND mac.matches_device eq true,
+  action allow, segment corp; default deny
+policy v3: same rule/priority/conditions/action; segment quarantine only
+certificate binding: FreeRADIUS-validated issuer+serial+CN to administrator
+  device record, with NAS-reported MAC compared to registered device MAC
+FreeRADIUS: EAP-TLS, disposable CA; REST adapter to local nacd only
+RADIUS shared secret, NAC token, database password, TLS private keys: <REDACTED>
+
+# Isolation
+endpoint ens3 only; no management interface or default gateway
+EVE candidate control bridge vnet0_14: 10.70.99.254/24
+EVE forwarding: 0
+candidate service bridges vnet0_12 and vnet0_13: no EVE host address
+vEOS management interface: disconnected

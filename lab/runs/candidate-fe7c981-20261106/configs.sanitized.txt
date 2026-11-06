@@ -1,0 +1,47 @@
+# Exact lab-relevant settings for NAC fe7c981, EOS 4.29.2F.
+# Generated lab credentials and keys remain inside EVE only.
+hostname nac-veos-rc1
+vlan 10
+   name corp
+vlan 20
+   name quarantine
+radius-server host 10.70.99.2 key <REDACTED>
+aaa authentication dot1x default group radius
+dot1x system-auth-control
+dot1x dynamic-authorization
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+
+# NAC operator state
+switch source/NAS IP: 10.70.99.1
+FreeRADIUS address: 10.70.99.2
+CoA UDP port: 3799
+access port: Ethernet1
+mapping: corp=VLAN 10, quarantine=VLAN 20
+policy v2: bound-eap-corp, priority 100, enabled;
+  identity.bound eq true AND mac.matches_device eq true;
+  allow corp; default deny
+policy v3: same rule and conditions, allow quarantine only
+binding: FreeRADIUS-validated issuer+serial+CN to registered device;
+  NAS-reported MAC compared with registered device MAC
+FreeRADIUS: EAP-TLS, disposable CA, local REST adapter to nacd
+shared secret, admin token, DB password, TLS private keys: <REDACTED>
+
+# Isolation
+endpoint ens3 only, no management interface or default gateway
+endpoint static probe sources: 10.70.10.50/24 and 10.70.20.50/24
+corp target: 10.70.10.10:8080
+quarantine target: 10.70.20.10:8080
+EVE control bridge vnet0_14: 10.70.99.254/24
+EVE forwarding: 0
+candidate service bridges vnet0_12 and vnet0_13: no EVE host address
+vEOS management interface: disconnected

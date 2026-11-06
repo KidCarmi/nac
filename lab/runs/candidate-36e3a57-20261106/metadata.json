@@ -1,0 +1,28 @@
+{
+  "run_id": "candidate-36e3a57-20261106",
+  "status": "SUPERSEDED: OPUS subsequently moved pilot-rc1; these are exact-build results, not a verdict on later commits",
+  "candidate_commit": "36e3a57f81bfe1c0ebcc2d0ca58522d6b45f4525",
+  "nacd_sha256": "27f2e5d1f1dbe67392cb42fcfc18ebec34bf0541272dc6854289eb8e2c0feb06",
+  "bundle_sha256": "703e640f76aa848fe04b16a36d441e5d085a477628d887f7a361af86d14c6e2b",
+  "freeradius_adapter_sha256": "602c3fc5ff195c818bca6f5a15ca665b588077a07025315362cbb5331826c01b",
+  "freeradius_version": "3.2.5+dfsg-3~ubuntu24.04.3",
+  "eos_version": "vEOS-lab 4.29.2F",
+  "eve_version": "6.2.0-4",
+  "proxmox_version": "9.2.2",
+  "control_os": "Ubuntu 24.04.5 LTS",
+  "postgresql_version": "16.15-0ubuntu0.24.04.1",
+  "topology_sha256": "e3407fe0f06ec49769fac5dc3578aa436eaab91d700865cbb5e70838a5a7af8a",
+  "endpoint_interface": "ens3 only; source-bound 10.70.10.50/24 and 10.70.20.50/24 on that one NIC",
+  "switch_port": "Ethernet1; NAS-IP-Address 10.70.99.1",
+  "services": {"corp": "10.70.10.10:8080", "quarantine": "10.70.20.10:8080"},
+  "certificate_identity": {"subject_cn": "wired-endpoint-01", "issuer": "/CN=NAC Lab Disposable CA", "serial": "2E1B47DC86A00B7F7250500B4A21F454B2EFD819"},
+  "device_binding": "issuer + serial + CN mapped to NAC device 076e7798-50d5-4ae7-b0f3-1bd02e5257bd, binding 58d5619c-e948-444e-bed4-2e7e90aa117c revision 1; NAS MAC cross-checked",
+  "install_started_utc": "2026-11-06T10:35:05Z",
+  "install_completed_utc": "2026-11-06T10:36:08.754Z",
+  "agent_operated_install_seconds_approx": 64,
+  "files_sha256": {
+    "endpoint-eapol.pcap": "7294ef3fdf6575e9348da49c389625236141863ee1991e85c25b87d973b7794d",
+    "radius.pcap": "61c45419d941e29de714b8bc2ca21c1e217f6f7d95da956750af602a887f2130",
+    "probe-coa.jsonl": "c0d19997c2cf3008d8d4c32b6e5f4e774a91530a8ffadc87481da05e32a1366f"
+  }
+}

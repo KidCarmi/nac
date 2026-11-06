@@ -7,7 +7,8 @@ from pathlib import Path
 import re
 
 run_id = os.environ['RUN_ID']
-if not re.fullmatch(r'baseline-[0-9]{8}T[0-9]{6}Z', run_id):
+if not (re.fullmatch(r'baseline-[0-9]{8}T[0-9]{6}Z', run_id)
+        or re.fullmatch(r'candidate-[0-9a-f]{7}-[0-9]{8}', run_id)):
     raise SystemExit('invalid run id')
 root = Path('/root/nac-qualification') / run_id
 files = ('radius.pcap', 'endpoint-eapol.pcap', 'nac-decisions.jsonl', 'events.jsonl')
@@ -20,8 +21,15 @@ for line in Path('/root/nac-lab.env').read_bytes().splitlines():
         key, value = line.split(b'=', 1)
         if b'PASSWORD' in key or b'SECRET' in key or b'TOKEN' in key:
             secrets.append(value.strip())
+for name in ('nac-pilot-control.rootpw', 'nac-linux.rootpw', 'eve-nac-lab.rootpw', 'eve-nac-lab.webpw'):
+    path = Path('/root') / name
+    if path.exists():
+        secrets.append(path.read_bytes().strip())
 for name in files:
-    data = (root / name).read_bytes()
+    path = root / name
+    if not path.exists():
+        continue
+    data = path.read_bytes()
     matches = sum(1 for secret in secrets if len(secret) >= 12 and secret in data)
     print(name, 'plaintext_credential_matches', matches)
     if matches:

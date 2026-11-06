@@ -14,13 +14,16 @@ import time
 
 action = os.environ.get('PROBE_ACTION', '')
 run_id = os.environ.get('PROBE_RUN_ID', '')
-if action not in {'install', 'start', 'status', 'fetch', 'stop'}:
+if action not in {'install', 'start', 'status', 'fetch', 'stop', 'release'}:
     raise SystemExit('invalid PROBE_ACTION')
 if action != 'install' and not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', run_id):
     raise SystemExit('invalid PROBE_RUN_ID')
 duration = int(os.environ.get('PROBE_SECONDS', '90'))
 if not 1 <= duration <= 300:
     raise SystemExit('invalid PROBE_SECONDS')
+mode = os.environ.get('PROBE_MODE', 'fresh')
+if mode not in {'fresh', 'hold'}:
+    raise SystemExit('invalid PROBE_MODE')
 password = Path('/root/nac-linux.rootpw').read_text().strip()
 
 def read(sock, seconds):
@@ -34,7 +37,10 @@ def read(sock, seconds):
             data.extend(part)
     return bytes(data)
 
-with socket.create_connection(('127.0.0.1', 32770), timeout=5) as sock:
+console_port = int(os.environ.get('PROBE_CONSOLE_PORT', '32770'))
+if console_port not in {32770, 32780}:
+    raise SystemExit('invalid PROBE_CONSOLE_PORT')
+with socket.create_connection(('127.0.0.1', console_port), timeout=5) as sock:
     sock.sendall(b'\r\n')
     greeting = read(sock, 0.8)
     if b'login:' in greeting:
@@ -58,12 +64,19 @@ with socket.create_connection(('127.0.0.1', 32770), timeout=5) as sock:
             print('PROBE_INSTALLED_SHA256', digest)
         elif action == 'start':
             output = '/root/nac-probe-' + run_id + '.jsonl'
-            command = f'if test -e {output}; then echo NAC_PROBE_ALREADY_EXISTS; else nohup python3 /root/nac-probe.py --seconds {duration} --output {output} > /root/nac-probe-{run_id}.log 2>&1 </dev/null & echo $! > /root/nac-probe-{run_id}.pid; echo NAC_PROBE_STARTED; fi\r\n'
+            hold_flags = f'--hold-corp --release-marker /root/nac-probe-{run_id}.release' if mode == 'hold' else ''
+            command = f'if test -e {output}; then echo NAC_PROBE_ALREADY_EXISTS; else nohup python3 /root/nac-probe.py --seconds {duration} --output {output} {hold_flags} > /root/nac-probe-{run_id}.log 2>&1 </dev/null & echo $! > /root/nac-probe-{run_id}.pid; echo NAC_PROBE_STARTED; fi\r\n'
             sock.sendall(command.encode())
             result = read(sock, 2).decode('utf-8', 'replace')
             if 'NAC_PROBE_STARTED' not in result:
                 raise RuntimeError('probe start was not acknowledged')
-            print('PROBE_STARTED', run_id, duration)
+            print('PROBE_STARTED', run_id, duration, mode)
+        elif action == 'release':
+            sock.sendall(f'touch /root/nac-probe-{run_id}.release; echo NAC_HOLD_RELEASED\r\n'.encode())
+            result = read(sock, 1).decode('utf-8', 'replace')
+            if 'NAC_HOLD_RELEASED' not in result:
+                raise RuntimeError('held connection release was not acknowledged')
+            print('HELD_CONNECTION_RELEASED', run_id)
         elif action == 'status':
             sock.sendall(f'tail -n 2 /root/nac-probe-{run_id}.jsonl; cat /root/nac-probe-{run_id}.log\r\n'.encode())
             print(read(sock, 1.5).decode('utf-8', 'replace')[-2000:])

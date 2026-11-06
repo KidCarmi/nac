@@ -1,0 +1,16 @@
+{
+  "run_id": "candidate-fe7c981-20261106",
+  "candidate_commit": "fe7c9810848910aa4dc4536a5074d3ebaef72c7e",
+  "expected_nacd_sha256": "062e948ac922ed703ed3743a75a2bc85241bf59597b963282dae2cef3e764204",
+  "started_at_utc": "2026-11-06T11:12:08.246+00:00",
+  "topology_sha256": "e3407fe0f06ec49769fac5dc3578aa436eaab91d700865cbb5e70838a5a7af8a",
+  "runner_sha256": "6525e2f6500af52b541170dc5b33f70204fda9f829daf31dab95c786cc44c3b4",
+  "endpoint_management_nic": false,
+  "proxmox_version": "9.2.2",
+  "eve_version": "6.2.0-4",
+  "eos_image_version": "vEOS-lab 4.29.2F",
+  "control_os": "Ubuntu 24.04.5 LTS",
+  "freeradius_version": "3.2.5+dfsg-3~ubuntu24.04.3",
+  "postgresql_version": "16.15-0ubuntu0.24.04.1",
+  "freeradius_adapter_sha256": "602c3fc5ff195c818bca6f5a15ca665b588077a07025315362cbb5331826c01b"
+}
