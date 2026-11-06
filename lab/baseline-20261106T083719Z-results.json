@@ -1,0 +1,67 @@
+{
+  "run_id": "baseline-20261106T083719Z",
+  "nac_commit": "4911d2d940797aeb41be3815af1cf23b25573dc1",
+  "results": [
+    {
+      "test": "service_health",
+      "expected": "both HTTP 200 from their own EVE bridges",
+      "actual": "{'corp': 200, 'quarantine': 200}",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "test": "fresh_unauthenticated",
+      "expected": "corp TCP blocked on one-NIC endpoint",
+      "actual": "corp_open=True; show dot1x hosts\nPort      Supplicant MAC Auth  State                   Fallback              \n--------- -------------- ----- ----------------------- ----------------------\n\nVLAN\n----\n\nnac-veos#\nnac-veos#",
+      "status": "FAIL",
+      "evidence": [
+        "endpoint-eapol.pcap",
+        "events.jsonl"
+      ]
+    },
+    {
+      "test": "valid_corp",
+      "expected": "EAP-TLS SUCCESS, VLAN 10, corp open, quarantine blocked",
+      "actual": "vlan10=True,corp_open=True,quarantine_open=True",
+      "status": "FAIL",
+      "evidence": [
+        "endpoint-eapol.pcap",
+        "radius.pcap",
+        "events.jsonl"
+      ]
+    },
+    {
+      "test": "invalid_certificate",
+      "expected": "EAP-TLS reject, no VLAN, corp blocked",
+      "actual": "eap_failed=True,corp_open=True",
+      "status": "FAIL",
+      "evidence": [
+        "endpoint-eapol.pcap",
+        "radius.pcap",
+        "events.jsonl"
+      ]
+    },
+    {
+      "test": "policy_to_quarantine",
+      "expected": "same identity and port; only NAC rule segment changed; VLAN 20, quarantine open, corp blocked",
+      "actual": "vlan20=True,quarantine_open=True,corp_open=True",
+      "status": "FAIL",
+      "evidence": [
+        "endpoint-eapol.pcap",
+        "radius.pcap",
+        "events.jsonl"
+      ]
+    },
+    {
+      "test": "policy_restore",
+      "expected": "previous rule restored; VLAN 10, corp open, quarantine blocked",
+      "actual": "vlan10=True,corp_open=True,quarantine_open=True",
+      "status": "FAIL",
+      "evidence": [
+        "endpoint-eapol.pcap",
+        "radius.pcap",
+        "events.jsonl"
+      ]
+    }
+  ]
+}
