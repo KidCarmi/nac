@@ -93,7 +93,9 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 		return nil, err
 	}
 	if sess.Override != prevOverride {
-		if err := s.store.UpdateSession(ctx, sess); err != nil {
+		// Only the override columns: a concurrent authentication or
+		// observation cannot be undone by (or undo) this write.
+		if err := s.store.SetSessionOverride(ctx, sess.ID, sess.Override, sess.OverrideBy, sess.OverrideAt); err != nil {
 			return nil, err
 		}
 	}

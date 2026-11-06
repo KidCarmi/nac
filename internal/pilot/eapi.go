@@ -211,7 +211,10 @@ func (s *Service) observeSwitch(ctx context.Context, sw *domain.Switch) error {
 			sess.ObservedStatus, sess.ObservedVLAN, sess.ObservedDetail = "absent", "", "the switch lists no supplicant for this port and MAC"
 		}
 		sess.ObservedAt, sess.ObservedSource = &now, "eapi: show dot1x hosts"
-		if err := s.store.UpdateSession(ctx, sess); err != nil {
+		// Observation-only write: this poll's snapshot of the session may
+		// already be stale (an operator quarantine, an accounting Stop).
+		if err := s.store.UpdateSessionObservation(ctx, sess.ID, sess.ObservedStatus, sess.ObservedVLAN, now,
+			sess.ObservedSource, sess.ObservedDetail); err != nil {
 			continue
 		}
 		if prevStatus != sess.ObservedStatus || prevVLAN != sess.ObservedVLAN {

@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/kidcarmi/nac/internal/app"
@@ -473,5 +474,116 @@ func TestPilotWorkflow_EndToEnd(t *testing.T) {
 	r = h2.radiusCall("/api/v1/radius/authorize", "127.0.0.1", authAttrs(), 200)
 	if frVal(r, "reply:Tunnel-Private-Group-Id") != "10" {
 		t.Fatalf("after restart the endpoint should still get corp: %v", r)
+	}
+}
+
+// Regressions for review findings on PR #1.
+func TestPilotRegressions_ReviewFindings(t *testing.T) {
+	resetDB(t, dsn(t))
+	dir := t.TempDir()
+	h := start(t, dir)
+	defer h.stop()
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, dsn(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(ctx)
+
+	var sw map[string]any
+	h.do("POST", "/api/v1/switches", map[string]any{"name": "sw", "radius_source_ip": "127.0.0.1", "radius_secret": swSecret,
+		"coa_port": 9, "segment_vlans": map[string]int{"corp": 10, "quarantine": 20}}, 201, &sw, true)
+	var ep map[string]any
+	h.do("POST", "/api/v1/endpoints", map[string]any{"mac": endpointMAC, "hostname": "h1", "posture": "compliant"}, 201, &ep, true)
+	h.do("POST", "/api/v1/identity-bindings", map[string]any{"endpoint_id": ep["id"], "issuer": caIssuer, "serial": certSerial}, 201, nil, true)
+	h.do("POST", "/api/v1/policies", map[string]any{"name": "compliant-corp", "priority": 10, "enabled": true, "action": "allow", "segment": "corp",
+		"conditions": []map[string]any{{"field": "identity.bound", "operator": "eq", "values": []string{"true"}},
+			{"field": "posture", "operator": "eq", "values": []string{"compliant"}}}}, 201, nil, true)
+	var pv map[string]any
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+
+	attrs := authAttrs()
+	r := h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200)
+	if frVal(r, "reply:Tunnel-Private-Group-Id") != "10" {
+		t.Fatalf("fresh compliant posture should give corp: %v", r)
+	}
+	firstDecision := strings.TrimPrefix(frVal(r, "reply:Class"), "nac:")
+	var list struct{ Sessions []map[string]any }
+	h.do("GET", "/api/v1/sessions", nil, 200, &list, true)
+	sessID := list.Sessions[0]["id"].(string)
+
+	// --- Finding 3: an inventory edit must not renew old posture. ---
+	if _, err := conn.Exec(ctx, `UPDATE endpoints SET posture_observed_at = now() - interval '3 days'`); err != nil {
+		t.Fatal(err)
+	}
+	h.do("PUT", "/api/v1/endpoints/"+ep["id"].(string), map[string]any{"hostname": "h1-renamed"}, 200, nil, true)
+	r = h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200)
+	if frVal(r, "control:Tmp-String-1") != "nac-reject" {
+		t.Fatalf("3-day-old posture must be stale after a hostname edit (default deny), got %v", r)
+	}
+	var detail map[string]any
+	h.do("GET", "/api/v1/sessions/"+sessID, nil, 200, &detail, true)
+	if st := detail["last_decision"].(map[string]any)["inputs"].(map[string]any)["posture"].(map[string]any)["status"]; st != "stale" {
+		t.Fatalf("posture evidence should be stale, got %v", st)
+	}
+	// Re-reporting posture makes it fresh again.
+	h.do("PUT", "/api/v1/endpoints/"+ep["id"].(string), map[string]any{"hostname": "h1-renamed", "posture": "compliant"}, 200, nil, true)
+	r = h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200)
+	if frVal(r, "reply:Tunnel-Private-Group-Id") != "10" {
+		t.Fatalf("re-reported posture should be fresh: %v", r)
+	}
+
+	// --- Finding 1: a stale full-row session write cannot clear an override. ---
+	h.do("POST", "/api/v1/sessions/"+sessID+"/quarantine", nil, 202, nil, true)
+	h.app.Pilot().Wait() // CoA to an unreachable port: times out, override stays
+	var override string
+	if err := conn.QueryRow(ctx, `SELECT override FROM radius_sessions WHERE id=$1`, sessID).Scan(&override); err != nil || override != "quarantine" {
+		t.Fatalf("override = %q, %v", override, err)
+	}
+	// Simulate the observation poller and the RADIUS path writing back
+	// snapshots taken before the quarantine.
+	if _, err := conn.Exec(ctx, `UPDATE radius_sessions SET observed_status='SUCCESS', observed_vlan='10', observed_at=now() WHERE id=$1`, sessID); err != nil {
+		t.Fatal(err)
+	}
+	r = h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", attrs, 200)
+	if frVal(r, "reply:Tunnel-Private-Group-Id") != "20" {
+		t.Fatalf("override must survive authentication writes: %v", r)
+	}
+	if err := conn.QueryRow(ctx, `SELECT override FROM radius_sessions WHERE id=$1`, sessID).Scan(&override); err != nil || override != "quarantine" {
+		t.Fatalf("authorize write cleared the override: %q, %v", override, err)
+	}
+
+	// --- Finding 2: stale accounting must not end the current session. ---
+	acct := func(status, acctID, class string) {
+		a := map[string]string{"Acct-Status-Type": status, "Acct-Session-Id": acctID, "Calling-Station-Id": "00-50-00-00-02-00", "NAS-Port-Id": "Ethernet1"}
+		if class != "" {
+			a["Class"] = class
+		}
+		h.radiusCall("/api/v1/radius/accounting", "127.0.0.1", a, 204)
+	}
+	state := func() string {
+		var st string
+		if err := conn.QueryRow(ctx, `SELECT state FROM radius_sessions WHERE id=$1`, sessID).Scan(&st); err != nil {
+			t.Fatal(err)
+		}
+		return st
+	}
+	acct("Start", "acct-2", "")
+	acct("Stop", "acct-1", "")                         // earlier connection's Stop
+	acct("Stop", "acct-2", "nac:"+uuid.New().String()) // Class of a decision that is not this session's
+	if state() != "active" {
+		t.Fatalf("a stale Stop ended the current session")
+	}
+	if _, err := conn.Exec(ctx, `UPDATE auth_decisions SET session_id = NULL WHERE id=$1`, firstDecision); err != nil {
+		t.Fatal(err)
+	}
+	acct("Stop", "acct-2", "nac:"+firstDecision) // decision now belongs to no session
+	if state() != "active" {
+		t.Fatalf("a Stop whose Class names another session's decision ended the current session")
+	}
+	acct("Stop", "acct-2", "")
+	if state() != "ended" {
+		t.Fatalf("the matching Stop should end the session")
 	}
 }

@@ -72,11 +72,12 @@ func EndpointInputs(ep domain.Endpoint) domain.Inputs {
 	in.Set("hostname", ep.Hostname, domain.SourceEndpointRecord, at, false)
 	in.Set("device_type", ep.DeviceType, domain.SourceEndpointRecord, at, false)
 	if ep.Posture != "" && ep.Posture != domain.PostureUnknown {
-		pat := at
-		if ep.PostureObservedAt != nil {
-			pat = ep.PostureObservedAt
-		}
-		in.Set("posture", string(ep.Posture), domain.SourcePosture, pat, false)
+		// Posture freshness comes only from its own observation time, never
+		// from the record's UpdatedAt: editing a hostname is not a posture
+		// report. Persisted rows always carry it (migration 0004 backfills
+		// older ones); a record without it (e.g. built in memory by a caller)
+		// is evaluated without a freshness limit.
+		in.Set("posture", string(ep.Posture), domain.SourcePosture, ep.PostureObservedAt, false)
 	} else {
 		in["posture"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourcePosture, Note: "no posture result recorded"}
 	}

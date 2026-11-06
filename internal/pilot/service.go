@@ -32,7 +32,8 @@ type Store interface {
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
-	UpdateSession(ctx context.Context, s *domain.Session) error
+	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
+	UpdateSessionObservation(ctx context.Context, id uuid.UUID, status, vlan string, at time.Time, source, detail string) error
 	ListSessions(ctx context.Context, f postgres.SessionFilter) ([]domain.Session, error)
 	ActiveSessionsOnSwitch(ctx context.Context, switchID uuid.UUID) ([]domain.Session, error)
 	GetDecision(ctx context.Context, id uuid.UUID) (*domain.DecisionRecord, error)

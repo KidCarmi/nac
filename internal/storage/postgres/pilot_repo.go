@@ -307,18 +307,40 @@ func (r *PilotRepo) CreateSession(ctx context.Context, s *domain.Session) error 
 	return err
 }
 
-// UpdateSession writes all mutable session fields.
+// Session columns are owned by one writer each, so concurrent writers that
+// each read the row earlier cannot undo one another:
+//   - UpdateSession (RADIUS authorize/reject/accounting): identity, state,
+//     requested authorization, timestamps.
+//   - SetSessionOverride (operator CoA actions): override_*.
+//   - UpdateSessionObservation (eAPI poller): observed_*.
+
+// UpdateSession writes the fields owned by the RADIUS path. It never writes
+// the operator override or switch observations.
 func (r *PilotRepo) UpdateSession(ctx context.Context, s *domain.Session) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE radius_sessions SET calling_station_id=$2, nas_ip_address=$3, user_name=$4, acct_session_id=$5, cert_issuer=$6,
-			cert_serial=$7, cert_cn=$8, endpoint_id=$9, binding_id=$10, state=$11, override=$12, override_by=$13, override_at=$14,
-			last_decision_id=$15, requested_action=$16, requested_segment=$17, requested_vlan=$18, last_auth_at=$19, ended_at=$20,
-			observed_status=$21, observed_vlan=$22, observed_at=$23, observed_source=$24, observed_detail=$25
+			cert_serial=$7, cert_cn=$8, endpoint_id=$9, binding_id=$10, state=$11,
+			last_decision_id=$12, requested_action=$13, requested_segment=$14, requested_vlan=$15, last_auth_at=$16, ended_at=$17
 		WHERE id=$1`,
 		s.ID, s.CallingStationID, s.NASIPAddress, s.UserName, s.AcctSessionID, s.CertIssuer, s.CertSerial, s.CertCN,
-		s.EndpointID, s.BindingID, s.State, s.Override, s.OverrideBy, s.OverrideAt, s.LastDecisionID, s.RequestedAction,
-		s.RequestedSegment, s.RequestedVLAN, s.LastAuthAt, s.EndedAt, s.ObservedStatus, s.ObservedVLAN, s.ObservedAt,
-		s.ObservedSource, s.ObservedDetail)
+		s.EndpointID, s.BindingID, s.State, s.LastDecisionID, s.RequestedAction,
+		s.RequestedSegment, s.RequestedVLAN, s.LastAuthAt, s.EndedAt)
+	return err
+}
+
+// SetSessionOverride writes only the operator override.
+func (r *PilotRepo) SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE radius_sessions SET override=$2, override_by=$3, override_at=$4 WHERE id=$1`, id, override, by, at)
+	if err == nil && tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return err
+}
+
+// UpdateSessionObservation writes only the switch-observed state.
+func (r *PilotRepo) UpdateSessionObservation(ctx context.Context, id uuid.UUID, status, vlan string, at time.Time, source, detail string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE radius_sessions SET observed_status=$2, observed_vlan=$3, observed_at=$4, observed_source=$5,
+		observed_detail=$6 WHERE id=$1`, id, status, vlan, at, source, detail)
 	return err
 }
 

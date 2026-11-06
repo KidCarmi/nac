@@ -27,6 +27,7 @@ type Store interface {
 	UpdateSession(ctx context.Context, s *domain.Session) error
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
 	InsertDecision(ctx context.Context, d *domain.DecisionRecord) error
+	GetDecision(ctx context.Context, id uuid.UUID) (*domain.DecisionRecord, error)
 	InsertEvent(ctx context.Context, e *domain.AuthEvent) (bool, error)
 	// PendingCoA returns the newest CoA for the session in sent/acked state.
 	PendingCoA(ctx context.Context, sessionID uuid.UUID) (*domain.CoARequest, error)
@@ -286,6 +287,12 @@ func (s *Service) buildInputs(ctx context.Context, sw *domain.Switch, req Reques
 		}
 		in[k] = v
 	}
+	if pe := in["posture"]; pe.Status == domain.EvidencePresent && pe.ObservedAt == nil {
+		// Fail safe: posture whose observation time is unknown cannot be
+		// shown to be fresh, so it is treated like stale evidence.
+		pe.Status, pe.Note = domain.EvidenceStale, "posture has no observation time; re-report it through the device record"
+		in["posture"] = pe
+	}
 	access.ApplyFreshness(in, now, s.maxAge)
 	return in, binding, ep
 }
@@ -399,10 +406,19 @@ func (s *Service) Accounting(ctx context.Context, req Request) error {
 	if err != nil {
 		return nil // accounting for a session we never authorized: ignore
 	}
+	detail := map[string]string{"acct_status_type": req.AcctStatusType, "acct_session_id": req.AcctSessionID, "class": req.Class}
+	// A delayed or retransmitted packet from an EARLIER connection on the same
+	// port and MAC must not touch the current session: only a Start may bind a
+	// new Acct-Session-Id, and the echoed Class must name a decision of this
+	// session.
+	if stale := s.staleAccounting(ctx, sess, req); stale != "" {
+		s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageAccounting,
+			Result: "info", Reason: "accounting " + req.AcctStatusType + " ignored: " + stale, Source: "switch", Detail: detail})
+		return nil
+	}
 	if req.AcctSessionID != "" {
 		sess.AcctSessionID = req.AcctSessionID
 	}
-	detail := map[string]string{"acct_status_type": req.AcctStatusType, "acct_session_id": req.AcctSessionID, "class": req.Class}
 	if strings.EqualFold(req.AcctStatusType, "Stop") {
 		sess.State, sess.EndedAt = domain.SessionEnded, &now
 	}
@@ -412,6 +428,27 @@ func (s *Service) Accounting(ctx context.Context, req Request) error {
 	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: mac, NASPortID: req.NASPortID, Stage: domain.StageAccounting,
 		Result: "info", Reason: "accounting " + req.AcctStatusType, Source: "switch", Detail: detail})
 	return nil
+}
+
+// staleAccounting explains why an accounting packet does not belong to the
+// current session ("" when it does).
+func (s *Service) staleAccounting(ctx context.Context, sess *domain.Session, req Request) string {
+	if cls := strings.TrimPrefix(req.Class, "nac:"); cls != req.Class {
+		if id, err := uuid.Parse(cls); err == nil {
+			d, err := s.store.GetDecision(ctx, id)
+			switch {
+			case errors.Is(err, domain.ErrNotFound):
+				return "its Class names decision " + id.String() + ", which NAC never issued for this session"
+			case err == nil && (d.SessionID == nil || *d.SessionID != sess.ID):
+				return "its Class names decision " + id.String() + ", which belongs to an earlier session"
+			}
+		}
+	}
+	isStart := strings.EqualFold(req.AcctStatusType, "Start")
+	if !isStart && req.AcctSessionID != "" && sess.AcctSessionID != "" && req.AcctSessionID != sess.AcctSessionID {
+		return "Acct-Session-Id " + req.AcctSessionID + " is not the current session's (" + sess.AcctSessionID + ")"
+	}
+	return ""
 }
 
 func (s *Service) event(ctx context.Context, e *domain.AuthEvent) {
