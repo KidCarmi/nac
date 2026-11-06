@@ -66,6 +66,10 @@ type RecordedCase struct {
 	RecordedAction  domain.PolicyAction `json:"recorded_action"`
 	RecordedSegment string              `json:"recorded_segment,omitempty"`
 	RecordedVersion int                 `json:"recorded_version,omitempty"`
+	// Override is the session's CURRENT operator override ("quarantine" or
+	// ""). It takes precedence over policy at authentication, so the preview
+	// applies it too.
+	Override string `json:"override,omitempty"`
 }
 
 // CaseSource supplies the latest recorded decision per session/identity.
@@ -263,16 +267,22 @@ func (s *Service) validate(rules []domain.Policy, def domain.PolicyAction, maps 
 
 // PreviewRow is one recorded case evaluated under active and draft.
 type PreviewRow struct {
-	Case                 RecordedCase        `json:"case"`
-	ActiveAction         domain.PolicyAction `json:"active_action"`
-	ActiveSegment        string              `json:"active_segment,omitempty"`
-	ActiveRule           string              `json:"active_rule,omitempty"`
-	DraftAction          domain.PolicyAction `json:"draft_action"`
-	DraftSegment         string              `json:"draft_segment,omitempty"`
-	DraftRule            string              `json:"draft_rule,omitempty"`
-	Changed              bool                `json:"changed"`
-	InsufficientEvidence []string            `json:"insufficient_evidence,omitempty"`
-	StaleInputs          []string            `json:"stale_inputs,omitempty"`
+	Case          RecordedCase        `json:"case"`
+	ActiveAction  domain.PolicyAction `json:"active_action"`
+	ActiveSegment string              `json:"active_segment,omitempty"`
+	ActiveRule    string              `json:"active_rule,omitempty"`
+	DraftAction   domain.PolicyAction `json:"draft_action"`
+	DraftSegment  string              `json:"draft_segment,omitempty"`
+	DraftRule     string              `json:"draft_rule,omitempty"`
+	// Changed compares the EFFECTIVE authorization (operator override
+	// applied, as at authentication). PolicyChanged compares the policy
+	// results alone, so an operator still sees what the draft would do once
+	// an override is restored.
+	Changed              bool     `json:"changed"`
+	PolicyChanged        bool     `json:"policy_changed"`
+	OverrideApplies      bool     `json:"override_applies,omitempty"`
+	InsufficientEvidence []string `json:"insufficient_evidence,omitempty"`
+	StaleInputs          []string `json:"stale_inputs,omitempty"`
 }
 
 // Preview is the predicted effect of publishing the draft.
@@ -319,11 +329,20 @@ func (s *Service) Preview(ctx context.Context) (*Preview, error) {
 	for _, c := range cases {
 		a := activeEngine.EvaluateInputs(c.Subject, c.Inputs, active.Rules)
 		d := draftEngine.EvaluateInputs(c.Subject, c.Inputs, ws)
+		policyChanged := a.Action != d.Action || a.Segment != d.Segment
 		row := PreviewRow{Case: c,
 			ActiveAction: a.Action, ActiveSegment: a.Segment, ActiveRule: a.MatchedRule,
 			DraftAction: d.Action, DraftSegment: d.Segment, DraftRule: d.MatchedRule,
-			Changed:              a.Action != d.Action || a.Segment != d.Segment,
+			Changed: policyChanged, PolicyChanged: policyChanged,
 			InsufficientEvidence: d.InsufficientEvidence,
+		}
+		if c.Override == domain.CoAQuarantine {
+			// Same precedence as radiusauth.Authorize: the override decides the
+			// effective authorization under both versions.
+			row.OverrideApplies = true
+			row.ActiveAction, row.ActiveSegment = domain.ActionQuarantine, "quarantine"
+			row.DraftAction, row.DraftSegment = domain.ActionQuarantine, "quarantine"
+			row.Changed = false
 		}
 		for f, ev := range c.Inputs {
 			if ev.Status == domain.EvidenceStale {
@@ -338,7 +357,7 @@ func (s *Service) Preview(ctx context.Context) (*Preview, error) {
 		if len(row.InsufficientEvidence) > 0 {
 			p.Insufficient++
 		}
-		if row.Changed || len(row.InsufficientEvidence) > 0 {
+		if row.Changed || row.PolicyChanged || len(row.InsufficientEvidence) > 0 {
 			p.Rows = append(p.Rows, row)
 		}
 	}

@@ -316,3 +316,31 @@ func TestValidate_Errors(t *testing.T) {
 		t.Fatalf("shadowed rule should be a warning, got %+v", v)
 	}
 }
+
+// Review finding: a session under an operator quarantine override stays in
+// quarantine under both versions, so the effective result is unchanged even
+// when the policy result changes.
+func TestPreview_AppliesOperatorOverride(t *testing.T) {
+	ctx := context.Background()
+	svc, st := newSvc(t, rule("allow-bound", 10, domain.ActionAllow, "corp", boundIdentity()))
+	in := domain.Inputs{}
+	in.Set("identity.bound", "true", domain.SourceBinding, nil, true)
+	svc.SetSources(fixedCases{
+		{DecisionID: uuid.New(), Subject: "quarantined", Inputs: in, Override: "quarantine"},
+		{DecisionID: uuid.New(), Subject: "normal", Inputs: in},
+	}, lab)
+	st.ws = []domain.Policy{rule("deny-bound", 10, domain.ActionDeny, "", boundIdentity())}
+	p, err := svc.Preview(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Changed != 1 {
+		t.Fatalf("only the session without an override changes effectively, got %d", p.Changed)
+	}
+	for _, r := range p.Rows {
+		if r.Case.Subject == "quarantined" && (r.Changed || !r.PolicyChanged || !r.OverrideApplies ||
+			r.ActiveSegment != "quarantine" || r.DraftSegment != "quarantine") {
+			t.Fatalf("override row wrong: %+v", r)
+		}
+	}
+}

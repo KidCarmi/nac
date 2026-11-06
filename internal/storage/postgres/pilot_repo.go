@@ -486,9 +486,11 @@ func (r *PilotRepo) SessionDecisions(ctx context.Context, sessionID uuid.UUID) (
 // since `since`, with its recorded inputs.
 func (r *PilotRepo) RecentCases(ctx context.Context, since time.Time, limit int) ([]policyver.RecordedCase, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT DISTINCT ON (session_id) id, session_id, subject, occurred_at, inputs, action, segment, COALESCE(policy_version, 0)
-		FROM auth_decisions WHERE occurred_at >= $1 AND session_id IS NOT NULL
-		ORDER BY session_id, occurred_at DESC LIMIT $2`, since, limit)
+		SELECT DISTINCT ON (d.session_id) d.id, d.session_id, d.subject, d.occurred_at, d.inputs, d.action, d.segment,
+			COALESCE(d.policy_version, 0), COALESCE(s.override, '')
+		FROM auth_decisions d LEFT JOIN radius_sessions s ON s.id = d.session_id
+		WHERE d.occurred_at >= $1 AND d.session_id IS NOT NULL
+		ORDER BY d.session_id, d.occurred_at DESC LIMIT $2`, since, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +501,7 @@ func (r *PilotRepo) RecentCases(ctx context.Context, since time.Time, limit int)
 			c      policyver.RecordedCase
 			inputs []byte
 		)
-		if err := rows.Scan(&c.DecisionID, &c.SessionID, &c.Subject, &c.OccurredAt, &inputs, &c.RecordedAction, &c.RecordedSegment, &c.RecordedVersion); err != nil {
+		if err := rows.Scan(&c.DecisionID, &c.SessionID, &c.Subject, &c.OccurredAt, &inputs, &c.RecordedAction, &c.RecordedSegment, &c.RecordedVersion, &c.Override); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(inputs, &c.Inputs); err != nil {
