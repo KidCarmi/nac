@@ -17,7 +17,7 @@ Read [known limitations](known-limitations.md) before installing.
 | Control node | Ubuntu 24.04 LTS (24.04.5 tested), 2 vCPU, 2 GB RAM, 10 GB disk, root access |
 | Release bundle | `nac-pilot-<version>.tar.gz` and its `.sha256` file |
 | Certificates | The CA that issued your endpoint certificates (PEM), plus a FreeRADIUS server certificate and unencrypted key issued for this host. For a lab only, use `--test-pki` instead. |
-| Switch | Arista EOS 4.29.2F with a routed interface that can reach the control node |
+| Switch | Arista EOS 4.29.2F with a routed interface that can reach the control node, and **ZeroTouch Provisioning cancelled** (otherwise `write memory` fails and the configuration is lost on reboot; see the walkthrough, step 1) |
 | Package source | The Ubuntu 24.04 archive (`archive.ubuntu.com`, `security.ubuntu.com`), directly or through an HTTP proxy |
 
 ### Network flows
@@ -235,7 +235,7 @@ bindings in the console.
 |---|---|---|
 | Copy the bundle and run `install.sh` | Shell on the control node, once | Initial setup |
 | Read the first admin password from `/root/nac-initial-admin.txt` | Shell, once | It is never shown over the network |
-| Apply the generated EOS configuration | Switch CLI | NAC does not write switch configuration |
+| Cancel ZeroTouch Provisioning on a factory-fresh switch, apply the generated EOS configuration, `write memory` | Switch CLI | NAC does not write switch configuration |
 | Renew the endpoint's IP address after a VLAN change, if its DHCP client does not | Endpoint | See known limitations |
 | Replace certificates or enable a CRL | Shell (section 5) | Not in the console in the pilot |
 

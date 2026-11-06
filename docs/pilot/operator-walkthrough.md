@@ -17,7 +17,16 @@ page to use.
    Saving writes the FreeRADIUS client list, and FreeRADIUS restarts automatically.
 2. Open the switch. **Generated EOS configuration** shows the configuration validated on
    EOS 4.29.2F. Replace `<RADIUS_SHARED_SECRET>`, or use **Show with secret**
-   (audited), then apply it on the switch.
+   (audited), then apply it on the switch and **save it** (`write memory`).
+
+   **Before you apply it, check ZeroTouch Provisioning.** A factory-fresh EOS
+   switch (vEOS-lab included) boots in ZeroTouch Provisioning. In that state
+   `write memory` fails, so the configuration you applied is lost at the next
+   reboot. On the switch, `show zerotouch` reports the state. If it is active,
+   run Arista's `zerotouch cancel`, which reloads the switch. Then apply the
+   configuration, run `write memory`, and confirm it was saved:
+   `show startup-config | section dot1x` should list the dot1x lines.
+   The pilot lab hit this on vEOS-lab 4.29.2F after a full restart.
 3. The switch page shows four separate facts:
 
    | Fact | Becomes "yes" when |
