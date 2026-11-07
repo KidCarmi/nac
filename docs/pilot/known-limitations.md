@@ -154,9 +154,10 @@ port, and the lab shows endpoints recover without one.
   (24 h), and is never taken from RADIUS.
 - **Validation:** see [qualification status](qualification-status.md).
   - The documented install passed as a clean-instance install on
-    `pilot-rc7` only (about 63 s). `pilot-rc8` and `pilot-rc9` were
-    installed in place over the previous candidate. The in-place upgrade
-    preserved settings and the running build matched.
+    `pilot-rc7` (about 63 s) and `pilot-rc9` (about 44 s from bundle
+    extraction to running services, with an automatic recovery after
+    reboot). `pilot-rc8` was installed in place over rc7 only. In-place
+    upgrades preserved settings, and the running build matched.
   - CoA, accounting, eAPI observation, DHCP transitions, outage and
     full-restart recovery passed on vEOS-lab 4.29.2F (`pilot-rc7`,
     `pilot-rc8`, through the API).
@@ -164,8 +165,10 @@ port, and the lab shows endpoints recover without one.
     and restore, quarantine and restore CoA) passed on `pilot-rc9`.
   - Not lab-run:
     - password change and host reset (unit and integration tested only)
-    - a clean-instance install of exact `pilot-rc8` (blocked in the lab) or
-      exact `pilot-rc9`
+    - a clean-instance install of exact `pilot-rc8` (blocked in the lab)
+    - switch onboarding on the clean `pilot-rc9` instance. Switch
+      registration through the console last passed on `pilot-rc1`; the rc9
+      UI run used an already registered switch.
   - Untested: physical Arista hardware (including MAB and unplug) and
     Windows endpoints.
 - **One operator account.** The bootstrapped administrator can change its own
