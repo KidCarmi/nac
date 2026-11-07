@@ -1,0 +1,6 @@
+CONNECTION {'detail': '10.70.10.80:50169', 'event': 'connected', 'sequence': 0, 'at_utc': '2026-11-07T11:31:24.302Z'}
+LAST_PRE_ACTION_REPLY {'detail': 'ping-00002844', 'event': 'reply', 'sequence': 2844, 'at_utc': '2026-11-07T11:55:45.088Z'}
+FIRST_POST_ACTION_REPLY {'detail': 'ping-00002845', 'event': 'reply', 'sequence': 2845, 'at_utc': '2026-11-07T11:55:45.597Z'}
+FIRST_POST_ACTION_FAILURE {'detail': 'MethodInvocationException', 'event': 'error', 'sequence': 2847, 'at_utc': '2026-11-07T11:55:48.188Z'}
+END {'detail': 'single connection; no reconnect', 'event': 'end', 'sequence': 2847, 'at_utc': '2026-11-07T11:55:48.191Z'}
+REPLY_COUNT 2846

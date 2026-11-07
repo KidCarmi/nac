@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lab name="NAC-Pilot-DHCP" id="f763a592-ae3e-4bec-93ef-5f5bd5f78c18" version="1" scripttimeout="600" lock="0" author="NAC wired lab">
+  <description>Isolated pilot candidate DHCP, eAPI and accounting qualification</description>
+  <body>One-NIC DHCP endpoint, distinct corp/quarantine DHCP services, cloned vEOS and Linux service disks, clean Ubuntu control. Run while prior labs are stopped.</body>
+  <topology>
+    <nodes>
+      <node id="31" name="vEOS-DHCP-access" type="qemu" template="veos" image="veos-4.29.2F-dhcp" console="telnet" cpu="1" cpulimit="1" ram="4096" ethernet="9" uuid="6639319c-9c0f-44d7-b26d-5a0fcdcffa8d" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=d -cpu Haswell" qemu_version="8.2.1" qemu_arch="x86_64" delay="0" icon="Router.png" config="0" left="420" top="250">
+        <interface id="1" name="Eth1" type="ethernet" network_id="31" />
+        <interface id="2" name="Eth2" type="ethernet" network_id="32" />
+        <interface id="3" name="Eth3" type="ethernet" network_id="33" />
+        <interface id="4" name="Eth4" type="ethernet" network_id="34" />
+      </node>
+      <node id="32" name="DHCP-endpoint" type="qemu" template="linux" image="linux-nac-dhcp-endpoint" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="47816447-44b6-45e6-92d7-75738c7515d6" firstmac="00:50:00:00:02:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="250">
+        <interface id="0" name="e0" type="ethernet" network_id="31" />
+      </node>
+      <node id="33" name="DHCP-corp-service" type="qemu" template="linux" image="linux-nac-dhcp-corp" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="71513fef-9fb7-4afa-a9e6-99b63ada1c12" firstmac="00:50:00:00:03:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="140">
+        <interface id="0" name="e0" type="ethernet" network_id="32" />
+      </node>
+      <node id="34" name="DHCP-quarantine-service" type="qemu" template="linux" image="linux-nac-dhcp-quarantine" console="telnet" cpu="1" cpulimit="1" ram="768" ethernet="1" uuid="a0303d71-0309-4487-b44c-5761dd5fccc6" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="760" top="380">
+        <interface id="0" name="e0" type="ethernet" network_id="33" />
+      </node>
+      <node id="35" name="NAC-candidate-control" type="qemu" template="linux" image="linux-nac24-control-bios" console="telnet" cpu="2" cpulimit="1" ram="3072" ethernet="1" uuid="46f11284-be29-4147-aaba-bfe5315cd934" firstmac="00:50:00:00:05:00" qemu_options="-machine type=pc,accel=kvm -serial mon:stdio -nographic -display none -no-user-config -rtc base=utc -boot order=c -cpu host" qemu_version="8.2.1" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Router.png" config="0" left="120" top="510">
+        <interface id="0" name="e0" type="ethernet" network_id="34" />
+      </node>
+    </nodes>
+    <networks>
+      <network id="31" type="bridge" name="dhcp-nac-access-link" left="307" top="268" visibility="1" icon="lan.png" />
+      <network id="32" type="bridge" name="dhcp-nac-corp-link" left="614" top="153" visibility="1" icon="lan.png" />
+      <network id="33" type="bridge" name="dhcp-nac-quarantine-link" left="614" top="384" visibility="1" icon="lan.png" />
+      <network id="34" type="bridge" name="dhcp-nac-control-link" left="307" top="499" visibility="1" icon="lan.png" />
+    </networks>
+  </topology>
+</lab>

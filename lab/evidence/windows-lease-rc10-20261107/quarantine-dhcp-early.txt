@@ -1,0 +1,58 @@
+11:24:41.834531 IP (tos 0x0, ttl 128, id 39939, offset 0, flags [none], proto UDP (17), length 330)
+    0.0.0.0.68 > 255.255.255.255.67: [udp sum ok] BOOTP/DHCP, Request from 00:50:00:00:02:00, length 302, xid 0x53785ecc, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Discover
+	    Client-ID (61), length 7: ether 00:50:00:00:02:00
+	    Requested-IP (50), length 4: 10.70.10.80
+	    Hostname (12), length 15: "NAC-ECGD18I4GVH"
+	    Vendor-Class (60), length 8: "MSFT 5.0"
+	    Parameter-Request (55), length 14: 
+	      Subnet-Mask (1), Default-Gateway (3), Domain-Name-Server (6), Domain-Name (15)
+	      Router-Discovery (31), Static-Route (33), Vendor-Option (43), Netbios-Name-Server (44)
+	      Netbios-Node (46), Netbios-Scope (47), Unknown (119), Classless-Static-Route (121)
+	      Classless-Static-Route-Microsoft (249), Unknown (252)
+11:24:41.835298 IP (tos 0x0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 328)
+    10.70.20.10.67 > 255.255.255.255.68: [udp sum ok] BOOTP/DHCP, Reply, length 300, xid 0x53785ecc, Flags [none] (0x0000)
+	  Your-IP 10.70.20.80
+	  Client-Ethernet-Address 00:50:00:00:02:00
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Offer
+	    Server-ID (54), length 4: 10.70.20.10
+	    Lease-Time (51), length 4: 3600
+	    Subnet-Mask (1), length 4: 255.255.255.0
+	    Default-Gateway (3), length 4: 10.70.20.10
+	    Domain-Name-Server (6), length 4: 10.70.20.10
+	    Domain-Name (15), length 12: "nac-lab.test"
+11:24:41.842722 IP (tos 0x0, ttl 128, id 39940, offset 0, flags [none], proto UDP (17), length 356)
+    0.0.0.0.68 > 255.255.255.255.67: [udp sum ok] BOOTP/DHCP, Request from 00:50:00:00:02:00, length 328, xid 0x53785ecc, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Request
+	    Client-ID (61), length 7: ether 00:50:00:00:02:00
+	    Requested-IP (50), length 4: 10.70.20.80
+	    Server-ID (54), length 4: 10.70.20.10
+	    Hostname (12), length 15: "NAC-ECGD18I4GVH"
+	    FQDN (81), length 18: "NAC-ECGD18I4GVH"
+	    Vendor-Class (60), length 8: "MSFT 5.0"
+	    Parameter-Request (55), length 14: 
+	      Subnet-Mask (1), Default-Gateway (3), Domain-Name-Server (6), Domain-Name (15)
+	      Router-Discovery (31), Static-Route (33), Vendor-Option (43), Netbios-Name-Server (44)
+	      Netbios-Node (46), Netbios-Scope (47), Unknown (119), Classless-Static-Route (121)
+	      Classless-Static-Route-Microsoft (249), Unknown (252)
+11:24:41.842904 IP (tos 0x0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 328)
+    10.70.20.10.67 > 255.255.255.255.68: [udp sum ok] BOOTP/DHCP, Reply, length 300, xid 0x53785ecc, Flags [none] (0x0000)
+	  Your-IP 10.70.20.80
+	  Client-Ethernet-Address 00:50:00:00:02:00
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: ACK
+	    Server-ID (54), length 4: 10.70.20.10
+	    Lease-Time (51), length 4: 3600
+	    Subnet-Mask (1), length 4: 255.255.255.0
+	    Default-Gateway (3), length 4: 10.70.20.10
+	    Domain-Name-Server (6), length 4: 10.70.20.10
+	    Domain-Name (15), length 12: "nac-lab.test"
