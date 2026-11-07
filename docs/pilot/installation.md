@@ -18,13 +18,13 @@ These are the setups the lab actually ran (ASTRA, EVE-NG, vEOS-lab
 
 | Workflow | Tested as | Candidate |
 |---|---|---|
-| Clean install | Fresh Ubuntu 24.04.5 guest (2 vCPU, 2 GB RAM, 12 GB disk), checksum-verified bundle, `install.sh --test-pki`, packages from the Ubuntu archive. About 44–63 s from extraction to running services | `pilot-rc7`, `pilot-rc9` |
+| Clean install | Fresh Ubuntu 24.04.5 guest (2 vCPU, 2 GB RAM, 12 GB disk), checksum-verified bundle, `install.sh --test-pki`, packages from the Ubuntu archive. About 44–63 s from extraction to running services | `pilot-rc7`, `pilot-rc9`, `pilot-rc10` |
 | In-place upgrade | Installer re-run over the previous candidate: settings kept, nacd restarted, running build checked | `pilot-rc7`, `pilot-rc8`, `pilot-rc9` |
 | Reboot / full restart | All services come back automatically. Sessions, policy and switches persist | `pilot-rc8`, `pilot-rc9` |
-| nacd outage | New logins rejected (fail closed), existing switch sessions kept, automatic recovery | `pilot-rc7`, `pilot-rc8` |
+| nacd outage | New logins rejected (fail closed), existing switch sessions kept, automatic recovery | `pilot-rc7`, `pilot-rc8`, `pilot-rc10` |
 | Password change and forgotten password | API change and `nac-reset-password` on the clean `pilot-rc9` instance. The console Account page is in the user handoff; the build's browser check (`scripts/ui-walkthrough.js`, simulated switch) exercises it | `pilot-rc9` |
 | Operator certificates | Lab disposable PKI only (`--test-pki` on the clean `pilot-rc9` install). Your own CA (`--ca`) follows section 5 and has not been lab-run | — |
-| eAPI TLS | Section 7a, verified TLS (`SSL_CERT_FILE`, TLS 1.2 / ECDHE, SAN = switch IP) on vEOS-lab 4.29.2F. A wrong SAN is rejected | clean `pilot-rc9` instance |
+| eAPI TLS | Section 7a, verified TLS (`SSL_CERT_FILE`, TLS 1.2 / ECDHE, SAN = switch IP) on vEOS-lab 4.29.2F. A wrong SAN is rejected | clean `pilot-rc9` instance, `pilot-rc10` |
 | Switch onboarding, binding, policy, CoA in the console | A clean instance with a real vEOS switch: register switch, bind the EAP-TLS certificate, preview, publish, corp admission, Quarantine and Restore | clean `pilot-rc9` instance |
 
 ## 1. What you need

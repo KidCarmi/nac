@@ -111,9 +111,10 @@ never tests the endpoint). The third one is new in `pilot-rc10`.
 
 Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
 - The endpoint moved corp → quarantine → corp without manual renewal,
-  reconnect or port bounce, on `pilot-rc7`, `pilot-rc8` and `pilot-rc9`.
+  reconnect or port bounce, on `pilot-rc7` to `pilot-rc10`. This held for
+  CoA and for rule-only policy changes.
 - The **old** segment was denied within about 0.1–2.2 s of the CoA.
-- The **new** segment was reachable 76–117 s after the CoA. A CoA
+- The **new** segment was reachable 24–117 s after the CoA. A CoA
   re-authentication keeps the link (carrier) up, so the DHCP client keeps
   its old lease until it gets a new one.
 
@@ -122,17 +123,24 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
 | `pilot-rc7` | not reported | 0.1–2 s | 87–117 s |
 | `pilot-rc8`, after a full restart | not reported | 0.703 / 0.685 s | 112.7 / 84.2 s |
 | Clean `pilot-rc9` instance, console Quarantine then Restore | **120 s** | 1.436 s / 2.201 s | 75.9 s / 116.1 s |
+| `pilot-rc10` Quarantine CoA / Restore CoA | 120 s | 1.964 s / 1.386 s | 24.4 s / 110.9 s |
+| `pilot-rc10` rule-only publish v3 (corp → quarantine) / v4 (back) | 120 s | 1.065 s / 1.601 s | 72.1 s / 79.5 s |
 
-- **Why it takes this long (inference, to be confirmed in the captures).**
-  - At half the lease (T1, 60 s for 120 s) the client renews by unicast to
-    its old DHCP server, which is not reachable from the new VLAN.
-  - It gets a new address only when it broadcasts at the rebinding time
-    (T2, about 87.5 % of the lease, 105 s for 120 s) or the lease expires.
-  - So expect up to about **0.9 × the lease time** after quarantine or
-    restore, depending on where in its lease the endpoint is.
-  - Shorter leases on the corp and quarantine scopes shorten the outage
-    proportionally, at the cost of more DHCP traffic. This sizing is
-    derived from the measurement, not a separately lab-tested setting.
+- **Why it takes this long (confirmed in the `pilot-rc10` captures).**
+  - The DHCP server sends no T1/T2 options, so the client uses the
+    defaults.
+  - At about 60 s (half the 120 s lease) it renews by unicast to its old
+    DHCP server, which is not reachable from the new VLAN.
+  - At about 105 s (87.5 % of the lease) it broadcasts a rebind, and the new
+    VLAN's server answers.
+  - So the endpoint reaches the new VLAN at its next rebinding time. The
+    delay is anywhere from a few seconds to about **0.9 × the lease time**,
+    depending on where in its lease the endpoint was at the CoA. This
+    explains the 24–117 s spread.
+  - Shorter leases on the corp and quarantine scopes shorten the worst
+    case proportionally, at the cost of more DHCP traffic. This sizing
+    follows from the measured behavior but was not run as a separate lab
+    configuration.
 - **Windows endpoints are untested.** Other DHCP clients may renew sooner
   or later.
 
