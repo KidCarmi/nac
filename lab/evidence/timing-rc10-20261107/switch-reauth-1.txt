@@ -1,0 +1,26 @@
+CLOCK_BEFORE show clock
+Sat Nov  7 11:06:45 2026
+Timezone: UTC
+Clock source: local
+nac-veos-rc1#
+nac-veos-rc1#
+SESSION_BEFORE show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE
+
+VLAN
+----
+10
+
+nac-veos-rc1#
+nac-veos-rc1#
+REAUTH dot1x re-authenticate Ethernet 1
+nac-veos-rc1#
+nac-veos-rc1#
+CLOCK_AFTER show clock
+Sat Nov  7 11:06:48 2026
+Timezone: UTC
+Clock source: local
+nac-veos-rc1#
+nac-veos-rc1#

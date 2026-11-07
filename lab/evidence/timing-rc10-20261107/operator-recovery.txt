@@ -1,0 +1,1 @@
+RC10_LAB_OPERATOR_RECOVERED tokens_revoked=true candidate=b39649f

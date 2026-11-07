@@ -1,0 +1,314 @@
+{
+  "files": [
+    {
+      "path": "coa-control/corp-dhcp.pcap0",
+      "bytes": 2954,
+      "sha256": "4a7e3e9e22718f6e564dad68869475891d7083edc3c601348d808fa9cadbc705"
+    },
+    {
+      "path": "coa-control/endpoint.pcap0",
+      "bytes": 36366,
+      "sha256": "7345a89246d702589f4ce21c008182cd26e53d909d8ab9c2ff7deb05efeccc37"
+    },
+    {
+      "path": "coa-control/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "coa-control/radius.pcap0",
+      "bytes": 27438,
+      "sha256": "21596d67242ec5465c6f511acbff3c07546c5d6c06bbac5e94dd723c8a3f2754"
+    },
+    {
+      "path": "coa-control-summary.jsonl",
+      "bytes": 2959,
+      "sha256": "4bf4fa3d2298d28f0983f9187fda7431f49ddd53d8e5d7def2a8566eedc6c6c9"
+    },
+    {
+      "path": "eapol-coa-control.txt",
+      "bytes": 7173,
+      "sha256": "1e55ab93f76b33af6e8049c4f3c6b823d994e9701d85cbb54ef9e140072d0092"
+    },
+    {
+      "path": "eapol-samevlan.txt",
+      "bytes": 11256,
+      "sha256": "541d0d0230db688bb0dc18bdb43838dac97dfd61ae99471ee3ae0da99c455a23"
+    },
+    {
+      "path": "eapol-timeline.txt",
+      "bytes": 5941,
+      "sha256": "a02c9d21f05df5f04c304609f2cabda678d03f6f919ee7cd8de0956ffbbd59b0"
+    },
+    {
+      "path": "eve_guest.py",
+      "bytes": 3515,
+      "sha256": "9ca3d0dc9daa8f97def6db9532b78b4e8fde4cdfdea643563d99a8a38fef2276"
+    },
+    {
+      "path": "findings.md",
+      "bytes": 6304,
+      "sha256": "cec5f8ddaa6ccb0e2d4c5f24965a45a9c45d24afecab6b8c9fddf69b9645a8fd"
+    },
+    {
+      "path": "lab-coa-vlan10-1.txt",
+      "bytes": 289,
+      "sha256": "3a58b55570f65132ce9c40cb38092eae4590de159dee4d22e2ecf9add4fb00b4"
+    },
+    {
+      "path": "lab-coa-vlan10-2.txt",
+      "bytes": 289,
+      "sha256": "aad369fcc87ff62c97e2097f36cf9df4e3e4df36a508be706fde52bc277dcff7"
+    },
+    {
+      "path": "lab-coa-vlan10-3.txt",
+      "bytes": 289,
+      "sha256": "bfbdcb0f8c59c09196890ebf2e87bf413438402f3ca2372bd97bd24c2fec24f2"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "bytes": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "novlan-coa-1.txt",
+      "bytes": 306,
+      "sha256": "c7796809f3cba56963a323b5dd90abd9fec227ac8e3077d02a006fbe45b6439b"
+    },
+    {
+      "path": "operator-recovery.txt",
+      "bytes": 66,
+      "sha256": "21d403cd84fecfc455fac6a2c0336f7d0b676672786f65d334adc4a9ebca9188"
+    },
+    {
+      "path": "persistence/corp-dhcp.pcap0",
+      "bytes": 5144,
+      "sha256": "79eb725c584358688f3657eeec7e4e6e63cc7c02f1c4931d5dec613fb709fae4"
+    },
+    {
+      "path": "persistence/endpoint.pcap0",
+      "bytes": 36587,
+      "sha256": "b774cef64b4fa18217feaf0e4dd002883e9a1bcf919991465ba6a6bdc9543e14"
+    },
+    {
+      "path": "persistence/quarantine-dhcp.pcap0",
+      "bytes": 2950,
+      "sha256": "e458a544e9222c2283f35aa4f6009626cb240411ba3299b6d9d5cf3e47c2e65d"
+    },
+    {
+      "path": "persistence/radius.pcap0",
+      "bytes": 24469,
+      "sha256": "1ff89887dd931214432d7e34b128e0ade21ccf5fc7273df4a061afe94a498b51"
+    },
+    {
+      "path": "probe-summary.txt",
+      "bytes": 2201,
+      "sha256": "9a1fe7e967bbff6a2d1cb150617344a92ef387e669e5a351a31a5cb5ad724e16"
+    },
+    {
+      "path": "product-reauth-1.txt",
+      "bytes": 1692,
+      "sha256": "d4b445a5f24c556eb9bf3cfb83ca69d0ea3d3b6e74b0b24c36a5e018f40f9d9d"
+    },
+    {
+      "path": "product-reauth-2.txt",
+      "bytes": 1498,
+      "sha256": "0d638a4b7e1d071918a3a8032ff9b2e35631ca32fcff1f363ad44eec87b65a7c"
+    },
+    {
+      "path": "product-reauth-3.txt",
+      "bytes": 1497,
+      "sha256": "460ae2355ce45d458159352f1773582d84c5562af495c1f875375fb18276794b"
+    },
+    {
+      "path": "qualification/clean_rc9_vm.py",
+      "bytes": 6334,
+      "sha256": "2560baa95dd023aeeb66be56e192679950e097b7ff60385d00fa1a6917858ce4"
+    },
+    {
+      "path": "qualification/compare_coa_tunnel_attrs.py",
+      "bytes": 1026,
+      "sha256": "e727f7e45a2829c30feec61e43c1c991f2dd07661d49220b652fa8fb919a20aa"
+    },
+    {
+      "path": "qualification/dhcp_capture_guest.py",
+      "bytes": 2314,
+      "sha256": "24e57c12a1f774502e90d4a337670e206c451e0b91ba741f89690bf2be951ab0"
+    },
+    {
+      "path": "qualification/dhcp_service_health_guest.py",
+      "bytes": 2546,
+      "sha256": "cc3210babecd190d7943f80ae29bedbed1996f3a0ea5b81723bd7b356766a033"
+    },
+    {
+      "path": "qualification/dhcp_switch_guest.py",
+      "bytes": 10514,
+      "sha256": "cad7e85af5274fca6c6bc9ea326d779f5664e58301884c9a308ca790dc09065c"
+    },
+    {
+      "path": "qualification/dhcp_transition_guest.py",
+      "bytes": 7246,
+      "sha256": "fb44d764f665b55145abc7a3519854dfc5b5645b9f2aead7b87f3f7a47a97066"
+    },
+    {
+      "path": "qualification/pcap_timeline.py",
+      "bytes": 4879,
+      "sha256": "3ab02ceb975edf5022697528823087e341b2eb979ae17acfd80a3d066e3b5620"
+    },
+    {
+      "path": "qualification/rc10_product_action_guest.py",
+      "bytes": 3749,
+      "sha256": "c7309d053911fbd468e1b742b719f670479ad67c7b928c43d4bb64a7962c3072"
+    },
+    {
+      "path": "qualification/reset_rc10_lab_admin_guest.py",
+      "bytes": 1803,
+      "sha256": "51deb6d64f18057df2164d96ab8f10c4f665d6ce9a7f631fd5f647e2dd365501"
+    },
+    {
+      "path": "qualification/run_dhcp_candidate.py",
+      "bytes": 5518,
+      "sha256": "9571da66574f16ef32d8e6308176ed5abeea34a966950790c979686caf143b61"
+    },
+    {
+      "path": "qualification/send_no_vlan_coa_guest.py",
+      "bytes": 2205,
+      "sha256": "2df4b61cffefd2dc4294c81f55d9c0a6e4c794fde66a816ffae014d315a22e57"
+    },
+    {
+      "path": "qualification/summarize_samevlan.py",
+      "bytes": 2501,
+      "sha256": "dd9aabf21883d583da9d115614df635a0351cef34827c0741f5038b8d7aea515"
+    },
+    {
+      "path": "qualification/summarize_windows_probe.py",
+      "bytes": 2349,
+      "sha256": "df8e1a28c97b6f80442e15287eae77999a97bfafac0d803adc845c649d5dec2b"
+    },
+    {
+      "path": "qualification/windows_data_vm.py",
+      "bytes": 3450,
+      "sha256": "7678d61311f0d6555156b0128eb1a6f3b783736496ce3db81e6924c8b2b0a47d"
+    },
+    {
+      "path": "qualification/windows_dhcp_probe.ps1",
+      "bytes": 3570,
+      "sha256": "cfb23a744324ad63dbda3374f0d2e0130674b6cacf1c5c3138bb615284639c0b"
+    },
+    {
+      "path": "quarantine-action.txt",
+      "bytes": 1691,
+      "sha256": "7df715d1f5aa8f9af64c250245541d250992da211f0e016baf4388af6ad082cf"
+    },
+    {
+      "path": "radius-coa-control.txt",
+      "bytes": 11518,
+      "sha256": "d39b9bd7fcb7d4880906617ac82b742223f69854cb74250f84029e8b9f7709c0"
+    },
+    {
+      "path": "radius-samevlan.txt",
+      "bytes": 18921,
+      "sha256": "2e6a1fc31d9bcdd8a469632e838bfbcb69773c675274b0684ea464f3172a372b"
+    },
+    {
+      "path": "radius-timeline.txt",
+      "bytes": 9799,
+      "sha256": "2cf3100f3914e4cfe983491771a0c520b9f14f93bca233a59ca2f46ecdb03310"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 3840,
+      "sha256": "fd4cc9a848f6b1bc022fcc713e2939200d3f9b140b8aa03a86a984082a6765fc"
+    },
+    {
+      "path": "restore-action.txt",
+      "bytes": 1629,
+      "sha256": "e436087c009fad2251ceff7c5d7a829fed86d72d8a83478d9df6792fd6ae38b1"
+    },
+    {
+      "path": "samevlan/corp-dhcp.pcap0",
+      "bytes": 6642,
+      "sha256": "0d77529d55b5b8f89675cec253d0344bce1e30b0cfe8fbd3e6250514b71c7b54"
+    },
+    {
+      "path": "samevlan/endpoint.pcap0",
+      "bytes": 55005,
+      "sha256": "c1d3351f2692b9dab3ed44c700794a1fa5ac21626dbef77c3e2d0680900aba5b"
+    },
+    {
+      "path": "samevlan/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "samevlan/radius.pcap0",
+      "bytes": 48345,
+      "sha256": "710c3feaeb3420a7547ffa3ce430eccf7e4bd1535ae6b922b8256ae12334e50b"
+    },
+    {
+      "path": "samevlan-plan.txt",
+      "bytes": 547,
+      "sha256": "47bc7717020e49479d41ccfdc9ecdd9721603fd73fe5afe881042e35c0d30a89"
+    },
+    {
+      "path": "samevlan-summary.jsonl",
+      "bytes": 3649,
+      "sha256": "66854ba989ae8f830b80a059dfafb1b3aa68e085b12a6bf358865049dcafabdb"
+    },
+    {
+      "path": "session-after-reboot.txt",
+      "bytes": 1499,
+      "sha256": "c8aa3f04a90389cfed0bcb9ab56bf51a31a13ccfb6fd5f7bebbee59c8b86d2cd"
+    },
+    {
+      "path": "switch-after-reboot.txt",
+      "bytes": 683,
+      "sha256": "40bd3977a43cd61513f9ad7dc09d7bc2379686c6490af8ea4fcc10649ca230c2"
+    },
+    {
+      "path": "switch-reauth-1.txt",
+      "bytes": 591,
+      "sha256": "af7d792c295c686340320cb2ef5936b2b998ffdeb26d92c7873563b9d5c620d0"
+    },
+    {
+      "path": "switch-reauth-2.txt",
+      "bytes": 591,
+      "sha256": "dde8ee0658d779ca6ca376eca178a65598d79b9cbe79ebee66160fe98ba757a8"
+    },
+    {
+      "path": "switch-reauth-3.txt",
+      "bytes": 591,
+      "sha256": "7ca30b793781d02778779e3d7a92086547131cc95bc9915907645a7b23654143"
+    },
+    {
+      "path": "switch-reboot.txt",
+      "bytes": 1303,
+      "sha256": "949b05aecbc988eaa3d8f8d5aaa1b289c7459c27ad2e079120819f4b9cb38e7d"
+    },
+    {
+      "path": "switch-save.txt",
+      "bytes": 762,
+      "sha256": "e24c1f95e457402daea33b47c24300aee8223beff00b037344180bd601805c76"
+    },
+    {
+      "path": "verify_package.py",
+      "bytes": 2149,
+      "sha256": "f7318453c5fd65dc809c392793e44eece3b415d7c81e311763c8b240c623b7aa"
+    },
+    {
+      "path": "windows-probe-coa-diagnostic.jsonl",
+      "bytes": 85952,
+      "sha256": "a792ba68aea63a030c886818e92a58c9641f9a290a1526f7598092f741fb58af"
+    },
+    {
+      "path": "windows-probe-persistence.jsonl",
+      "bytes": 136249,
+      "sha256": "cf43f99d46ae10a2faed56a461c70a2dd64be6b06fbfeee0a45cc839ccab09fb"
+    },
+    {
+      "path": "windows-probe-samevlan.jsonl",
+      "bytes": 104517,
+      "sha256": "1252809915acd5b3e4eefd6acdebeda1e00a92be7cedf4c762e5b4393459fe25"
+    }
+  ]
+}

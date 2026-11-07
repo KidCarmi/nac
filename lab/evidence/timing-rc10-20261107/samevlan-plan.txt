@@ -1,0 +1,9 @@
+candidate=b39649f138e126ed6689a53b590855061042e341
+nacd_sha256=35699eac162cc2a7315efced101bee3ec18ed87ab1cb108f06f9bb1a7b48195e
+eos=4.29.2F
+endpoint=Windows Server 2025 Standard Evaluation Desktop Experience build 26100; one DHCP data NIC
+lease_seconds=120
+observation_deadline_seconds=1200
+probe_resolution_about=1s
+expected=idle corp continuous; each same-VLAN reauth returns corp without address change; measure fresh TCP interruption
+switch_local_command=dot1x re-authenticate Ethernet 1; no VLAN attributes pushed by operator command

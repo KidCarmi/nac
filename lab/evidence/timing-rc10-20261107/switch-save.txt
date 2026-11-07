@@ -1,0 +1,18 @@
+SAVE write memory
+Copy completed successfully.
+nac-veos-rc1#
+nac-veos-rc1#
+RUNNING_SELECTED ['protocol https ssl profile nac-eapi', 'ssl profile nac-eapi', 'radius-server host 10.70.99.4 key 7 [REDACTED]', 'aaa accounting dot1x default start-stop group radius']
+STARTUP_SELECTED ['protocol https ssl profile nac-eapi', 'ssl profile nac-eapi', 'radius-server host 10.70.99.4 key 7 [REDACTED]', 'aaa accounting dot1x default start-stop group radius']
+STARTUP_MATCHES_RC10 True
+SESSION show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE
+
+VLAN
+----
+10
+
+nac-veos-rc1#
+nac-veos-rc1#

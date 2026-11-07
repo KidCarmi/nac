@@ -1,0 +1,7 @@
+ACTION_AT 2026-11-07T11:13:18.047+00:00
+RETURN_CODE 1
+Sent CoA-Request Id 237 from 0.0.0.0:52762 to 10.70.99.1:3799 length 80
+Received CoA-NAK Id 237 from 10.70.99.1:3799 to 10.70.99.4:52762 length 50
+	Error-Cause = Invalid-Request
+FINISHED_AT 2026-11-07T11:13:18.071+00:00
+no-VLAN CoA was not ACKed
