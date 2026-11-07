@@ -1,6 +1,8 @@
 # Single-instance console run (closes the all-console coverage gap)
 
-This is the procedure for the open **UNVERIFIED** row in
+**Result: PASS on `pilot-rc10`** (ASTRA, 2026-11-07, [evidence `0e16356`](https://github.com/KidCarmi/nac/tree/0e16356c152c561721b05345b9bae408713fcc68/lab/evidence/clean-ui-rc10-20261107)). Switch **Verify** and the `revoked_token` log/metric were not exercised in that run.
+
+This is the procedure for the single-instance row in
 [qualification status](qualification-status.md): one fresh `pilot-rc10`
 instance, a real vEOS switch, and every NAC operation done in the console.
 Labels and messages below are quoted from the `pilot-rc10` console

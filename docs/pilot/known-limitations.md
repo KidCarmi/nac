@@ -286,12 +286,10 @@ port, and the lab shows endpoints recover without one.
     switch, CoA and rule-only policy, Linux and Windows Server 2025 DHCP,
     invalid certificate, nacd outage, verified eAPI TLS, the console Account
     page, and a full lab restart. Evidence: https://github.com/KidCarmi/nac/tree/fa2950cbe18191d118661c00aff719a4f638a4fe/lab/evidence/pilot-closeout-20261107
-  - **Coverage gap:** No single fresh instance has run the whole workflow through the console on one candidate. The clean `pilot-rc9` instance did onboarding, binding, preview/publish and CoA in the console. The clean `pilot-rc10` instance did the Account change in the console, but its onboarding and binding used the documented API.
-  - Not lab-run:
-    - revocation of a separately kept pre-change token (the Account change
-      rejected the old password; token revocation is covered by the
-      integration tests and the `pilot-rc9` API run)
-    - a clean-instance install of exact `pilot-rc8` (blocked in the lab)
+  - **Single fresh-instance console workflow: PASS** on `pilot-rc10`. Onboarding, binding, preview/publish, Quarantine/Restore and the Account change were all done in the console on one fresh instance with a real vEOS switch ([`0e16356`](https://github.com/KidCarmi/nac/tree/0e16356c152c561721b05345b9bae408713fcc68/lab/evidence/clean-ui-rc10-20261107)).
+  - Not lab-run: a clean-instance install of exact `pilot-rc8` (blocked in
+    the lab). Revocation of a separately kept pre-change token is now
+    lab-run: 401 after the password change.
   - Untested: physical Arista hardware (unplug/reconnect, MAB) and endpoint
     operating systems other than Linux and Windows Server 2025.
 - **The switch must save the NAC configuration.** After a full lab restart,

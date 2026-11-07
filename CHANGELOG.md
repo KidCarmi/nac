@@ -7,6 +7,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Open after pilot-rc10
+- **Single fresh-instance all-console workflow: PASS** (ASTRA, `0e16356`).
+  This closes the coverage gap. It also lab-tested pre-change token
+  revocation (401).
 - **vEOS CoA limitation (ASTRA), not a NAC defect.** On vEOS-lab 4.29.2F,
   an accepted CoA interrupts the endpoint for 20–60 s even when the VLAN does
   not change. An identical CoA sent from outside NAC reproduces it. vEOS
