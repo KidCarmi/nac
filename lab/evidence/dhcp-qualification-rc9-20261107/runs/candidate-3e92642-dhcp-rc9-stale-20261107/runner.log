@@ -1,0 +1,12 @@
+[2026-11-07T02:30:06.075540+00:00] probe-start
+PROBE_STARTED rc9-stale-20261107 420 fresh
+
+[2026-11-07T02:36:33.851988+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9-stale-20261107
+
+[2026-11-07T02:36:46.221296+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-stale-20261107.jsonl sha256 41bb253f484567555ebcc4cf76b4def6a5bd3d424ca6dcd97a6822b4444dde49 bytes 109813
+
+[2026-11-07T02:36:46.904604+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-stale-20261107\endpoint-probe.jsonl
+

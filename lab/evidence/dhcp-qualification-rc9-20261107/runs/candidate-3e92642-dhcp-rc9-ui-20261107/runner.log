@@ -1,0 +1,287 @@
+[2026-11-07T06:42:19.306805+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-ui-20261107", "state": "started"}
+
+[2026-11-07T06:42:29.582091+00:00] probe-start
+PROBE_STARTED rc9-ui-20261107 900 fresh
+
+[2026-11-07T06:44:03.339835+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+
+[2026-11-07T06:45:35.579006+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:45:25.260Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.20.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:47:34.190866+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:47:23.841Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:48:25.678396+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:48:15.311Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:50:16.942738+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:50:06.482Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:51:15.637353+00:00] endpoint-status
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:51:07.300Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ls /sys/class/net; ip -br addr; ip route; resolvectl status ens3; networkctl status ens3 --no-pager
+ens3  lo
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3)
+Current Scopes: DNS
+     Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+   DNS Servers: 10.70.20.10
+    DNS Domain: nac-lab.test
+ג—� 2: ens3                                                                      
+                     Link File: /usr/lib/systemd/network/99-default.link
+                  Network File: /run/systemd/network/10-netplan-data.network
+                          Type: ether
+                         State: routable (configured)
+                  Online state: unknown
+             Alternative Names: enp0s3
+                          Path: pci-0000:00:03.0
+                        Driver: virtio_net
+                        Vendor: Red Hat, Inc.
+                         Model: Virtio network device
+                    HW Address: 00:50:00:00:02:00 (NEXO COMMUNICATIONS, INC.)
+                           MTU: 1500 (min: 68, max: 65535)
+                         QDisc: fq_codel
+  IPv6 Address Generation Mode: eui64
+          Queue Length (Tx/Rx): 1/1
+              Auto negotiation: no
+                         Speed: n/a
+                       Address: 10.70.20.80 (DHCP4 via 10.70.20.10)
+                                fe80::250:ff:fe00:200
+                       Gateway: 10.70.20.10
+                           DNS: 10.70.20.10
+                Search Domains: nac-lab.test
+             Activation Policy: up
+           Required For Online: no
+               DHCP4 Client ID: IAID:0xb55e67ff/DUID
+             DHCP6 Client DUID: DUID-EN/Vendor:0000ab11100611b8ca755d8e0000
+                  Connected To: nac-veos-rc1 on port Ethernet1
+
+Nov 07 06:50:55 nac-endpoint systemd-networkd[458]: ens3: DHCP lease lost
+Nov 07 06:50:55 nac-endpoint systemd-networkd[458]: ens3: DHCPv4 address 10.ג€¦.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CERT openssl x509 -in /root/nac-endpoint.pem -noout -serial -issuer -subject
+serial=2E1B47DC86A00B7F7250500B4A21F454B2EFD819
+issuer=CN = NAC Lab Disposable CA
+subject=CN = wired-endpoint-01
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CONFIG ls -l /root/wired-valid.conf /root/wired-invalid.conf /etc/netplan/*.yaml; wpa_cli -i ens3 status
+-rw------- 1 root root 157 Nov  6 14:52 /etc/netplan/99-nac-lab.yaml
+-rw------- 1 root root 253 Nov  6 09:58 /root/wired-invalid.conf
+-rw------- 1 root root 256 Nov  6 09:58 /root/wired-valid.conf
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=COMPLETED
+ip_address=10.70.20.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATED
+suppPortStatus=Authorized
+EAP state=SUCCESS
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=ECDHE-RSA-AES256-GCM-SHA384
+tls_session_reused=0
+eap_session_id=0d908d47218b5d5e1c2e326fb48d75c4283a24c2dd6c662e8155086af617f45349d5200b3ad78abf004f252cc364c4cfedcee4ab4c80a6d402444f574e47524401
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:51:23.108508+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-ui-20261107.jsonl sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 bytes 0
+
+[2026-11-07T06:51:23.783417+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-ui-20261107\endpoint-probe.jsonl
+
+[2026-11-07T06:51:49.078560+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:51:38.753Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.20.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:51:58.445980+00:00] topology
+{"bridges": {"vnet0_14": [], "vnet0_34": ["10.70.99.254/24"]}, "ip_forward": 0, "nodes": {"arista": {"11": 0, "12": 0, "13": 0, "14": 0, "15": 0}, "baseline": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}, "dhcp": {"31": 2, "32": 2, "33": 2, "34": 2, "35": 2}, "mikrotik": {"21": 0, "22": 0, "23": 0, "24": 0, "25": 0}}, "topology_sha256": {"arista": "e3407fe0f06ec49769fac5dc3578aa436eaab91d700865cbb5e70838a5a7af8a", "baseline": "659656f9030ce694ac01347db943f67a87bc56f451ef3789d5d3f94e2200fad9", "dhcp": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935", "mikrotik": "527f9a4ab2070facd443c3d16e6d3af042769c08282b079d9d8125d6e84bef3a"}}
+
+[2026-11-07T06:53:07.495656+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:52:57.181Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.20.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:53:35.162516+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T06:53:24.835Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.20.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T06:57:14.853969+00:00] capture-stop
+{"sizes": {"corp-dhcp": 5040, "endpoint": 37018, "quarantine-dhcp": 7176, "radius": 34128}, "state": "stopped"}
+
+[2026-11-07T06:57:23.335925+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-ui-20261107\endpoint.pcap
+
+[2026-11-07T06:57:24.050606+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-ui-20261107\radius.pcap
+
+[2026-11-07T06:57:24.773711+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-ui-20261107\corp-dhcp.pcap
+
+[2026-11-07T06:57:25.502549+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-ui-20261107\quarantine-dhcp.pcap
+
+[2026-11-07T07:04:03.959095+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+

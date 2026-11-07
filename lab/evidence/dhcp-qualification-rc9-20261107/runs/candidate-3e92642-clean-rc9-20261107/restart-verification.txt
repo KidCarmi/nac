@@ -1,0 +1,27 @@
+INVENTORY echo NAC_CLEAN_START; date -u +%FT%TZ; systemctl is-active nacd freeradius postgresql nac-freeradius-reload.path; curl -fsS http://127.0.0.1:8080/readyz; echo; curl -ksS -o /dev/null -w "CONSOLE_HTTP=%{http_code}\n" https://127.0.0.1:8443/ui/; echo NAC_CLEAN_END
+
+[?2004l
+NAC_CLEAN_START
+
+2026-11-07T07:20:40Z
+
+active
+
+active
+
+active
+
+active
+
+{"status":"ready"}
+
+
+
+CONSOLE_HTTP=200
+
+NAC_CLEAN_END
+
+[?2004hroot@ubuntu:~# 
+
+[?2004l
+[?2004hroot@ubuntu:~# 

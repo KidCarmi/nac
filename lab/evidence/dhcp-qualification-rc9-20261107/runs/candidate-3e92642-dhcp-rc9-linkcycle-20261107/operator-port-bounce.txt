@@ -1,0 +1,12 @@
+SHUTDOWN shutdown
+nac-veos-rc1(config-if-Et1)#
+nac-veos-rc1(config-if-Et1)#
+NO_SHUTDOWN no shutdown
+nac-veos-rc1(config-if-Et1)#
+nac-veos-rc1(config-if-Et1)#
+PORT show interfaces Ethernet1 status
+Port       Name   Status       Vlan     Duplex Speed  Type            Flags Encapsulation
+Et1               connected    N/A      full   1G     EbraTestPhyPort                   
+
+nac-veos-rc1#
+nac-veos-rc1#

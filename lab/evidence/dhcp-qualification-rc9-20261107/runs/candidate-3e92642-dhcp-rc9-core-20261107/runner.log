@@ -1,0 +1,419 @@
+[2026-11-07T01:37:35.353884+00:00] topology
+{"bridges": {"vnet0_14": [], "vnet0_34": ["10.70.99.254/24"]}, "ip_forward": 0, "nodes": {"arista": {"11": 0, "12": 0, "13": 0, "14": 0, "15": 0}, "baseline": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}, "dhcp": {"31": 2, "32": 2, "33": 2, "34": 2, "35": 2}, "mikrotik": {"21": 0, "22": 0, "23": 0, "24": 0, "25": 0}}, "topology_sha256": {"arista": "e3407fe0f06ec49769fac5dc3578aa436eaab91d700865cbb5e70838a5a7af8a", "baseline": "659656f9030ce694ac01347db943f67a87bc56f451ef3789d5d3f94e2200fad9", "dhcp": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935", "mikrotik": "527f9a4ab2070facd443c3d16e6d3af042769c08282b079d9d8125d6e84bef3a"}}
+
+[2026-11-07T01:37:44.285375+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+
+[2026-11-07T01:37:52.506501+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-core-20261107", "state": "started"}
+
+[2026-11-07T01:38:02.628280+00:00] probe-start
+PROBE_STARTED rc9-core-20261107 900 fresh
+
+[2026-11-07T01:38:14.616608+00:00] endpoint-stop
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:38:10.193Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:38:27.607381+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:38:46.414701+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:38:34.936Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:39:00.410026+00:00] endpoint-valid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:38:53.949Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-valid.conf -B -f /root/wpa-rc2-valid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:39:22.785838+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et1, Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:39:43.097631+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:39:31.617Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:39:55.574456+00:00] endpoint-stop
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:39:51.148Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:40:09.249550+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:40:25.446630+00:00] endpoint-invalid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:40:16.968Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+Failed to connect to non-global ctrl_ifname: ens3  error: No such file or directory
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-invalid.conf -B -f /root/wpa-rc2-invalid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:40:41.744597+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL FAILED                  NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:41:00.970827+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:40:49.493Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:41:13.841907+00:00] endpoint-stop
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:41:09.422Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:41:26.798500+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:41:42.100731+00:00] endpoint-valid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:41:35.636Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-valid.conf -B -f /root/wpa-rc2-valid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:42:11.749564+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:42:00.288Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             fe80::250:ff:fe00:200/64 
+Link 2 (ens3):
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) failed: Network is unreachable
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) failed: Network is unreachable
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:43:30.329638+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 b124eab68f5660016d94a9716bf2434d10caee30764f6bbc4c234db392ede8da bytes 131693
+
+[2026-11-07T01:43:31.028904+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:44:39.634940+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 211a15015c9c84db18890d4cf072d072431ca4351b926606c7b5915071086f85 bytes 145296
+
+[2026-11-07T01:44:40.322616+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:46:05.754787+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 52ed943f336b40899fcb5c892539047ceb4334757c9feaeda041be37c7d3c9f7 bytes 165772
+
+[2026-11-07T01:46:06.442165+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:47:50.358739+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 be1c1e01b65d27720a2f26f980f79d1ee7a03c162a9b3aba978e5e5924660425 bytes 187972
+
+[2026-11-07T01:47:51.034052+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:50:13.843637+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 acbe9b543b5f0b06abdb0839a33b049eb98dd32e9307819a9c8c307110bfa2a5 bytes 218921
+
+[2026-11-07T01:50:14.727468+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:51:02.338597+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 d9eb92b03c17f1302fcb244a1523bb02e3f723710dbe0250a159d4d05f35be7d bytes 231261
+
+[2026-11-07T01:51:03.219065+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:52:56.307268+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 f063630932a1af216b75204ef85471a126f2af5d993ecb10ab0ca4956291c794 bytes 256472
+
+[2026-11-07T01:52:57.185989+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:53:10.690515+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9-core-20261107
+
+[2026-11-07T01:53:20.169107+00:00] capture-stop
+{"sizes": {"corp-dhcp": 7906, "endpoint": 61358, "quarantine-dhcp": 3970, "radius": 62126}, "state": "stopped"}
+
+[2026-11-07T01:53:37.846279+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-core-20261107.jsonl sha256 8f1042d1e6533061244feaadeffa12abedcb5510c7ffe57e4ff356b276399eee bytes 257891
+
+[2026-11-07T01:53:38.766296+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:53:48.950469+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\endpoint.pcap
+
+[2026-11-07T01:53:49.609661+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\radius.pcap
+
+[2026-11-07T01:53:50.279609+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\corp-dhcp.pcap
+
+[2026-11-07T01:53:50.953159+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-core-20261107\quarantine-dhcp.pcap
+

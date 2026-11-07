@@ -1,0 +1,14 @@
+VERIFY_UTC=2026-11-07T07:18:24Z
+active
+active
+active
+active
+d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /usr/local/bin/nacd
+d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /proc/5145/exe
+{"status":"ready"}
+
+{"version":"pilot-rc9","commit":"3e92642","build_date":"2026-11-07T01:29:14Z"}
+
+CONSOLE_HTTP=200
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        11G  2.2G  8.5G  21% /

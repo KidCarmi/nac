@@ -1,0 +1,7 @@
+ CHANGELOG.md                       | 12 ++++++++++++
+ docs/pilot/known-limitations.md    | 22 ++++++++++++++++++---
+ docs/pilot/operator-walkthrough.md |  2 +-
+ docs/pilot/qualification-status.md | 14 +++++++++++---
+ web/ui/app.js                      | 39 +++++++++++++++++++++++++++++++-------
+ web/ui/style.css                   |  3 +++
+ 6 files changed, 78 insertions(+), 14 deletions(-)

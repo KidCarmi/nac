@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<stdin>", line 21, in <module>
+  File "/root/nac-qualification/dhcp_candidate_serial_guest.py", line 89, in run
+    raise RuntimeError(f"serial command failed ({code}): {body[-500:]}")
+RuntimeError: serial command failed (7): 2026-11-07T01:57:50.196Z
+active
+active
+06c413b1b190c97dac4e0c54cc64bf90cc31c84304e71dee852554ae130b7efd  /proc/2209/exe
+curl: (7) Failed to connect to 127.0.0.1 port 8080 after 0 ms: Couldn't connect to server

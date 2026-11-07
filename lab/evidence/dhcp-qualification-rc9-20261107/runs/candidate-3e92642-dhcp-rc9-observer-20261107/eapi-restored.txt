@@ -1,0 +1,49 @@
+BEFORE            38
+Last hit:           63 seconds ago
+Bytes in:           4332
+Bytes out:          10987
+Requests:           38
+Commands:           38
+Duration:           0.845 seconds
+SSL Profile:        none
+FIPS Mode:          No
+QoS DSCP:           0
+Log Level:          none
+CSP Frame Ancestor: None
+TLS Protocols:      1.0 1.1 1.2
+   User               Requests       Bytes in       Bytes out    Last hit      
+------------------ -------------- -------------- --------------- --------------
+   nac-observer       38             4332           10987        63 seconds ago
+
+nac-veos-rc1#
+nac-veos-rc1#
+AFTER         38
+Commands:           38
+Duration:           0.845 seconds
+SSL Profile:        none
+FIPS Mode:          No
+QoS DSCP:           0
+Log Level:          none
+CSP Frame Ancestor: None
+TLS Protocols:      1.0 1.1 1.2
+   User               Requests       Bytes in       Bytes out    Last hit      
+------------------ -------------- -------------- --------------- --------------
+   nac-observer       38             4332           10987        70 seconds ago
+
+URLs                                
+------------------------------------
+Ethernet4   : https://10.70.99.1:443
+
+nac-veos-rc1#
+nac-veos-rc1#
+DOT1X show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#

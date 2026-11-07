@@ -1,0 +1,30 @@
+[2026-11-07T02:37:40.905417+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-accounting-20261107", "state": "started"}
+
+[2026-11-07T02:37:51.885724+00:00] probe-start
+PROBE_STARTED rc9-accounting-20261107 90 fresh
+
+[2026-11-07T02:39:23.586408+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9-accounting-20261107
+
+[2026-11-07T02:39:32.323989+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-accounting-20261107.jsonl sha256 331dc841feaccf175d01b21a6affb359ee413994093e1de069b6150ae4dc38c3 bytes 20480
+
+[2026-11-07T02:39:33.012898+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-accounting-20261107\endpoint-probe.jsonl
+
+[2026-11-07T02:39:40.833890+00:00] capture-stop
+{"sizes": {"corp-dhcp": 1448, "endpoint": 1448, "quarantine-dhcp": 24, "radius": 326}, "state": "stopped"}
+
+[2026-11-07T02:39:47.240045+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-accounting-20261107\endpoint.pcap
+
+[2026-11-07T02:39:47.906027+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-accounting-20261107\radius.pcap
+
+[2026-11-07T02:39:48.564703+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-accounting-20261107\corp-dhcp.pcap
+
+[2026-11-07T02:39:49.224918+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-accounting-20261107\quarantine-dhcp.pcap
+

@@ -1,0 +1,143 @@
+[2026-11-07T01:55:23.243516+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-outage-20261107", "state": "started"}
+
+[2026-11-07T01:55:34.014559+00:00] probe-start
+PROBE_STARTED rc9-outage-20261107 400 fresh
+
+[2026-11-07T01:56:24.606063+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-outage-20261107.jsonl sha256 4d42898f6ab6a4e8dde5594b53f4140dc808b04414b31cbd751ccf6dccb2b49b bytes 14998
+
+[2026-11-07T01:56:25.263301+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:56:41.029196+00:00] endpoint-stop
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:56:36.617Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:56:54.095882+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:57:08.607039+00:00] endpoint-valid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T01:57:02.156Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-valid.conf -B -f /root/wpa-rc2-valid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T01:57:25.299579+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL FAILED                  NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T01:57:35.444867+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-outage-20261107.jsonl sha256 a61408f53aa13680eaeea5c10409208f7f1f6ba87daf12badf9333cece251e30 bytes 29670
+
+[2026-11-07T01:57:36.141617+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:58:42.038537+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-outage-20261107.jsonl sha256 b87ba873224cda39a671450de12ecd3ce18df74a7606d16d3eef337c30209bbb bytes 49870
+
+[2026-11-07T01:58:42.686545+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:59:05.380535+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9-outage-20261107
+
+[2026-11-07T01:59:13.006659+00:00] capture-stop
+{"sizes": {"corp-dhcp": 2890, "endpoint": 22606, "quarantine-dhcp": 24, "radius": 23317}, "state": "stopped"}
+
+[2026-11-07T01:59:23.161707+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-outage-20261107.jsonl sha256 81113ae2449e8129dcadade884c0fe63fb013acb8db1f3875af93693efe7f853 bytes 56493
+
+[2026-11-07T01:59:23.817975+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\endpoint-probe.jsonl
+
+[2026-11-07T01:59:30.753615+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\endpoint.pcap
+
+[2026-11-07T01:59:31.438767+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\radius.pcap
+
+[2026-11-07T01:59:32.109882+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\corp-dhcp.pcap
+
+[2026-11-07T01:59:32.778416+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-outage-20261107\quarantine-dhcp.pcap
+

@@ -1,0 +1,23 @@
+?   	github.com/kidcarmi/nac/api/openapi	[no test files]
+?   	github.com/kidcarmi/nac/cmd/nacd	[no test files]
+ok  	github.com/kidcarmi/nac/internal/access	(cached)
+?   	github.com/kidcarmi/nac/internal/app	[no test files]
+?   	github.com/kidcarmi/nac/internal/audit	[no test files]
+ok  	github.com/kidcarmi/nac/internal/auth	(cached)
+?   	github.com/kidcarmi/nac/internal/cache	[no test files]
+ok  	github.com/kidcarmi/nac/internal/config	(cached)
+?   	github.com/kidcarmi/nac/internal/domain	[no test files]
+ok  	github.com/kidcarmi/nac/internal/endpoint	(cached)
+?   	github.com/kidcarmi/nac/internal/observability	[no test files]
+ok  	github.com/kidcarmi/nac/internal/pilot	(cached)
+ok  	github.com/kidcarmi/nac/internal/policy	(cached)
+ok  	github.com/kidcarmi/nac/internal/policyver	(cached)
+ok  	github.com/kidcarmi/nac/internal/radius	(cached)
+ok  	github.com/kidcarmi/nac/internal/radiusauth	(cached)
+ok  	github.com/kidcarmi/nac/internal/secrets	(cached)
+ok  	github.com/kidcarmi/nac/internal/server	(cached)
+?   	github.com/kidcarmi/nac/internal/storage/postgres	[no test files]
+?   	github.com/kidcarmi/nac/pkg/problem	[no test files]
+ok  	github.com/kidcarmi/nac/pkg/validation	(cached)
+?   	github.com/kidcarmi/nac/pkg/version	[no test files]
+?   	github.com/kidcarmi/nac/web	[no test files]

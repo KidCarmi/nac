@@ -1,0 +1,126 @@
+[2026-11-07T02:22:38.068554+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-override-20261107", "state": "started"}
+
+[2026-11-07T02:22:47.812370+00:00] probe-start
+PROBE_STARTED rc9-override-20261107 900 fresh
+
+[2026-11-07T02:24:41.680080+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:24:30.927Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:25:22.332202+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:25:11.619Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.20.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:26:58.326089+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:26:47.569Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+Link 2 (ens3): 10.70.20.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:27:48.472723+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:27:37.759Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:27:58.149328+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9-override-20261107
+
+[2026-11-07T02:28:09.733724+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9-override-20261107.jsonl sha256 4f9b05a83c72b2fb0857afc2d46b79dde816782610f4cbe28343461d6feda958 bytes 69026
+
+[2026-11-07T02:28:10.405550+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-override-20261107\endpoint-probe.jsonl
+
+[2026-11-07T02:28:17.494052+00:00] capture-stop
+{"sizes": {"corp-dhcp": 3598, "endpoint": 29942, "quarantine-dhcp": 1820, "radius": 34128}, "state": "stopped"}
+
+[2026-11-07T02:28:24.665840+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-override-20261107\endpoint.pcap
+
+[2026-11-07T02:28:25.396506+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-override-20261107\radius.pcap
+
+[2026-11-07T02:28:26.065927+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-override-20261107\corp-dhcp.pcap
+
+[2026-11-07T02:28:26.733507+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-override-20261107\quarantine-dhcp.pcap
+

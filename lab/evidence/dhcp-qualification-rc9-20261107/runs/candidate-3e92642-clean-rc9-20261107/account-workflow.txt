@@ -1,0 +1,14 @@
+initial_login 200
+initial_me 200
+wrong_current_change 403
+old_token_after_bad_change 200
+correct_change 200
+old_token_after_change 401
+new_token_after_change 200
+old_password_after_change 401
+new_password_after_change 200
+local_reset_exit 0
+token_after_local_reset 401
+changed_password_after_reset 401
+recovered_password_login 200
+FINAL_SECRET_STORED_GUEST_ONLY /root/nac-account-test-final

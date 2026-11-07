@@ -1,0 +1,56 @@
+2026-11-07T02:03:27.752+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T02:03:27.759+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T02:03:27.773+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T02:03:27.780+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T02:03:27.784+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T02:03:27.785+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T02:03:27.788+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T02:03:27.788+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T02:03:27.795+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T02:03:27.796+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T02:03:27.799+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T02:03:27.802+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T02:03:27.805+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T02:03:27.845+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Accept id=6 User-Name=wired-endpoint-01 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=10 EAP-Message=Success:7
+2026-11-07T02:03:27.852+00:00 RADIUS 10.70.99.1:32950>10.70.99.2:1813 Accounting-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:03:27.863+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:32950 Accounting-Response id=0 
+2026-11-07T02:05:56.551+00:00 RADIUS 10.70.99.2:49372>10.70.99.1:3799 CoA-Request id=29 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=20
+2026-11-07T02:05:56.557+00:00 RADIUS 10.70.99.1:3799>10.70.99.2:49372 CoA-ACK id=29 Error-Cause=200
+2026-11-07T02:05:56.678+00:00 RADIUS 10.70.99.1:32950>10.70.99.2:1813 Accounting-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:05:56.692+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:32950 Accounting-Response id=1 
+2026-11-07T02:05:56.779+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T02:05:56.782+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T02:05:56.785+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T02:05:56.788+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T02:05:56.791+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T02:05:56.792+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T02:05:56.794+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T02:05:56.795+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T02:05:56.800+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T02:05:56.800+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T02:05:56.803+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T02:05:56.805+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T02:05:56.808+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T02:05:56.839+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Accept id=6 User-Name=wired-endpoint-01 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=20 EAP-Message=Success:7
+2026-11-07T02:05:56.846+00:00 RADIUS 10.70.99.1:32950>10.70.99.2:1813 Accounting-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:05:56.853+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:32950 Accounting-Response id=0 
+2026-11-07T02:08:40.839+00:00 RADIUS 10.70.99.2:55317>10.70.99.1:3799 CoA-Request id=143 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=10
+2026-11-07T02:08:40.842+00:00 RADIUS 10.70.99.1:3799>10.70.99.2:55317 CoA-ACK id=143 Error-Cause=200
+2026-11-07T02:08:40.962+00:00 RADIUS 10.70.99.1:32950>10.70.99.2:1813 Accounting-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:08:40.971+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:32950 Accounting-Response id=1 
+2026-11-07T02:08:41.070+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T02:08:41.071+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T02:08:41.074+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T02:08:41.076+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T02:08:41.079+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T02:08:41.080+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T02:08:41.084+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T02:08:41.085+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T02:08:41.090+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T02:08:41.090+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T02:08:41.093+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T02:08:41.094+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T02:08:41.097+00:00 RADIUS 10.70.99.1:57716>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T02:08:41.116+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:57716 Access-Accept id=6 User-Name=wired-endpoint-01 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=10 EAP-Message=Success:7
+2026-11-07T02:08:41.119+00:00 RADIUS 10.70.99.1:32950>10.70.99.2:1813 Accounting-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:08:41.126+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:32950 Accounting-Response id=0 

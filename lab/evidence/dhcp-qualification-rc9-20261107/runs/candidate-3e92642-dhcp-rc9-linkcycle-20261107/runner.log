@@ -1,0 +1,322 @@
+[2026-11-07T02:40:53.995036+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-3e92642-dhcp-rc9-linkcycle-20261107", "state": "started"}
+
+[2026-11-07T02:41:14.364961+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et1, Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T02:42:03.342746+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et1, Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T02:43:01.635602+00:00] endpoint-status
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:42:53.131Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ls /sys/class/net; ip -br addr; ip route; resolvectl status ens3; networkctl status ens3 --no-pager
+ens3  lo
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3)
+    Current Scopes: DNS
+         Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+Current DNS Server: 10.70.10.10
+       DNS Servers: 10.70.10.10
+        DNS Domain: nac-lab.test
+ג—� 2: ens3                                                                      
+                     Link File: /usr/lib/systemd/network/99-default.link
+                  Network File: /run/systemd/network/10-netplan-data.network
+                          Type: ether
+                         State: routable (configured)
+                  Online state: unknown
+             Alternative Names: enp0s3
+                          Path: pci-0000:00:03.0
+                        Driver: virtio_net
+                        Vendor: Red Hat, Inc.
+                         Model: Virtio network device
+                    HW Address: 00:50:00:00:02:00 (NEXO COMMUNICATIONS, INC.)
+                           MTU: 1500 (min: 68, max: 65535)
+                         QDisc: fq_codel
+  IPv6 Address Generation Mode: eui64
+          Queue Length (Tx/Rx): 1/1
+              Auto negotiation: no
+                         Speed: n/a
+                       Address: 10.70.10.80 (DHCP4 via 10.70.10.10)
+                                fe80::250:ff:fe00:200
+                       Gateway: 10.70.10.10
+                           DNS: 10.70.10.10
+                Search Domains: nac-lab.test
+             Activation Policy: up
+           Required For Online: no
+               DHCP4 Client ID: IAID:0xb55e67ff/DUID
+             DHCP6 Client DUID: DUID-EN/Vendor:0000ab11100611b8ca755d8e0000
+                  Connected To: nac-veos-rc1 on port Ethernet1
+
+Nov 07 02:42:30 nac-endpoint systemd-networkd[458]: ens3: Link UP
+Nov 07 02:42:30 nac-endpoint systemd-networkd[458]: ens3: Gained carrier
+Nov 07 02:42:30 nac-endpoint systemd-networkd[458]: ens3: DHCPv4 address 10.ג€¦.10
+Nov 07 02:42:31 nac-endpoint systemd-networkd[458]: ens3: Gained IPv6LL
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CERT openssl x509 -in /root/nac-endpoint.pem -noout -serial -issuer -subject
+serial=2E1B47DC86A00B7F7250500B4A21F454B2EFD819
+issuer=CN = NAC Lab Disposable CA
+subject=CN = wired-endpoint-01
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CONFIG ls -l /root/wired-valid.conf /root/wired-invalid.conf /etc/netplan/*.yaml; wpa_cli -i ens3 status
+-rw------- 1 root root 157 Nov  6 14:52 /etc/netplan/99-nac-lab.yaml
+-rw------- 1 root root 253 Nov  6 09:58 /root/wired-invalid.conf
+-rw------- 1 root root 256 Nov  6 09:58 /root/wired-valid.conf
+Failed to connect to non-global ctrl_ifname: ens3  error: No such file or directory
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:43:47.421332+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T02:44:07.180607+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:43:56.699Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) failed: No route to host
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:44:21.598681+00:00] endpoint-valid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:44:16.142Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-valid.conf -B -f /root/wpa-rc2-valid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:44:54.340751+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et1, Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T02:45:14.664744+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:45:04.221Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T02:45:32.833135+00:00] capture-stop
+{"sizes": {"corp-dhcp": 2902, "endpoint": 10786, "quarantine-dhcp": 24, "radius": 8293}, "state": "stopped"}
+
+[2026-11-07T02:45:39.641201+00:00] download endpoint.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-linkcycle-20261107\endpoint.pcap
+
+[2026-11-07T02:45:40.307714+00:00] download radius.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-linkcycle-20261107\radius.pcap
+
+[2026-11-07T02:45:40.978979+00:00] download corp-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-linkcycle-20261107\corp-dhcp.pcap
+
+[2026-11-07T02:45:41.632807+00:00] download quarantine-dhcp.pcap
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9-linkcycle-20261107\quarantine-dhcp.pcap
+

@@ -1,0 +1,145 @@
+{
+  "action_at": "2026-11-07T01:51:25.584000+00:00",
+  "address_states": [
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T01:38:00.064+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [],
+      "at_utc": "2026-11-07T01:41:23.538+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3):",
+      "domains": "Link 2 (ens3):",
+      "event": "network_state",
+      "routes": []
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T01:42:27.107+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.20.80/24"
+      ],
+      "at_utc": "2026-11-07T01:45:28.046+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.20.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.20.0/24 via on-link",
+        "10.70.20.10 via on-link",
+        "default via 10.70.20.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T01:47:27.251+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.20.80/24"
+      ],
+      "at_utc": "2026-11-07T01:50:27.090+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.20.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.20.0/24 via on-link",
+        "10.70.20.10 via on-link",
+        "default via 10.70.20.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T01:52:27.728+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    }
+  ],
+  "denied_after_s": 0.132,
+  "denied_at": "2026-11-07T01:51:25.716+00:00",
+  "final_probe": {
+    "corp": {
+      "at_utc": "2026-11-07T01:52:59.054+00:00",
+      "connected": true,
+      "elapsed_ms": 3,
+      "event": "tcp_probe",
+      "segment": "corp",
+      "source": "10.70.10.80"
+    },
+    "quarantine": {
+      "at_utc": "2026-11-07T01:52:59.855+00:00",
+      "connected": false,
+      "elapsed_ms": 801,
+      "error": "TimeoutError",
+      "event": "tcp_probe",
+      "segment": "quarantine"
+    }
+  },
+  "held_connections": [],
+  "initial_state": {
+    "addresses": [
+      "10.70.10.80/24"
+    ],
+    "at_utc": "2026-11-07T01:38:00.064+00:00",
+    "carrier": "1",
+    "dns": "Link 2 (ens3): 10.70.10.10",
+    "domains": "Link 2 (ens3): nac-lab.test",
+    "event": "network_state",
+    "routes": [
+      "10.70.10.0/24 via on-link",
+      "10.70.10.10 via on-link",
+      "default via 10.70.10.10"
+    ]
+  },
+  "log": "D:\\AI\\nac-wired-lab\\qualification\\runs\\candidate-3e92642-dhcp-rc9-core-20261107\\endpoint-probe.jsonl",
+  "new_lease_after_s": 62.144,
+  "new_lease_at": "2026-11-07T01:52:27.728+00:00",
+  "permitted_after_s": 62.152,
+  "permitted_at": "2026-11-07T01:52:27.736+00:00"
+}

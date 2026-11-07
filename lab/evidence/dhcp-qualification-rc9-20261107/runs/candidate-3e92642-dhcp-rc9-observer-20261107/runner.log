@@ -1,0 +1,34 @@
+[2026-11-07T02:20:16.908430+00:00] control-status
+2026-11-07T02:20:16.989Z
+active
+active
+active
+{"version":"pilot-rc9","commit":"3e92642","build_date":"2026-11-07T01:29:14Z"}
+
+installed=d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /usr/local/bin/nacd
+running=d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /proc/815/exe
+
+[2026-11-07T02:21:30.463208+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T02:21:19.743Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+

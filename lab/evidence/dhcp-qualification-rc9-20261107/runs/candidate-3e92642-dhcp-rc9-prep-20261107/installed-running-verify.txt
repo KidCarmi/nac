@@ -1,0 +1,26 @@
+RC9_INSTALLED_NACD_SHA256 d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+RC9_RUNNING_NACD_SHA256 d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+installed_at: 2026-11-07T01:37:06Z
+os: Ubuntu 24.04.5 LTS
+nacd: nacd pilot-rc9 commit 3e92642 built 2026-11-07T01:29:14Z
+nacd_sha256: d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+bundle: version: pilot-rc9
+bundle: commit: 3e92642110f97d3f42a43652d33479e82cfbcc35
+bundle: build_date: 2026-11-07T01:29:14Z
+bundle: toolchain: go1.25.0 linux/amd64 CGO_ENABLED=0 -trimpath
+bundle: nacd_sha256: d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+package: freeradius 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-common 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-rest 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-utils 3.2.5+dfsg-3~ubuntu24.04.3
+package: openssl 3.0.13-0ubuntu3.16
+package: postgresql 16+257build1.1
+package: postgresql-16 16.15-0ubuntu0.24.04.1
+freeradius_adapter_sha256: 602c3fc5ff195c818bca6f5a15ca665b588077a07025315362cbb5331826c01b
+pki: operator-supplied CA subject=CN = NAC Lab Disposable CA sha256 Fingerprint=A7:C0:B7:04:40:43:1F:EB:39:2F:C0:6F:5E:87:D2:F4:03:E8:44:AB:39:79:8A:48:9A:41:D6:78:A8:C9:9C:81 
+running nacd: commit 3e92642
+active
+active
+active
+{"version":"pilot-rc9","commit":"3e92642","build_date":"2026-11-07T01:29:14Z"}
+env=ad06e17fdb301892df0c2c13364463ad6b140b1f1518887a161b814eb6a87dd8  /etc/nac/nacd.env

@@ -1,0 +1,1074 @@
+{
+  "files": [
+    {
+      "path": "analyze_dhcp_probe.py",
+      "bytes": 2357,
+      "sha256": "af84f95858a065f56d3027bea8d2b91aa2f235fba72d553e6966b92a9be2c068"
+    },
+    {
+      "path": "baseline-rc8.md",
+      "bytes": 330,
+      "sha256": "0d3495acd28d053130690da1414e67da4f491af49a2785e3c3c32b97fb1774aa"
+    },
+    {
+      "path": "build_rc9_guest.py",
+      "bytes": 2346,
+      "sha256": "bfe4e89360bd6e4e19a952870aa5bc4155427fa0a5e90b124eb2f15196ecedaf"
+    },
+    {
+      "path": "configs.sanitized.md",
+      "bytes": 3050,
+      "sha256": "8b086bfe556312d17d0d7f2135032c0ac4c2801e28cfe488f530d6511618ad73"
+    },
+    {
+      "path": "eve_guest.py",
+      "bytes": 3515,
+      "sha256": "9ca3d0dc9daa8f97def6db9532b78b4e8fde4cdfdea643563d99a8a38fef2276"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "bytes": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "nac_policy_api_rc9_guest.py",
+      "bytes": 590,
+      "sha256": "3717b85b8507b52ce48e163a630acebc6fedced14d3eb180441b7f2515cdb827"
+    },
+    {
+      "path": "opus-handoff.md",
+      "bytes": 6055,
+      "sha256": "f326785fffe97ecbb3714854fabbf8f2cef3e75a747a9f1b89080f6117063010"
+    },
+    {
+      "path": "pcap_timeline.py",
+      "bytes": 4879,
+      "sha256": "3ab02ceb975edf5022697528823087e341b2eb979ae17acfd80a3d066e3b5620"
+    },
+    {
+      "path": "qualification/clean_rc9_01_ssh.conf",
+      "bytes": 47,
+      "sha256": "5efa8ee0eb1345d84bfab0574c8eb4b38fa6506f1037a630382a85483b0dc77c"
+    },
+    {
+      "path": "qualification/clean_rc9_10_nac_clean.network",
+      "bytes": 58,
+      "sha256": "e44fe1fd13dac6eda6595dce4142dacb83ebd5a7838136df4c60efb44a1a6bf2"
+    },
+    {
+      "path": "qualification/clean_rc9_account_guest.py",
+      "bytes": 3336,
+      "sha256": "0b2d0994134ebaeae00728100123b4b6cf2226968daca731cbaf2f9296546daa"
+    },
+    {
+      "path": "qualification/clean_rc9_serial_guest.py",
+      "bytes": 522,
+      "sha256": "3946bd5ee1971d2dcb3f72d4666388d07cb4640cf393d4404bac8b438358cbf4"
+    },
+    {
+      "path": "qualification/clean_rc9_serial_inventory_guest.py",
+      "bytes": 1325,
+      "sha256": "de8115ed66841970eb02c1bd6a61bd6ca586f621bde06fed5b3fcbb2c956942a"
+    },
+    {
+      "path": "qualification/clean_rc9_ssh_tmpfiles.conf",
+      "bytes": 29,
+      "sha256": "00c63227c488f37dac0a1de777244053949efdf395324fab307517e8ed1d35a9"
+    },
+    {
+      "path": "qualification/clean_rc9_verify_guest.sh",
+      "bytes": 414,
+      "sha256": "b83b5dfd14fb2a77bf0acf2b8a7a97de7c50b02ca68c5612d0e80068fa8e9dcf"
+    },
+    {
+      "path": "qualification/clean_rc9_vm.py",
+      "bytes": 3902,
+      "sha256": "f54c79940c7931172a44536579cd6315bba4cb3d76d222b1131927b26de76d58"
+    },
+    {
+      "path": "qualification/dhcp_candidate_serial_guest.py",
+      "bytes": 10913,
+      "sha256": "94ff03a890b58a20bb798e9798af374e8c4366955907eec75d284a0fba6ae629"
+    },
+    {
+      "path": "qualification/dhcp_capture_guest.py",
+      "bytes": 1837,
+      "sha256": "62765bdc642777d5da06f3285fb9fc31422678bdf42c542e5d77bd9280f6ba09"
+    },
+    {
+      "path": "qualification/dhcp_control_status_guest.py",
+      "bytes": 663,
+      "sha256": "f5c2a87662acf212fa6c86677fd539f78222c3a2d72848d0ea0d320683791c67"
+    },
+    {
+      "path": "qualification/dhcp_endpoint_guest.py",
+      "bytes": 3260,
+      "sha256": "4fe293186bdade90c100ada3648112a77fcbc24ff60f2e649571b6af2280d376"
+    },
+    {
+      "path": "qualification/dhcp_linkcycle_guest.py",
+      "bytes": 1428,
+      "sha256": "7f16107bd8f3a2c18294430f28797e98f9f9c80330c6a560ddf1b5bafced3379"
+    },
+    {
+      "path": "qualification/dhcp_probe_control_guest.py",
+      "bytes": 4574,
+      "sha256": "d5c9ae72363a3f7f0a4603824adea5e6d8dc7f8365e65a5bcdcda43216a26600"
+    },
+    {
+      "path": "qualification/dhcp_probe_endpoint.py",
+      "bytes": 5063,
+      "sha256": "34e9c1321ba8944124766070a6ed33cafed1368420108e7eba95d43a2311ecea"
+    },
+    {
+      "path": "qualification/dhcp_service_health_guest.py",
+      "bytes": 2548,
+      "sha256": "9773cda18f1d79a55cc44e2aeac978196e5d9400d368f8b27cc232b631ec7ff7"
+    },
+    {
+      "path": "qualification/dhcp_switch_guest.py",
+      "bytes": 7018,
+      "sha256": "3a0c97a51b046b37d77de4526eda227dc15a3a51514988a080b6c4b0cf634cc8"
+    },
+    {
+      "path": "qualification/dhcp_transition_guest.py",
+      "bytes": 6697,
+      "sha256": "99d3685b037c0d77befefec80bcb0a30a68b4a3bf75a4d5cafe5f0bb941e9a4b"
+    },
+    {
+      "path": "qualification/nac_lab_api_guest.py",
+      "bytes": 731,
+      "sha256": "5a1e16d4cc15751b9980d826d87f1c948f2bee8f9c1f49cd6aee200402145da2"
+    },
+    {
+      "path": "qualification/replay_stale_accounting_rc7_guest.py",
+      "bytes": 3086,
+      "sha256": "c5c05c375e926efd8884674c2c8578b481899264b9c777bda6267d936a85ddbb"
+    },
+    {
+      "path": "qualification/run_dhcp_candidate.py",
+      "bytes": 4950,
+      "sha256": "6c87f809cc50d6c03e7b2024333003213f1ee64c144edb605929738554ff5a44"
+    },
+    {
+      "path": "rc9_service_guest.py",
+      "bytes": 1386,
+      "sha256": "50a966f1b63c29cdd957ba994f4f89e3934e9d6642bb99e61be0eab2cf7fc45a"
+    },
+    {
+      "path": "rc9_upgrade_guest.py",
+      "bytes": 5138,
+      "sha256": "918557bceea95b1843cd522d93203b59cb68a25ef0a6b92274eda080a5cdbbec"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1350,
+      "sha256": "d3eec99de629622d33558eba14240d9e225c6949b574acc690e762e2320e6e11"
+    },
+    {
+      "path": "report.md",
+      "bytes": 15281,
+      "sha256": "e79515137456588a1ac3a8ccaa99574a000b2cd80426641f3b995bfbc187c5ea"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 12092,
+      "sha256": "94403143bc3cde89149f1642a5d03e3289440a8d92422469123cf73a7e6a6a56"
+    },
+    {
+      "path": "runner.source.py",
+      "bytes": 4950,
+      "sha256": "6c87f809cc50d6c03e7b2024333003213f1ee64c144edb605929738554ff5a44"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/account-workflow.txt",
+      "bytes": 405,
+      "sha256": "83ab3aa951d2566889008cd2fa248f47f91fd5b60582555b62f37e9020e4d137"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/after-account-readiness.txt",
+      "bytes": 46,
+      "sha256": "ef583dcc9d4751b9e12d4077c9acb2b736dab11ab1f3c04600034217e5cf87cc"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/findings.md",
+      "bytes": 4087,
+      "sha256": "504cb3a63f6cc8ab3877a3cdb8a1d5fa8d1a7b88aed4274d0378047f65a8ebfa"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/installer-output.txt",
+      "bytes": 3133,
+      "sha256": "c555a0276fc26174d45a185d37316fd439aec7edd4e9fee2e6b8780d036bdad2"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/restart-verification.txt",
+      "bytes": 494,
+      "sha256": "845b3b9d3e56b1d0b3f495803f1a63e900a0177b5db7efb84f4b4b28f129d9ff"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/runtime-verification.txt",
+      "bytes": 447,
+      "sha256": "f12176d78002a7ff3939960dcef93a169e21d75f295b1ae9a6d06ed72db5193c"
+    },
+    {
+      "path": "runs/candidate-3e92642-clean-rc9-20261107/timing.txt",
+      "bytes": 349,
+      "sha256": "958552c16be1c0216fcf8285a523311348dc5ad240875557d6dce60db83ee12d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/accounting-events.txt",
+      "bytes": 5812,
+      "sha256": "6b853b3bef6d084d5543243073a19ad08fa2d9165f42ec4c5b6ee4c37ec23586"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/after-session.txt",
+      "bytes": 993,
+      "sha256": "93aeb7f213bcd5db9c40dbb78e23a9d34496f7032acee1d59abda6afa10795c3"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/before-session.txt",
+      "bytes": 993,
+      "sha256": "72ea5dd38d2f8b03cedce4db0dd581abde0247b6a159afd4c88b1fa21ebdb5ce"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/accounting-events.txt",
+      "bytes": 5812,
+      "sha256": "6b853b3bef6d084d5543243073a19ad08fa2d9165f42ec4c5b6ee4c37ec23586"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/after-session.txt",
+      "bytes": 993,
+      "sha256": "93aeb7f213bcd5db9c40dbb78e23a9d34496f7032acee1d59abda6afa10795c3"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/before-session.txt",
+      "bytes": 993,
+      "sha256": "72ea5dd38d2f8b03cedce4db0dd581abde0247b6a159afd4c88b1fa21ebdb5ce"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/corp-dhcp.pcap",
+      "bytes": 1448,
+      "sha256": "1ec5d0fe9f1e2694077f6942b4472ee3d471b16699a918db7fff04991578ca5c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/credential-scan.txt",
+      "bytes": 231,
+      "sha256": "76bcca89ce513d97b4f5570a557fe20c2ac3e68fcd42c4df6a83d43fae41738b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint-probe.jsonl",
+      "bytes": 20550,
+      "sha256": "2f1d40b6b0690c5583a36834426d79d33d0dc8f4f65ee3549a28fa8220591452"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint-probe.raw.jsonl",
+      "bytes": 20480,
+      "sha256": "331dc841feaccf175d01b21a6affb359ee413994093e1de069b6150ae4dc38c3"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint.pcap",
+      "bytes": 1448,
+      "sha256": "8ca495f21b8ed7cca464d41c9f69d79101016f8a93decb3d376d07e509ce2532"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/findings.md",
+      "bytes": 2064,
+      "sha256": "0872323f69b7e072b463b2dd0935845b366c665c812d9fc2c6212ce22cd0a2e6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/old-stop-replay.txt",
+      "bytes": 306,
+      "sha256": "4e5139276b727ff53e30d318902af401ba98b3c5a7e61d8a837d3f9b2f12d93d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/quarantine-dhcp.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/radius-timeline.txt",
+      "bytes": 305,
+      "sha256": "bca494338c0b15ce9bb26b5cb6ef18b7ce123c86e08c229813548517e394dd99"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/radius.pcap",
+      "bytes": 326,
+      "sha256": "c3d94baabc8a4dfcadbe4115f6cb3484b6ed2b446dc78d6ebef804a160f76248"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/candidate-3e92642-dhcp-rc9-accounting-20261107/runner.log",
+      "bytes": 1716,
+      "sha256": "f3b3acd4433acfd1ba89ccfabf09db330ce0532b5c1e213c843012c1c70aad31"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/corp-dhcp.pcap",
+      "bytes": 1448,
+      "sha256": "1ec5d0fe9f1e2694077f6942b4472ee3d471b16699a918db7fff04991578ca5c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/credential-scan.txt",
+      "bytes": 231,
+      "sha256": "76bcca89ce513d97b4f5570a557fe20c2ac3e68fcd42c4df6a83d43fae41738b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint-probe.jsonl",
+      "bytes": 20550,
+      "sha256": "2f1d40b6b0690c5583a36834426d79d33d0dc8f4f65ee3549a28fa8220591452"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint-probe.raw.jsonl",
+      "bytes": 20480,
+      "sha256": "331dc841feaccf175d01b21a6affb359ee413994093e1de069b6150ae4dc38c3"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/endpoint.pcap",
+      "bytes": 1448,
+      "sha256": "8ca495f21b8ed7cca464d41c9f69d79101016f8a93decb3d376d07e509ce2532"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/findings.md",
+      "bytes": 2064,
+      "sha256": "0872323f69b7e072b463b2dd0935845b366c665c812d9fc2c6212ce22cd0a2e6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/old-stop-replay.txt",
+      "bytes": 306,
+      "sha256": "4e5139276b727ff53e30d318902af401ba98b3c5a7e61d8a837d3f9b2f12d93d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/quarantine-dhcp.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/radius-timeline.txt",
+      "bytes": 305,
+      "sha256": "bca494338c0b15ce9bb26b5cb6ef18b7ce123c86e08c229813548517e394dd99"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/radius.pcap",
+      "bytes": 326,
+      "sha256": "c3d94baabc8a4dfcadbe4115f6cb3484b6ed2b446dc78d6ebef804a160f76248"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-accounting-20261107/runner.log",
+      "bytes": 1716,
+      "sha256": "f3b3acd4433acfd1ba89ccfabf09db330ce0532b5c1e213c843012c1c70aad31"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/analysis-coa-to-corp.json",
+      "bytes": 4017,
+      "sha256": "b8593575bb92ace7fb6649c3931c3025501b696c63a2c58c4e45256cc0269f54"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/analysis-coa-to-quarantine.json",
+      "bytes": 4020,
+      "sha256": "c43dcfd5fe7b1ac32704da168d732874a8cc64d0f459f154e5d79224eb649805"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/analysis-rule-to-corp.json",
+      "bytes": 4018,
+      "sha256": "0caa8736b6085c95bddc4e2bccde1f463a4681efd777bb02763f75550a78ebb3"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/analysis-rule-to-quarantine.json",
+      "bytes": 4020,
+      "sha256": "42a36a4d2cb180f5a13e7fd260c983932e43c9443953bb3bf742142b09cef711"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/corp-dhcp.pcap",
+      "bytes": 7906,
+      "sha256": "11692f6e3eed0379746587fbd9a0fd83c5330d323c5bc5585cd8464dc26b07b9"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/credential-scan.txt",
+      "bytes": 236,
+      "sha256": "817c678764b0ee765ab9b1a6b3314d3d1fad108a6e67423068d33ba62dd3c161"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/draft-quarantine.txt",
+      "bytes": 1571,
+      "sha256": "17f0198bd3af00e8798c673d754525fc75fc6db3ab217bb4b2a74241c3d6cb91"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/endpoint-probe.jsonl",
+      "bytes": 257891,
+      "sha256": "8f1042d1e6533061244feaadeffa12abedcb5510c7ffe57e4ff356b276399eee"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/endpoint.pcap",
+      "bytes": 61358,
+      "sha256": "2b56f22a235bd91472289dfce05d16693b5f1e538edf573a923ae8c86ddd95a1"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/final-policy.txt",
+      "bytes": 1551,
+      "sha256": "61a13541ac34aeac3b219999b6e8bc8d5dd6fb3f39072a3520fe71b6c43f3220"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/findings.md",
+      "bytes": 3910,
+      "sha256": "792062c3aaff2990fd84f1065912ec1ef642df6a515bf40e851a2f4d31b625f4"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/preview.txt",
+      "bytes": 6431,
+      "sha256": "ffae265181df49183be7d531bedb7016e6a906752d9a1f6a6a6193e00eda098c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/publish.txt",
+      "bytes": 1744,
+      "sha256": "ea78a310c09780fca1f94bd1b2d7f622a7c6486f82430bd369f7a9cf96266427"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/quarantine-action.txt",
+      "bytes": 1629,
+      "sha256": "75eb0167847ab0a64270dec4180398d42b7740b3550e52d49d1d727473566610"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/quarantine-decision.txt",
+      "bytes": 1130,
+      "sha256": "ecfa4d5eba4e477a45ad152fc87817fc48a2079fcd0700e09bd806a963f1158a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/quarantine-dhcp.pcap",
+      "bytes": 3970,
+      "sha256": "01a4cf5bdde0a12477861102b99458ba4fd28779467595339ea87a33a37a7b64"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/radius-timeline.txt",
+      "bytes": 24186,
+      "sha256": "04f8a93c23d58f3e98539a15aa79977e4ecabda7308f5306ba9708820fc1b29c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/radius.pcap",
+      "bytes": 62126,
+      "sha256": "158ec185016b36778149c0c33d76ac55299664d38b544b210aeaf61fe123c378"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/restore-action.txt",
+      "bytes": 1666,
+      "sha256": "6b4e71a0d0779e7913e93b89181789ca9a4751a050ef555c100c36c60e41c557"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/restore-policy-v2.txt",
+      "bytes": 2090,
+      "sha256": "56549a85bebca2bd09d12b1b209b9fb7a3905ace384b28caa56df51f7bf3eea5"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/restore-reauth-action.txt",
+      "bytes": 1634,
+      "sha256": "c5875c875f3b6c52cd0b29c53a3b7174b19fbb656aba74895d45d98f4d648e0f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/restored-corp-decision.txt",
+      "bytes": 993,
+      "sha256": "d38b343b13414c8b3c6ea9de4f52df147c3e7003777d7bac3b830c978263da2a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/rule-quarantine-decision.txt",
+      "bytes": 1114,
+      "sha256": "eea8ceae5d130ed762191de1a7d0bafbd7c6d14d1f5e05d05230a3e5bb6a9d1b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/rule-reauth-action.txt",
+      "bytes": 1633,
+      "sha256": "49d45a6a382d419bb1782aa4cdee682821ff50ebc9bc08c096c4cbbf572f4455"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/rule-restored-corp-decision.txt",
+      "bytes": 1101,
+      "sha256": "877a37e18baf8afce2cbdbf296fab52745a4e36faa1516708fd011174f0024b8"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-core-20261107/runner.log",
+      "bytes": 15927,
+      "sha256": "1f928df35f0c99738bef0df0f0b142c338d662c8316e2e2c8969db35e7c90256"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/accounting-events.txt",
+      "bytes": 5812,
+      "sha256": "8ed2f266f912e5050e622725d6129642f8fb9b4affd3633f38c6d8c2fecf4e42"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/after-bounce-session.txt",
+      "bytes": 60,
+      "sha256": "d6b473799de1a608b0ce0995a6c662cbb1a9ae8a442ee68e520d56299468f02d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/after-stop-session.txt",
+      "bytes": 993,
+      "sha256": "983f71627f801f49d4ea997978dd1ff41bccfbe085c582048b565dca01f6457d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/before-session.txt",
+      "bytes": 992,
+      "sha256": "6bcf27a59bf873d3000a12470b9a71fab1b5394b4098d857f5b0b3f9c6ff6a06"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/corp-dhcp.pcap",
+      "bytes": 2902,
+      "sha256": "6615189d81c929b6ee58faabcead267877c3503559ceff6e48885cf0ef8f446a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/credential-scan.txt",
+      "bytes": 233,
+      "sha256": "df3ac22b41e18cdfd3f55805ef3f3ceb74a87687f03cd999110c2907e2c88633"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/endpoint-started.txt",
+      "bytes": 1304,
+      "sha256": "f90996dc68f8eedbeb0912d9a6e7add15b26cc2742781817d5b92883d241808b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/endpoint-stopped.txt",
+      "bytes": 1304,
+      "sha256": "94f9971e22e9db048fb0694df892e69756cc3f8dff9a8785cb584fdfe9356b32"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/endpoint.pcap",
+      "bytes": 10786,
+      "sha256": "85ccf15c05e849c222aa3c98d378ac5e9738abd238666defe5e8bf034f1ffe12"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/findings.md",
+      "bytes": 3039,
+      "sha256": "1ca85301ca016741b6e928a1c2f8ce77c687ec4f702cb9318adfbef53378af4f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/operator-port-bounce.txt",
+      "bytes": 416,
+      "sha256": "f19005e935b790fc376fb88c22090d77d56597afbf90754a3e3339e909d08d9d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/quarantine-dhcp.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/radius-timeline.txt",
+      "bytes": 3195,
+      "sha256": "fb96b54a874f5b63c189606a9ee1323ed9c7fb20633157db197b9704b9a7b9ef"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/radius.pcap",
+      "bytes": 8293,
+      "sha256": "3d71a035c3546e9c805ce55f3692ab5a97107aa0d23b0b8d55978f6be24e955b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/reconnected-session.txt",
+      "bytes": 992,
+      "sha256": "d6d1f12fea1637b41a3e4b3a1c27da3f4b818ff00e867585b97f07ed2fb39e7a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-linkcycle-20261107/runner.log",
+      "bytes": 12025,
+      "sha256": "8f9c6b0cf4912bae52ecb887d4a3870b998f06df8421cb497a68a5b0a05922fb"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/before-switch.txt",
+      "bytes": 2896,
+      "sha256": "3e9773d1d653cbbbcec9003d73154021bd5f924aaa68d56f15e7aeb18a2ca9db"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/eapi-disabled.txt",
+      "bytes": 1566,
+      "sha256": "26e53c9fdaffee0004b5afab37b25436e30a7b994c314bb0e3e0db9bfaac4496"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/eapi-restored.txt",
+      "bytes": 1566,
+      "sha256": "a0ee65fb7d2af5990c4dc21ed9fd238fbc78c24d20d5b4e95330e177463f8a9c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/findings.md",
+      "bytes": 1680,
+      "sha256": "74cdb3c1de769dbacd94fe7ec80185b08cb7fbe0782d45d551671e353d1b3416"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/outage-switch-early.txt",
+      "bytes": 3093,
+      "sha256": "0401c33544a1b3a3cebb78f5cf7e9fc0fa6bf3646fac42431ef141056885e1bf"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/recovered-switch.txt",
+      "bytes": 2897,
+      "sha256": "cb522359afb827e54c133d7a8c98f689bd68ce65c8378bd74512815d4c889238"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-observer-20261107/runner.log",
+      "bytes": 1401,
+      "sha256": "6d7592e4aa094d715285c1b5fdf0a59a27b228ddc84ad528cfa22548971d027a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/corp-dhcp.pcap",
+      "bytes": 2890,
+      "sha256": "1eec0e7e9510a055ef0ccf773241b2d834d5184365b2329ef9dedd9306464110"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/credential-scan.txt",
+      "bytes": 234,
+      "sha256": "35d0b7d8cbbda625241fb249cdd78a84c301615d3cdd7946473ed8860a81ccd9"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/endpoint-probe.jsonl",
+      "bytes": 56493,
+      "sha256": "81113ae2449e8129dcadade884c0fe63fb013acb8db1f3875af93693efe7f853"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/endpoint.pcap",
+      "bytes": 22606,
+      "sha256": "caa30ec7e8e7c9ad7ef72fdb2a369e5d92f28db2bae8c276e54710d639f17b05"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/final-session.txt",
+      "bytes": 992,
+      "sha256": "3b8b8ae50bf818384d1abc3da4552679ded9301d67ba177c44ac29e3c0fcae58"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/findings.md",
+      "bytes": 2322,
+      "sha256": "80d5d2973aa2f84c2e350c773811c3e7a10aeef350383d8a2acbe7284fdf1458"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/nacd-restored.txt",
+      "bytes": 488,
+      "sha256": "96ddc91088527871bf2caf819b01e5fd461fae3f97935d09f62698023f0a12f7"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/nacd-settled-status.txt",
+      "bytes": 257,
+      "sha256": "bd6e72023cd7a9c595f451871e9534719c73389e5ee59004fe7e7b8721972a8d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/nacd-stopped.txt",
+      "bytes": 44,
+      "sha256": "4afcd2c3540413bc0d8958a643daf87f212186cf3b7287713a8b4b9724284b7f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/quarantine-dhcp.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/radius-timeline.txt",
+      "bytes": 8183,
+      "sha256": "ba8ee185339aa0df43f1f5245d48963121e29281adf2427adea0c80eb7021f2f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/radius.pcap",
+      "bytes": 23317,
+      "sha256": "0e8bf71ebe511a334c1efcfa211c0b733a8a4fd9dcea1cce84a57513b10181db"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/runner.log",
+      "bytes": 5392,
+      "sha256": "2f5f7e552b975be316e4cad22e7669bc6698364425bfb0aadd34289648b854fb"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/topology-started.txt",
+      "bytes": 1304,
+      "sha256": "673e58a88438e7fb61e23d26a0044547c651dcda9d39f9a0e643902b25859fb6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-outage-20261107/topology-stopped.txt",
+      "bytes": 1304,
+      "sha256": "16866e352f05059c5dec2d8d38732dfa8a043e4e459c6142c0f0da85c65a7ff6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/after-publish-session.txt",
+      "bytes": 1130,
+      "sha256": "25ce5d27d9aedd8fc798bee3184ed7f3e4137d84ac7658f7880a8e5cb41db6f0"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/analysis-quarantine.json",
+      "bytes": 2563,
+      "sha256": "c2e5c3506fe18948dc421d2fdbad4a111478f41b2001c0ae3ed6083325a94465"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/analysis-restore.json",
+      "bytes": 2562,
+      "sha256": "6cbef147621e9366957ffd52ea4c7cbd1aab550abfe9abfc0e7472ed87b559c8"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/corp-dhcp.pcap",
+      "bytes": 3598,
+      "sha256": "847c0ccf5f41ca43b3018add1703304cd07d9f0c19e34d7043aa5e310aa0fcd9"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/credential-scan.txt",
+      "bytes": 236,
+      "sha256": "22afbfab0e22e9597e2c301c1f6a51bccdc36cf11e804fefc98d6d4fae8f4423"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/decision-v11-override.txt",
+      "bytes": 1245,
+      "sha256": "6a741c7187cd4309657bc9b5a250459bafa8e316b9d7bfc50de536f0601ecc7a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/decision-v2-override.txt",
+      "bytes": 1237,
+      "sha256": "9994d95578f56c4f51fe985d044c4c234cb033c4351354a7429e9471e993c4b5"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/draft-quarantine.txt",
+      "bytes": 1792,
+      "sha256": "a12c523af11e7aee63ec30fcff73fc91b52eff61c5a73ecdde27f44404d35e5b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/endpoint-probe.jsonl",
+      "bytes": 69026,
+      "sha256": "4f9b05a83c72b2fb0857afc2d46b79dde816782610f4cbe28343461d6feda958"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/endpoint.pcap",
+      "bytes": 29942,
+      "sha256": "83edf63e4874fa0675e64554b3903356d494b7e166990051cc5cc6e9b8d0bdbf"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/final-decision.txt",
+      "bytes": 992,
+      "sha256": "bb9e66626827e360504d3ee0e80cdbf174023fbe698c3fb1f60510a05169b5bc"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/findings.md",
+      "bytes": 3046,
+      "sha256": "d14cff8f078adba0991140ba851ae82c7ce0dcbdd92854596546b4cec4e20ef2"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/individual-restore-action.txt",
+      "bytes": 1663,
+      "sha256": "8f4c17f902d7b3ac918765bb6146af478fabee2d963f02bf5d206bb3f3146103"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/preview.txt",
+      "bytes": 6652,
+      "sha256": "2e29ede2a5b7032c115c7dcea41390912e48fc0ebd5a2030d1b4c3f6cc301050"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/publish.txt",
+      "bytes": 1966,
+      "sha256": "63b97bc795981045700ad0c04ffe23a26851878641c80fa1d5636fe2e963e22f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/quarantine-action.txt",
+      "bytes": 1630,
+      "sha256": "def0daccaf45159fec45b29174e4c5791d786805831c640864eb91add1e4968c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/quarantine-dhcp.pcap",
+      "bytes": 1820,
+      "sha256": "44c6a0ea0ace8d552bc948749ed1e14e259e0ce65cb950c9d1ef5e2470d91810"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/radius-timeline.txt",
+      "bytes": 14248,
+      "sha256": "39e61d19e1abb24821a0e569e2dc0adbbff5871379826d294dca7f21d5064025"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/radius.pcap",
+      "bytes": 34128,
+      "sha256": "6ba78c605480b483c46b04a3408834be691ae1f639f8c1d29b690233066ca0af"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/reauth-v11-action.txt",
+      "bytes": 1676,
+      "sha256": "71bae0f5c4e5391e19d304b19383a2c5d6dc8f9257534e85e9b416d7126cd486"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/reauth-v2-action.txt",
+      "bytes": 1678,
+      "sha256": "42fc2746c04e18ad9ce7c25de7bb0625575dab2e1d45640cfaa8049aa4043960"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/restore-v2.txt",
+      "bytes": 2314,
+      "sha256": "634b4d626b561038c353a44855397497094707dee6614f99c302858c0e9a2a32"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-override-20261107/runner.log",
+      "bytes": 5842,
+      "sha256": "952da40397e644dc824ca504b5e87b2d1efd5222d565c8e795ffa83e12eb5970"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-prep-20261107/diff-stat.txt",
+      "bytes": 401,
+      "sha256": "472ec1cb71940ca45051fad173bdbcc7e7e23c3b76321cdbb1319327069df7bd"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-prep-20261107/findings.md",
+      "bytes": 2034,
+      "sha256": "800410ea2a4da6e9544624a30034ede02a80823771842418efdb1688a876de6d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-prep-20261107/go-test.txt",
+      "bytes": 1329,
+      "sha256": "3de3cdc7624413893eb73bd41db4dabf68fc299194562e2b96a0e896684b8b5c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-prep-20261107/installed-running-verify.txt",
+      "bytes": 1489,
+      "sha256": "d22cb5dd32b00b76e6e57f2d2ce87f0bef7d2040fc8fd6939e2b4a269f8b53f4"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/analysis-to-corp.json",
+      "bytes": 2630,
+      "sha256": "891fede66e0ea378e56db562ced057d66c4117560c6e2f1e22ec7e09b2cb1f18"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/analysis-to-quarantine.json",
+      "bytes": 2632,
+      "sha256": "dbcc24b260aec0f59cca3ab261f21e0829df323c6a76c778969f349922680ba1"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/corp-dhcp.pcap",
+      "bytes": 4680,
+      "sha256": "8cccfd97e74bf8c3fbadff29707fdb300bf84ace6aac7f43f9fc908625fde44d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/credential-scan.txt",
+      "bytes": 236,
+      "sha256": "eee7e75795a87b08f23aa1817661181d4e471f69291fc67b3e759a2724008489"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/draft-quarantine.txt",
+      "bytes": 1681,
+      "sha256": "566bc7f8a4eba6a5fc7937ce78d3f3566a6c81220864ac84b16c949a6b0c7819"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/endpoint-probe.jsonl",
+      "bytes": 271963,
+      "sha256": "a3b911520ce50ae490fc079349079c28f093506c1dc7fe0a11dd18bde1b031fc"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/endpoint.pcap",
+      "bytes": 26300,
+      "sha256": "2e5e84a1982736d75d16a05ee4e04d6949967b51f2aa00df55075c26da9b4526"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/final-policy.txt",
+      "bytes": 1662,
+      "sha256": "8a4dc3412504be70676672996a1eb174c74e28fa333ef16130aa3336d7155a8c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/findings.md",
+      "bytes": 2741,
+      "sha256": "a1676faf47809e400b6eaaa71e1c26285cb837f342041938276f8505995f7326"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/preview.txt",
+      "bytes": 6541,
+      "sha256": "88193ddd36aab16454aee277684a3928432407d2291a63a42f14bb4329e1a70c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/publish.txt",
+      "bytes": 1855,
+      "sha256": "49adeb796e58e08c6c8f310d3bd5d7431a5c7c8d61047ebfb921d797c51de41d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/quarantine-decision.txt",
+      "bytes": 1114,
+      "sha256": "43329c1c605f342eeccfb619fe7fbbc01de9e54e52e57ddd46faad104ad707be"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/quarantine-dhcp.pcap",
+      "bytes": 1820,
+      "sha256": "479a542a009108d8acf0e9167ecd7a4dc82f7ce2ecf472e053dc7ffde88decc5"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/quarantine-reauth-action.txt",
+      "bytes": 1634,
+      "sha256": "6515f9ead36b6ae9e723c3646a4d4cf1d20fa1c4961874dec6581f5cb6380115"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/radius-timeline.txt",
+      "bytes": 10014,
+      "sha256": "a6eba1459390b5f0920d98c47cc282b52917cbce00231caa8e32ff3bd4a1bce5"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/radius.pcap",
+      "bytes": 25043,
+      "sha256": "ee258a698483077d8785fb1bae79500fa452d0b4db6a2b821839d84f12f9c3d7"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/restore-policy-v2.txt",
+      "bytes": 2203,
+      "sha256": "6d60778317c9f15fb2f47a8d7d7d586934e2df671d5fd355780a34bc7e322a2e"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/restore-reauth-action.txt",
+      "bytes": 1633,
+      "sha256": "dd1a7082e397c059188ca9594d69b07afbf08eaf0cca2c3e33da2500f9f20888"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/restored-corp-decision.txt",
+      "bytes": 993,
+      "sha256": "527d104b540bc5e2ed19ce9e0f944c3e7201c75df880b3b553fca68bc07f5f19"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/runner.log",
+      "bytes": 8089,
+      "sha256": "c69f013fdde1acb304bc9fbb6e804779a4d67cb103c0d18152fbd3aa727d5f21"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/topology-started.txt",
+      "bytes": 1304,
+      "sha256": "673e58a88438e7fb61e23d26a0044547c651dcda9d39f9a0e643902b25859fb6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-restart-20261107/topology-stopped.txt",
+      "bytes": 1304,
+      "sha256": "16866e352f05059c5dec2d8d38732dfa8a043e4e459c6142c0f0da85c65a7ff6"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/eapi-disabled.txt",
+      "bytes": 1566,
+      "sha256": "80d99f24062b2eae846ae943bf345ff92cf1e092aea650bb4bc0070f92488602"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/eapi-restored.txt",
+      "bytes": 1566,
+      "sha256": "04867b34e963c79ac8ae695a4563a79894f6c0fbe4ca64b2aaa24986daa79f17"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/early-session.txt",
+      "bytes": 995,
+      "sha256": "9b50cb700052150ba023615aab543411ad5da148883d06569047233b24e22603"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/endpoint-probe.jsonl",
+      "bytes": 109813,
+      "sha256": "41bb253f484567555ebcc4cf76b4def6a5bd3d424ca6dcd97a6822b4444dde49"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/findings.md",
+      "bytes": 1984,
+      "sha256": "d71773ceaf595b0014c4c308526a4b792e8fcddd8223bdc3f85ab2599dfc8b59"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/recovered-switch.txt",
+      "bytes": 2897,
+      "sha256": "df60db93e7bbdb892074dd923b6404b81b19348c0bac4f65a6a81b5fc3e978c5"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/runner.log",
+      "bytes": 561,
+      "sha256": "89bb759c27ee4a42fe301947b83769ca4c3c813777aa19630df3f75f571a533e"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-stale-20261107/stale-session.txt",
+      "bytes": 1243,
+      "sha256": "2c804fc28a64289245246cb8c0d748b9ad793c5b7e3f94b9ad97f8f418d10f0a"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-policy-reauth-session.txt",
+      "bytes": 1006,
+      "sha256": "4cd5d3276936aac339c6517f3792c5771d9d7f9a81d826d87fd19b81315e257f"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-quarantine-session.txt",
+      "bytes": 1130,
+      "sha256": "1185bb37ba0d753e0a06e904c96ff21c569db645914249bf97a73c8f2a5b702d"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-restore-session.txt",
+      "bytes": 992,
+      "sha256": "e07e462f370254806d7787686de25083802f512968679ef90b58d3ea5c68c1c4"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-rule-quarantine-endpoint.txt",
+      "bytes": 946,
+      "sha256": "44ac746887eda349da3c4df250a946b177f7a8c91b1d688e15abd482e84b904e"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-rule-restore-early.txt",
+      "bytes": 949,
+      "sha256": "5e3b370606260254b16a34dbf2fa145acc1b3f5f7fc51d37c0edcd6b10995977"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-rule-restore-final.txt",
+      "bytes": 946,
+      "sha256": "17f04d26e40cf99d9f8ae0b213f3ade1b3398c73d2fe12ab5c2f18445c299f91"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-rule-restore-late.txt",
+      "bytes": 1045,
+      "sha256": "ccb22fb294ce16607a49a9a240b7dee32fced26d8de8ebc190f546e60555b211"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/after-ui-rule-restore-session.txt",
+      "bytes": 993,
+      "sha256": "3157204abeaa70387c9cd22d9f20fe1a4f2d65adca7667322efd629e1c89563c"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/corp-dhcp.pcap",
+      "bytes": 5040,
+      "sha256": "f340b593eb77f54cf3ae76565264be12d1749e5ece90a5e091c6eb95e116a934"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/dhcp-timeline.txt",
+      "bytes": 3822,
+      "sha256": "99a8efe087eadca8f49d73c1a2f4304ae17ceddb61c71cfa731bd6cb904c8964"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/endpoint-probe.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/endpoint-timeline.txt",
+      "bytes": 7124,
+      "sha256": "edd4af19232b714f8df77db7c051665029782f2c8fddedf46e160c6d02ee0dba"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/endpoint.pcap",
+      "bytes": 37018,
+      "sha256": "7b55e2ee6b04e8a26d70bb54b803c3a23c20c53a9ab405f37f94f0feb4a8110e"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/final-handback-session.txt",
+      "bytes": 992,
+      "sha256": "81c136919326c0031d0d0a56399292597c8838fb33603d9abc2927c78e394ab9"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/findings.md",
+      "bytes": 5850,
+      "sha256": "b6fce5e4cc58f824e5532b7ab0d03d3ea28f0268077b92184f0e082294f40981"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/post-repair-smoke-endpoint-probe.jsonl",
+      "bytes": 4075,
+      "sha256": "df8d47c96f3902fbc39080d55abef5d3016f91aef6cda62e426db0173eb2fb3b"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/quarantine-dhcp.pcap",
+      "bytes": 7176,
+      "sha256": "dacb4cfa57e899233111222640d69a9fde6f3d7f76eca687fb9f31e3cacd6405"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/radius-timeline.txt",
+      "bytes": 14248,
+      "sha256": "b1c9f42c855013449638b08abc2fc530708e95f937b054cc5765c6d39b2310a1"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/radius.pcap",
+      "bytes": 34128,
+      "sha256": "b6abb086d435ad599e9a9a5fcbcc031bf3d9f6e338bc32f84d9b12b8050fce80"
+    },
+    {
+      "path": "runs/candidate-3e92642-dhcp-rc9-ui-20261107/runner.log",
+      "bytes": 13796,
+      "sha256": "c7c516cd1b011ccf7be33f661177e666479d67123b82ba9a52fa1235d58599d2"
+    },
+    {
+      "path": "serve_rc9_guest.py",
+      "bytes": 1291,
+      "sha256": "876d92b7f3a9bb5e9f603f4aebff2e60d96cf817ad58dc50f343edeba52d9a8d"
+    },
+    {
+      "path": "verify_package.py",
+      "bytes": 2202,
+      "sha256": "d2bd4dc0a6b5d89f684effedfed4b73c596be5a71200edd31b3e955fe420f471"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+2026-11-07T02:38:10.873+00:00 RADIUS 10.70.99.1:58665>10.70.99.2:1813 Accounting-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T02:38:10.885+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:58665 Accounting-Response id=1 

@@ -1,0 +1,70 @@
+INSTALL_START_UTC=
+
+==> Installing packages (PostgreSQL, FreeRADIUS 3.2 with rest)
+FreeRADIUS 3.2.5
+
+==> Users and directories
+
+==> Secrets (generated once, kept on re-install)
+
+==> PostgreSQL database
+
+==> Operator console TLS certificate
+self-signed certificate generated (browsers will warn; supply --https-cert/--https-key to replace it)
+
+==> nacd configuration (/etc/nac/nacd.env)
+
+==> Database schema
+
+==> FreeRADIUS adapter
+LAB ONLY: disposable test PKI in /etc/nac/test-pki (client.pem/client.key for a test endpoint)
+freeradius-setup: configuration OK (FreeRADIUS 3.2.5)
+
+==> Install report (/etc/nac/install-report.txt)
+installed_at: 2026-11-07T07:17:46Z
+os: Ubuntu 24.04.5 LTS
+nacd: nacd pilot-rc9 commit 3e92642 built 2026-11-07T01:29:14Z
+nacd_sha256: d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+bundle: version: pilot-rc9
+bundle: commit: 3e92642110f97d3f42a43652d33479e82cfbcc35
+bundle: build_date: 2026-11-07T01:29:14Z
+bundle: toolchain: go1.25.0 linux/amd64 CGO_ENABLED=0 -trimpath
+bundle: nacd_sha256: d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749
+package: freeradius 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-common 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-rest 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-utils 3.2.5+dfsg-3~ubuntu24.04.3
+package: openssl 3.0.13-0ubuntu3.16
+package: postgresql 16+257build1.1
+package: postgresql-16 16.15-0ubuntu0.24.04.1
+freeradius_adapter_sha256: 602c3fc5ff195c818bca6f5a15ca665b588077a07025315362cbb5331826c01b
+pki: disposable test PKI (lab only)
+
+==> Services
+running nacd: commit 3e92642
+
+NAC pilot installed.
+  Console:        https://10.0.2.15:8443/
+  First admin:    initial password in /root/nac-initial-admin.txt (root only). Change it under Account, then delete the file.
+  Lost password:  sudo nac-reset-password admin@nac.local
+  FreeRADIUS:     3.2.5, UDP 1812/1813; outage log /var/log/freeradius/nac-outage.log
+  Configuration:  /etc/nac/nacd.env
+Next: open the console, register the switch (Switches), apply the generated EOS configuration.
+Firewall: allow UDP 1812-1813 from switches, TCP 8443 from operators, UDP 3799 from this host to switches.
+INSTALL_END_UTC=
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+{"time":"2026-11-07T07:17:45.418011087Z","level":"INFO","msg":"bootstrapped administrator","email":"admin@nac.local"}
+{"time":"2026-11-07T07:17:45.425085014Z","level":"INFO","msg":"migrations applied; exiting"}
+Synchronizing state of freeradius.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable freeradius
+Created symlink /etc/systemd/system/multi-user.target.wants/nacd.service → /etc/systemd/system/nacd.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/nac-freeradius-reload.path → /etc/systemd/system/nac-freeradius-reload.path.

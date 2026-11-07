@@ -1,0 +1,46 @@
+2026-11-07T01:56:50.806+00:00 RADIUS 10.70.99.1:52463>10.70.99.2:1813 Accounting-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T01:56:50.808+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:52463 Accounting-Response id=1 
+2026-11-07T01:57:07.318+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T01:57:07.319+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T01:57:07.327+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T01:57:07.329+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T01:57:07.332+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T01:57:07.332+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T01:57:07.336+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T01:57:07.336+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T01:57:07.342+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T01:57:07.343+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T01:57:07.346+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T01:57:07.347+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T01:57:07.351+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T01:57:08.353+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Reject id=6 EAP-Message=Success:7
+2026-11-07T01:57:40.353+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T01:57:40.355+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T01:57:40.358+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T01:57:40.360+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T01:57:40.363+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T01:57:40.363+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T01:57:40.366+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T01:57:40.366+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T01:57:40.371+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T01:57:40.372+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T01:57:40.374+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T01:57:40.376+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T01:57:40.379+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T01:57:41.380+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Reject id=6 EAP-Message=Success:7
+2026-11-07T01:58:13.391+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:1:type=1
+2026-11-07T01:58:13.392+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=0 EAP-Message=Request:2:type=13
+2026-11-07T01:58:13.395+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=1 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:2:type=13
+2026-11-07T01:58:13.397+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=1 EAP-Message=Request:3:type=13
+2026-11-07T01:58:13.400+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=2 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:3:type=13
+2026-11-07T01:58:13.401+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=2 EAP-Message=Request:4:type=13
+2026-11-07T01:58:13.404+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=3 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:4:type=13
+2026-11-07T01:58:13.404+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=3 EAP-Message=Request:5:type=13
+2026-11-07T01:58:13.409+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=4 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:5:type=13
+2026-11-07T01:58:13.409+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=4 EAP-Message=Request:6:type=13
+2026-11-07T01:58:13.412+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=5 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:6:type=13
+2026-11-07T01:58:13.413+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Challenge id=5 EAP-Message=Request:7:type=13
+2026-11-07T01:58:13.416+00:00 RADIUS 10.70.99.1:56848>10.70.99.2:1812 Access-Request id=6 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1 EAP-Message=Response:7:type=13
+2026-11-07T01:58:13.430+00:00 RADIUS 10.70.99.2:1812>10.70.99.1:56848 Access-Accept id=6 User-Name=wired-endpoint-01 Tunnel-Type=13 Tunnel-Medium-Type=6 Tunnel-Private-Group-Id=10 EAP-Message=Success:7
+2026-11-07T01:58:13.434+00:00 RADIUS 10.70.99.1:52463>10.70.99.2:1813 Accounting-Request id=0 User-Name=wired-endpoint-01 Calling-Station-Id=00-50-00-00-02-00 NAS-IP-Address=10.70.99.1 NAS-Port-Id=Ethernet1
+2026-11-07T01:58:13.443+00:00 RADIUS 10.70.99.2:1813>10.70.99.1:52463 Accounting-Response id=0 

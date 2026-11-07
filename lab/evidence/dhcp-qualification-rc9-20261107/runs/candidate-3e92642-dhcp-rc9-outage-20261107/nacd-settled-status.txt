@@ -1,0 +1,7 @@
+2026-11-07T01:58:00.694Z
+active
+active
+active
+installed=d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /usr/local/bin/nacd
+running=d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749  /proc/2209/exe
+{"status":"ready"}
