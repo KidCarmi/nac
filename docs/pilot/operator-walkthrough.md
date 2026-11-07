@@ -97,6 +97,9 @@ Click the row to open the session on that port.
    refuses.
 4. Publishing applies at the **next authentication**. To apply it to a
    connected endpoint now, open its session and click **Re-authenticate**.
+   On vEOS, every accepted CoA interrupts the endpoint for 20–60 s, even when
+   its VLAN does not change. So use it only for sessions whose VLAN should
+   change (see [known limitations](known-limitations.md)).
 
 ## 6. Quarantine an active session, then restore access (Sessions → session)
 

@@ -7,10 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Open after pilot-rc10
-- **Defect, reproduced on vEOS (ASTRA):** a same-VLAN **Re-authenticate**
-  CoA interrupts fresh TCP for about 21–51 s; a switch-local re-authentication
-  does not. The cause is not yet isolated, and no product change has been
-  made. See `docs/pilot/known-limitations.md`.
+- **vEOS CoA limitation (ASTRA), not a NAC defect.** On vEOS-lab 4.29.2F,
+  an accepted CoA interrupts the endpoint for 20–60 s even when the VLAN does
+  not change. An identical CoA sent from outside NAC reproduces it. vEOS
+  refuses a CoA without VLAN attributes (NAK 404). No product change; rc10
+  stays pinned. Next candidate: correct the console's "about 20 s" warning.
 - A saved rc10 switch configuration survived a switch reboot without
   reapplication.
 

@@ -149,42 +149,45 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   Core lacks the wired 802.1X service (`dot3svc`) and cannot be used. Other
   DHCP clients are untested.
 
-**Open defect: NAC's Re-authenticate interrupts traffic without a VLAN
-change (reproduced on vEOS, cause not yet isolated).** ASTRA reproduced it on
-exact `pilot-rc10` with real vEOS-lab 4.29.2F, a one-NIC Windows Server 2025
-EAP-TLS endpoint on corp VLAN 10 and a 120 s lease. The certificate, port,
-address (10.70.10.80) and probe targets were unchanged, and there was no
-manual intervention:
+**Limitation: on vEOS-lab 4.29.2F, any accepted CoA interrupts the endpoint,
+even without a VLAN change.** This is a switch/CoA operating limitation, not
+a NAC product defect. Physical Arista hardware is unconfirmed.
 
-| Trigger (same session, same VLAN) | Runs | Fresh corp TCP |
+ASTRA measured it on exact `pilot-rc10`:
+- **Endpoint:** a one-NIC Windows Server 2025 EAP-TLS endpoint on corp
+  VLAN 10, with a 120 s lease.
+- **Held constant:** the certificate, port, address (10.70.10.80) and probe
+  targets. There was no manual intervention.
+
+| Trigger (same session, same VLAN 10) | Switch response | Fresh corp TCP |
 |---|---|---|
-| Idle control | 41 probes | 0 failures |
-| NAC **Re-authenticate** CoA (carries the VLAN 10 attributes) | 3 | first failure +1.9 / +2.1 / +2.1 s; recovery +21.2 / +50.6 / +50.3 s |
-| Switch-local `dot1x re-authenticate Ethernet 1` | 3 | 0 failures (72 / 71 / 53 samples), Access-Accept and EAP Success each time |
+| Idle control | — | 0/41 failures |
+| NAC **Re-authenticate** CoA, ×3 | CoA-ACK (Error-Cause 200), then Access-Accept VLAN 10 | failures from +1.9 / +2.1 / +2.1 s; recovery +21.2 / +50.6 / +50.3 s |
+| `radclient` CoA from outside NAC with the same VLAN attributes, ×3 | CoA-ACK (Error-Cause 200) | failures from +1.8 / +1.8 / +2.2 s; recovery +21.3 / +50.1 / +57.7 s. In the third run Windows briefly lost its address |
+| `radclient` CoA with no VLAN attributes | **CoA-NAK, Error-Cause 404 Invalid-Request** | 0 failures (nothing happened) |
+| Switch-local `dot1x re-authenticate Ethernet 1`, ×3 | Access-Accept, EAP Success | 0 failures (72 / 71 / 53 samples) |
 
-- The switch ACKed the CoA (Error-Cause 200), and the re-authentication
-  received Access-Accept VLAN 10.
-- **What differs on the NAC side is only the CoA-Request.** NAC sends it
-  once, with no retry after the ACK. It carries `User-Name`,
-  `Calling-Station-Id`, `NAS-IP-Address`, `NAS-Port-Id` and the VLAN
-  attributes (`Tunnel-Type`, `Tunnel-Medium-Type`,
-  `Tunnel-Private-Group-Id`), even when the VLAN is unchanged. The
-  Access-Accept that follows has the same form for both triggers.
-- **Open hypotheses**, not yet separated:
-  - the VLAN attributes in a same-VLAN CoA
-  - EOS handling any CoA-triggered re-authentication differently from a
-    local one
-  - access-port spanning-tree convergence: the generated configuration does
-    not set `spanning-tree portfast`, and earlier VLAN moves on vEOS showed a
-    comparable 20–30 s forwarding convergence
-- `pilot-rc8` showed the same effect in quarantine (two pauses of about
-  20 s).
-- **Until it is fixed, don't use Re-authenticate on a session that only
-  needs to stay where it is.** Quarantine and Restore change the VLAN and are
-  measured separately above. Physical Arista hardware is untested.
-- **The console's CoA confirmation understates the pause.** It says "about
-  20 s"; the measured recovery is up to about 51 s. A product change waits
-  until the cause is established.
+- **The radclient packet matched NAC's.** Its VLAN attributes were byte-for-byte
+  identical to NAC's (`64:40060000000d`, `65:410600000006`, `81:51043130`).
+  The interruption reproduces without nacd, so it comes from how vEOS
+  handles a VLAN-bearing CoA.
+- **A CoA without VLAN attributes is not a substitute.** vEOS refuses it,
+  and the switch-local re-authentication has no CoA equivalent on this
+  build. NAC therefore keeps the lab-validated attribute set.
+- **Quarantine and Restore send the same kind of CoA.** Their measured
+  recovery times (DHCP table above) may include part of this effect. The
+  Linux DHCP explanation comes from captures and stands. The two effects are
+  not separated for Windows.
+- **Operator guidance:**
+  - Use Re-authenticate only when the active policy should change a
+    session's VLAN.
+  - On a session that should stay where it is, expect a 20–60 s outage on
+    vEOS.
+  - The console's CoA confirmation says "about 20 s", which understates
+    this. The wording will be corrected in the next candidate. It is not a
+    lab-contract defect, so it does not move `pilot-rc10`.
+- `pilot-rc8` showed the same effect in quarantine: two pauses of about
+  20 s.
 
 NAC has no automatic re-addressing action, by design. A port bounce has no
 documented support on vEOS 4.29.2F, would disconnect every device on the
