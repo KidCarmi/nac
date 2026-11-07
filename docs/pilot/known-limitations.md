@@ -153,15 +153,19 @@ port, and the lab shows endpoints recover without one.
   record (API/console), is considered stale after `NAC_POSTURE_MAX_AGE`
   (24 h), and is never taken from RADIUS.
 - **Validation:** see [qualification status](qualification-status.md).
-  - The documented install (clean and in-place upgrade), CoA, accounting,
-    eAPI observation, DHCP transitions, outage and full-restart recovery
-    passed on vEOS-lab 4.29.2F (`pilot-rc7`, `pilot-rc8`, through the API).
+  - The documented install passed as a clean-instance install on
+    `pilot-rc7` only (about 63 s). `pilot-rc8` and `pilot-rc9` were
+    installed in place over the previous candidate. The in-place upgrade
+    preserved settings and the running build matched.
+  - CoA, accounting, eAPI observation, DHCP transitions, outage and
+    full-restart recovery passed on vEOS-lab 4.29.2F (`pilot-rc7`,
+    `pilot-rc8`, through the API).
   - The console workflows (sign-in, status, policy edit, preview, publish
     and restore, quarantine and restore CoA) passed on `pilot-rc9`.
   - Not lab-run:
     - password change and host reset (unit and integration tested only)
-    - a clean-instance install of exact `pilot-rc9` (passed on `pilot-rc8`;
-      rc9 changes only the embedded console)
+    - a clean-instance install of exact `pilot-rc8` (blocked in the lab) or
+      exact `pilot-rc9`
   - Untested: physical Arista hardware (including MAB and unplug) and
     Windows endpoints.
 - **One operator account.** The bootstrapped administrator can change its own
