@@ -1,6 +1,6 @@
 # 0004. JWT sessions, Argon2id, and static RBAC
 
-- **Status:** Accepted
+- **Status:** Accepted; revocation trade-off superseded by [ADR-0007](0007-operator-session-revocation.md)
 - **Date:** 2026-06-27
 - **Deciders:** Platform engineering, security
 

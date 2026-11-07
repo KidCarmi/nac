@@ -113,12 +113,18 @@ func TestCreate_Valid(t *testing.T) {
 func TestCreate_RejectsInvalid(t *testing.T) {
 	svc := NewService(newMemRepo(), &countingCache{})
 	cases := map[string]func(*Input){
-		"empty name":     func(in *Input) { in.Name = "" },
-		"bad action":     func(in *Input) { in.Action = "nuke" },
-		"eq two values":  func(in *Input) { in.Conditions[0].Values = []string{"a", "b"} },
-		"in zero values": func(in *Input) { in.Conditions[0].Operator = domain.OpIn; in.Conditions[0].Values = nil },
-		"bad operator":   func(in *Input) { in.Conditions[0].Operator = "regex" },
-		"neg priority":   func(in *Input) { in.Priority = -1 },
+		"empty name":           func(in *Input) { in.Name = "" },
+		"bad action":           func(in *Input) { in.Action = "nuke" },
+		"eq two values":        func(in *Input) { in.Conditions[0].Values = []string{"a", "b"} },
+		"in zero values":       func(in *Input) { in.Conditions[0].Operator = domain.OpIn; in.Conditions[0].Values = nil },
+		"bad operator":         func(in *Input) { in.Conditions[0].Operator = "regex" },
+		"unknown field (typo)": func(in *Input) { in.Conditions[0].Field = "devcie_type" },
+		"empty attr prefix":    func(in *Input) { in.Conditions[0].Field = "attr." },
+		"absent with values": func(in *Input) {
+			in.Conditions[0].Operator = domain.OpAbsent
+			in.Conditions[0].Values = []string{"x"}
+		},
+		"neg priority": func(in *Input) { in.Priority = -1 },
 	}
 	for name, mut := range cases {
 		t.Run(name, func(t *testing.T) {

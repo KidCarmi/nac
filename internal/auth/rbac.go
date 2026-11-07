@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/kidcarmi/nac/internal/domain"
+import (
+	"sort"
+
+	"github.com/kidcarmi/nac/internal/domain"
+)
 
 // Permission is a coarse-grained capability checked at the API boundary.
 type Permission string
@@ -13,6 +17,11 @@ const (
 	PermAccessEvaluate Permission = "access:evaluate"
 	PermAuditRead      Permission = "audit:read"
 	PermOperatorManage Permission = "operator:manage"
+	// Pilot: switches, identity bindings and session troubleshooting.
+	PermNetworkRead  Permission = "network:read"
+	PermNetworkWrite Permission = "network:write"
+	// PermSessionAct allows CoA actions (quarantine/restore/reauthenticate).
+	PermSessionAct Permission = "session:act"
 )
 
 // rolePermissions is the authoritative role→permission matrix. It is defined
@@ -30,17 +39,20 @@ var rolePermissions = map[domain.Role]map[Permission]bool{
 		PermAccessEvaluate: true,
 		PermAuditRead:      true,
 		PermOperatorManage: true,
+		PermNetworkRead:    true, PermNetworkWrite: true, PermSessionAct: true,
 	},
 	domain.RoleOperator: {
 		PermEndpointRead: true, PermEndpointWrite: true,
 		PermPolicyRead: true, PermPolicyWrite: true,
 		PermAccessEvaluate: true,
 		PermAuditRead:      true,
+		PermNetworkRead:    true, PermNetworkWrite: true, PermSessionAct: true,
 	},
 	domain.RoleViewer: {
 		PermEndpointRead: true,
 		PermPolicyRead:   true,
 		PermAuditRead:    true,
+		PermNetworkRead:  true,
 	},
 }
 
@@ -60,4 +72,16 @@ func (p *Principal) Can(perm Permission) bool {
 		return false
 	}
 	return HasPermission(p.Role, perm)
+}
+
+// PermissionsOf lists role's permissions, sorted (for API responses).
+func PermissionsOf(role domain.Role) []string {
+	out := []string{}
+	for p, ok := range rolePermissions[role] {
+		if ok {
+			out = append(out, string(p))
+		}
+	}
+	sort.Strings(out)
+	return out
 }

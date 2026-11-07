@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart FreeRADIUS when nacd rewrites its switch (client) list
+
+[Path]
+PathChanged=/var/lib/nac/freeradius-clients.conf
+Unit=nac-freeradius-reload.service
+
+[Install]
+WantedBy=multi-user.target

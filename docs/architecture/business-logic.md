@@ -45,20 +45,41 @@ default/fallback rules.
 Each condition references a **field** resolved from the endpoint and applies an
 **operator** to comparison **values**:
 
-| Field key | Source |
-|-----------|--------|
-| `mac`, `ip`, `hostname`, `device_type`, `posture` | endpoint columns |
-| `attr.<key>` | endpoint custom attributes |
+Every input is **evidence**: a value plus the source that asserted it, when it
+was observed, and a status of `present`, `missing` or `stale`. The full list of
+fields and their allowed sources is `domain.InputCatalog`, served at
+`GET /api/v1/policy-inputs`. Validation rejects any other field (except
+`attr.<key>`), so a typo can't create a rule that silently never matches.
 
-| Operator | Meaning |
-|----------|---------|
-| `eq` | field equals the single value |
-| `ne` | field is absent **or** differs from the value |
-| `in` | field equals one of the values |
-| `exists` | field is present and non-empty |
+| Field key | Allowed source |
+|-----------|----------------|
+| `identity.*` | `eap-tls`: certificate validated by FreeRADIUS |
+| `identity.bound`, `mac.matches_device` | `nac-binding`: operator identity binding |
+| `mac`, `nas.switch`, `nas.port` | `nas`: switch-asserted; authenticates the switch, not the device |
+| `ip`, `hostname`, `device_type`, `attr.<key>` | `endpoint-record`: operator inventory |
+| `posture` | `posture`: endpoint API, with observation time; never from RADIUS |
+| `session.override` | `operator`: explicit session quarantine |
 
-`ne` treats a missing field as "not equal", which is the least surprising
-behavior for exclusion rules. Unknown operators **fail closed** (never match).
+Conditions are **three-valued**:
+
+| Operator | Present evidence | Missing or stale evidence |
+|----------|------------------|---------------------------|
+| `eq` | equals the single value | insufficient evidence |
+| `ne` | differs from the value | insufficient evidence |
+| `in` | equals one of the values | insufficient evidence |
+| `exists` | match | no match |
+| `absent` | no match | match |
+
+A rule applies only if **every** condition matches. A definite no-match makes
+the rule `not_matched`. Otherwise, any insufficient-evidence condition makes it
+`insufficient_evidence`: the rule is **skipped**, and the decision lists the
+missing fields. Missing evidence therefore can never satisfy an allow rule. To
+act on missing evidence on purpose, write an explicit rule such as
+`posture absent → quarantine`. Posture `unknown` counts as missing. Unknown
+operators **fail closed** (never match).
+
+> Changed in the pilot: before, `ne` matched when the field was absent, so
+> `posture ne noncompliant → allow` admitted devices that had no posture at all.
 
 ### Operator
 An administrative user of the platform with a `role` (`admin`, `operator`,

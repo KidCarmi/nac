@@ -57,6 +57,9 @@ type Deps struct {
 	Endpoints endpointService
 	Policies  policyService
 	Access    accessService
+	Versions  policyVersionService
+	Radius    radiusService
+	Pilot     pilotService
 	Operators domain.OperatorRepository
 	AuditRepo domain.AuditRepository
 	Audit     *audit.Recorder
@@ -75,6 +78,9 @@ type Server struct {
 	endpoints endpointService
 	policies  policyService
 	access    accessService
+	versions  policyVersionService
+	radius    radiusService
+	pilot     pilotService
 	operators domain.OperatorRepository
 	auditRepo domain.AuditRepository
 	audit     *audit.Recorder
@@ -102,6 +108,9 @@ func New(d Deps) *Server {
 		endpoints: d.Endpoints,
 		policies:  d.Policies,
 		access:    d.Access,
+		versions:  d.Versions,
+		radius:    d.Radius,
+		pilot:     d.Pilot,
 		operators: d.Operators,
 		auditRepo: d.AuditRepo,
 		audit:     d.Audit,

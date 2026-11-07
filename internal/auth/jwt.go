@@ -19,6 +19,9 @@ var ErrInvalidToken = errors.New("invalid token")
 type Claims struct {
 	Email string      `json:"email"`
 	Role  domain.Role `json:"role"`
+	// TokenVersion must equal the operator's current token_version; the API
+	// checks it on every request so a password change revokes the token.
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
@@ -55,8 +58,9 @@ func (t *TokenIssuer) Issue(op *domain.Operator) (string, time.Time, error) {
 	now := t.now()
 	exp := now.Add(t.ttl)
 	claims := Claims{
-		Email: op.Email,
-		Role:  op.Role,
+		Email:        op.Email,
+		Role:         op.Role,
+		TokenVersion: op.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   op.ID.String(),
 			Issuer:    t.issuer,
@@ -103,7 +107,7 @@ func (t *TokenIssuer) Parse(tokenStr string) (*Principal, error) {
 	if !claims.Role.Valid() {
 		return nil, fmt.Errorf("%w: bad role", ErrInvalidToken)
 	}
-	return &Principal{ID: id, Email: claims.Email, Role: claims.Role}, nil
+	return &Principal{ID: id, Email: claims.Email, Role: claims.Role, TokenVersion: claims.TokenVersion}, nil
 }
 
 // withClock overrides the time source for tests.

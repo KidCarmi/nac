@@ -7,7 +7,12 @@ GO    ?= go
 
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# Commit time, not wall-clock time: rebuilding the same commit yields a
+# byte-identical nacd (with the pinned toolchain below), so a lab can verify
+# the binary it runs against the published SHA-256.
+BUILD_DATE ?= $(shell TZ=UTC0 git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)
+# Toolchain used for release bundles (fetched via proxy.golang.org if needed).
+BUNDLE_TOOLCHAIN ?= go1.25.0
 LDFLAGS    := -s -w \
 	-X github.com/kidcarmi/nac/pkg/version.Version=$(VERSION) \
 	-X github.com/kidcarmi/nac/pkg/version.Commit=$(COMMIT) \
@@ -27,6 +32,21 @@ help: ## Show this help
 build: ## Build the nacd binary into ./bin
 	@mkdir -p bin
 	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/nacd ./cmd/nacd
+
+.PHONY: pilot-bundle
+pilot-bundle: ## Build the pilot release bundle (linux/amd64 nacd + adapter + installer + docs) into dist/
+	@set -e; stage=$$(mktemp -d); dir=$$stage/nac-pilot-$(VERSION); mkdir -p $$dir/bin dist; \
+	GOTOOLCHAIN=$(BUNDLE_TOOLCHAIN) CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o $$dir/bin/nacd ./cmd/nacd; \
+	cp -r deployments docs scripts README.md LICENSE $$dir/; \
+	{ echo "version: $(VERSION)"; echo "commit: $$(git rev-parse HEAD)"; echo "build_date: $(BUILD_DATE)"; \
+	  echo "toolchain: $(BUNDLE_TOOLCHAIN) linux/amd64 CGO_ENABLED=0 -trimpath"; \
+	  echo "nacd_sha256: $$(sha256sum $$dir/bin/nacd | cut -d' ' -f1)"; } > $$dir/BUNDLE-MANIFEST.txt; \
+	tar -C $$stage -czf dist/nac-pilot-$(VERSION).tar.gz nac-pilot-$(VERSION); \
+	cd dist && sha256sum nac-pilot-$(VERSION).tar.gz > nac-pilot-$(VERSION).tar.gz.sha256 && cat nac-pilot-$(VERSION).tar.gz.sha256
+
+.PHONY: test-e2e-radius
+test-e2e-radius: build ## EAP-TLS end to end through FreeRADIUS 3.2.5 (root; see scripts/e2e-freeradius.sh)
+	scripts/e2e-freeradius.sh
 
 .PHONY: run
 run: ## Run nacd locally (expects Postgres/Redis reachable)
