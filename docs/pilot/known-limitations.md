@@ -149,17 +149,42 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   Core lacks the wired 802.1X service (`dot3svc`) and cannot be used. Other
   DHCP clients are untested.
 
-**Re-authentication can briefly interrupt traffic, even without a VLAN
-change.** On `pilot-rc8`, a same-VLAN re-authentication (CoA on a session
-already in quarantine) twice interrupted fresh quarantine TCP for about 20 s.
-Carrier, address and the switch state (Et1 SUCCESS, VLAN 20) stayed
-unchanged.
-- The cause is **not attributed**: NAC sends a single CoA-Request (the
-  lab-validated attribute set, including the VLAN) and the switch runs a full
-  EAP re-authentication. A comparable 20–30 s forwarding convergence was seen
-  on vEOS after VLAN moves.
-- Physical Arista hardware is untested. Avoid unnecessary Re-authenticate
-  actions on production sessions. The console's confirmation says so.
+**Open defect: NAC's Re-authenticate interrupts traffic without a VLAN
+change (reproduced on vEOS, cause not yet isolated).** ASTRA reproduced it on
+exact `pilot-rc10` with real vEOS-lab 4.29.2F, a one-NIC Windows Server 2025
+EAP-TLS endpoint on corp VLAN 10 and a 120 s lease. The certificate, port,
+address (10.70.10.80) and probe targets were unchanged, and there was no
+manual intervention:
+
+| Trigger (same session, same VLAN) | Runs | Fresh corp TCP |
+|---|---|---|
+| Idle control | 41 probes | 0 failures |
+| NAC **Re-authenticate** CoA (carries the VLAN 10 attributes) | 3 | first failure +1.9 / +2.1 / +2.1 s; recovery +21.2 / +50.6 / +50.3 s |
+| Switch-local `dot1x re-authenticate Ethernet 1` | 3 | 0 failures (72 / 71 / 53 samples), Access-Accept and EAP Success each time |
+
+- The switch ACKed the CoA (Error-Cause 200), and the re-authentication
+  received Access-Accept VLAN 10.
+- **What differs on the NAC side is only the CoA-Request.** NAC sends it
+  once, with no retry after the ACK. It carries `User-Name`,
+  `Calling-Station-Id`, `NAS-IP-Address`, `NAS-Port-Id` and the VLAN
+  attributes (`Tunnel-Type`, `Tunnel-Medium-Type`,
+  `Tunnel-Private-Group-Id`), even when the VLAN is unchanged. The
+  Access-Accept that follows has the same form for both triggers.
+- **Open hypotheses**, not yet separated:
+  - the VLAN attributes in a same-VLAN CoA
+  - EOS handling any CoA-triggered re-authentication differently from a
+    local one
+  - access-port spanning-tree convergence: the generated configuration does
+    not set `spanning-tree portfast`, and earlier VLAN moves on vEOS showed a
+    comparable 20–30 s forwarding convergence
+- `pilot-rc8` showed the same effect in quarantine (two pauses of about
+  20 s).
+- **Until it is fixed, don't use Re-authenticate on a session that only
+  needs to stay where it is.** Quarantine and Restore change the VLAN and are
+  measured separately above. Physical Arista hardware is untested.
+- **The console's CoA confirmation understates the pause.** It says "about
+  20 s"; the measured recovery is up to about 51 s. A product change waits
+  until the cause is established.
 
 NAC has no automatic re-addressing action, by design. A port bounce has no
 documented support on vEOS 4.29.2F, would disconnect every device on the
@@ -206,7 +231,9 @@ port, and the lab shows endpoints recover without one.
 - **The switch must save the NAC configuration.** After a full lab restart,
   the vEOS switch came back with an older saved RADIUS target and the
   default TLS profile, and the NAC configuration had to be reapplied (rc10
-  closeout). NAC does not configure or check the switch's saved
+  closeout). Once the rc10 configuration was saved and verified, it survived
+  a switch reboot: Windows admission and Quarantine/Restore passed with no
+  reapplication (ASTRA, rc10). NAC does not configure or check the switch's saved
   configuration. Run `write memory` after applying the generated
   configuration and the eAPI TLS profile. After a switch reboot, compare
   `show running-config` with **Generated EOS configuration**.

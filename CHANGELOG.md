@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Open after pilot-rc10
+- **Defect, reproduced on vEOS (ASTRA):** a same-VLAN **Re-authenticate**
+  CoA interrupts fresh TCP for about 21–51 s; a switch-local re-authentication
+  does not. The cause is not yet isolated, and no product change has been
+  made. See `docs/pilot/known-limitations.md`.
+- A saved rc10 switch configuration survived a switch reboot without
+  reapplication.
+
 ### pilot-rc10 (`b39649f`; qualified by ASTRA closeout 2026-11-07, including Windows Server 2025 and the console Account page)
 - **Endpoint reachability is a separate, explicit fact.** Session views
   (API `endpoint_reachability`, always `not_observed`) and the console's
