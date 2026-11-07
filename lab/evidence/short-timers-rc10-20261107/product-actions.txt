@@ -1,0 +1,4 @@
+COA {"attempts": 1, "created_at": "2026-11-07T17:03:37.638858Z", "detail": "re-authentication after CoA returned VLAN 10 (decision 41d4330a-1f85-48ca-90c4-27df2561e345)", "error_cause": 200, "id": "f17b3a4d-e394-42ee-9bdd-e65ffe18241e", "kind": "restore", "requested_vlan": 10, "state": "observed"}
+DECISION {"action": "allow", "id": "41d4330a-1f85-48ca-90c4-27df2561e345", "matched_rule": "bound-eap-corp", "policy_version": 4, "segment": "corp"}
+COA {"attempts": 1, "created_at": "2026-11-07T17:02:45.123847Z", "detail": "re-authentication after CoA returned VLAN 20 (decision 150f7d8c-04be-4328-b41a-7d17e22b3e68)", "error_cause": 200, "id": "c2d06983-1f3a-4492-b3b3-7280d7194433", "kind": "quarantine", "requested_vlan": 20, "state": "observed"}
+DECISION {"action": "quarantine", "id": "150f7d8c-04be-4328-b41a-7d17e22b3e68", "matched_rule": "bound-eap-corp", "policy_version": 4, "segment": "quarantine"}
