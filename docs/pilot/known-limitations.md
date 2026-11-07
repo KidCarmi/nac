@@ -164,7 +164,9 @@ port, and the lab shows endpoints recover without one.
   - The console workflows (sign-in, status, policy edit, preview, publish
     and restore, quarantine and restore CoA) passed on `pilot-rc9`.
   - Not lab-run:
-    - password change and host reset (unit and integration tested only)
+    - the console **Account** page (password change and host reset passed
+      through the API and `nac-reset-password` on the clean `pilot-rc9`
+      instance)
     - a clean-instance install of exact `pilot-rc8` (blocked in the lab)
     - switch onboarding on the clean `pilot-rc9` instance. Switch
       registration through the console last passed on `pilot-rc1`; the rc9
