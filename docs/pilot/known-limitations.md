@@ -153,9 +153,10 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
 even without a VLAN change.** This is a switch/CoA operating limitation, not
 a NAC product defect. Physical Arista hardware is unconfirmed.
 
-ASTRA measured it on exact `pilot-rc10`:
-- **Endpoint:** a one-NIC Windows Server 2025 EAP-TLS endpoint on corp
-  VLAN 10, with a 120 s lease.
+ASTRA measured it on exact `pilot-rc10` ([evidence `7b34ef5`](https://github.com/KidCarmi/nac/tree/7b34ef594e71f620fdc657b7e82bf0b57845d2db/lab/evidence/timing-rc10-20261107): 62 files, manifest verified here):
+- **Endpoint:** a one-NIC Windows Server 2025 Standard Evaluation (Desktop
+  Experience, build 26100) EAP-TLS endpoint on corp VLAN 10, with a 120 s
+  lease.
 - **Held constant:** the certificate, port, address (10.70.10.80) and probe
   targets. There was no manual intervention.
 
@@ -188,6 +189,12 @@ ASTRA measured it on exact `pilot-rc10`:
     lab-contract defect, so it does not move `pilot-rc10`.
 - `pilot-rc8` showed the same effect in quarantine: two pauses of about
   20 s.
+- **Not yet measured:**
+  - a 1-hour DHCP lease on Linux and Windows. The supported envelope is
+    established for the 120 s lease only, and ASTRA is running the 1-hour
+    case.
+  - an established (long-lived) connection. The probes measured fresh
+    TCP connections only.
 
 NAC has no automatic re-addressing action, by design. A port bounce has no
 documented support on vEOS 4.29.2F, would disconnect every device on the
