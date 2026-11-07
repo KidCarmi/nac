@@ -1,0 +1,26 @@
+VERSION show version | include Software image version
+Software image version: 4.29.2F
+nac-veos-rc1#
+nac-veos-rc1#
+INTERFACES show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+RADIUS show running-config | include radius-server
+radius-server host 10.70.99.4 key 7 [REDACTED]
+nac-veos-rc1#
+nac-veos-rc1#

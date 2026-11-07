@@ -1,0 +1,8 @@
+2026-11-07T12:51:52Z
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv   77G   63G   11G  87% /
+/dev/mapper/ubuntu--vg-ubuntu--lv   77G   63G   11G  87% /
+-rw-r--r-- 1 root root   24 Nov  7 12:09 /root/nac-qualification/candidate-b39649f-dhcp-linux1h-20261107/corp-dhcp.pcap0
+-rw-r--r-- 1 root root  21K Nov  7 12:46 /root/nac-qualification/candidate-b39649f-dhcp-linux1h-20261107/endpoint.pcap0
+-rw-r--r-- 1 root root 2.2K Nov  7 12:16 /root/nac-qualification/candidate-b39649f-dhcp-linux1h-20261107/quarantine-dhcp.pcap0
+-rw-r--r-- 1 root root  25K Nov  7 12:46 /root/nac-qualification/candidate-b39649f-dhcp-linux1h-20261107/radius.pcap0

@@ -1,0 +1,314 @@
+{
+  "files": [
+    {
+      "path": "analysis-manual-reconnect.txt",
+      "bytes": 1190,
+      "sha256": "9be251ad8bc0be5b47202ec188bd1165c01ffb8ff094bdad2f8e2db02b74e394"
+    },
+    {
+      "path": "analysis-manual-renew.txt",
+      "bytes": 675,
+      "sha256": "f4912596b56a4e552de8f9b4955f7eb94d5aa465924d2121f29321c51a19c6dc"
+    },
+    {
+      "path": "analysis-near-final.txt",
+      "bytes": 1312,
+      "sha256": "c8909885328f5e076afae99087c4befcf9ed43135ac086416c5b179f8962cb74"
+    },
+    {
+      "path": "analysis-near-immediate.txt",
+      "bytes": 668,
+      "sha256": "b7d77ffbc0bd2598a8c078f8295ed72f75609ab3f7282138aa46c7aabc1f947b"
+    },
+    {
+      "path": "analysis-primary.txt",
+      "bytes": 670,
+      "sha256": "8bcec84cdc2ff782faf6daf765c86be004c816c230721b6aa01b337d424125f9"
+    },
+    {
+      "path": "configs.sanitized.md",
+      "bytes": 1921,
+      "sha256": "2717de1064dc892278f19903aeee20cc532e0eba08c56f665a00e022133f72f7"
+    },
+    {
+      "path": "corp-dhcp-t2-snapshot.pcap0",
+      "bytes": 378,
+      "sha256": "ec803ac68acd91398dd07d9b60f54efd1bf4edab3290906a903986f2f504fcbc"
+    },
+    {
+      "path": "corp-dhcp.pcap0",
+      "bytes": 2882,
+      "sha256": "7b986f83de5329f879f95bdb2252c0ce0630842bc20f1937c0278fdaf0221d5e"
+    },
+    {
+      "path": "dhcp-expiry-window.txt",
+      "bytes": 912,
+      "sha256": "c086970547d8718615a2eb7a334be4f28d676587429f0e4025bfa981f75fdcf1"
+    },
+    {
+      "path": "dhcp-post-t2-snapshot.txt",
+      "bytes": 206,
+      "sha256": "1408241dccf261ac2668b7d3a489f940fe111b0dd40cc4018ea3dc19446d0e73"
+    },
+    {
+      "path": "dhcp-t1-snapshot.txt",
+      "bytes": 103,
+      "sha256": "9b072a26d88c09df4d1842fe74b4d784ad550e957c092f9cd13e2f2e710642ef"
+    },
+    {
+      "path": "dhcp-timeline.txt",
+      "bytes": 1724,
+      "sha256": "4b47062d73912662fd7ac1445cc056c6d5f9ebef05c84aa3f3801e31aa9111e0"
+    },
+    {
+      "path": "eapol-timeline.txt",
+      "bytes": 5421,
+      "sha256": "74f8ef3b376e5b47fab94c4450065c1627426408c5614ae763966f1449fd0ec5"
+    },
+    {
+      "path": "early-quarantine-action.txt",
+      "bytes": 1498,
+      "sha256": "78404ebf767b836f6ed00e67dbeea369179744dee668596c233f50761fd599c6"
+    },
+    {
+      "path": "endpoint-early.pcap0",
+      "bytes": 14474,
+      "sha256": "3db7fc35b1ebc0c6a0816e59abf10e7afd60804f8c3f0320dd4d0253e7520470"
+    },
+    {
+      "path": "endpoint-expiry-probe.jsonl",
+      "bytes": 89906,
+      "sha256": "258b78e36531d94f8fc39b11c3f86b84dda1ccae8cc744593ac73db3ccd77923"
+    },
+    {
+      "path": "endpoint-post-t2-snapshot.pcap0",
+      "bytes": 21300,
+      "sha256": "7648f682287ebe318cb0baa540720577408a7f1c40e8dd767353189b6080612a"
+    },
+    {
+      "path": "endpoint-probe-combined.jsonl",
+      "bytes": 1021369,
+      "sha256": "91be81284e878eb1d362fdb379d9c012d9c86d2c7e6ef7825800cd9f55ef3b1a"
+    },
+    {
+      "path": "endpoint-probe.jsonl",
+      "bytes": 924728,
+      "sha256": "2136df2612512d0aba731c08e4c316a414aeb6d1bf3f59e0c431e7c9ce9def09"
+    },
+    {
+      "path": "endpoint-t1-snapshot.pcap0",
+      "bytes": 20946,
+      "sha256": "0c1efb3dd23782832610bc9cee7925a28eb54bdbac921bef8b52eaf294b4cec4"
+    },
+    {
+      "path": "endpoint.pcap0",
+      "bytes": 23804,
+      "sha256": "1fd984fb56e244fb4741000a73ccbb1c98dc7fa3aa64663f2275a23a42a1ca4f"
+    },
+    {
+      "path": "eve_guest.py",
+      "bytes": 3515,
+      "sha256": "9ca3d0dc9daa8f97def6db9532b78b4e8fde4cdfdea643563d99a8a38fef2276"
+    },
+    {
+      "path": "findings.md",
+      "bytes": 4245,
+      "sha256": "bc09f876e185cfd51ef213df055608be6ee20e65ee089da9ead6d5343f464694"
+    },
+    {
+      "path": "lease-events-early.txt",
+      "bytes": 907,
+      "sha256": "68e3611ee975500f61ddb050c913014cec598cbc160ee07fa856d79f40cd9741"
+    },
+    {
+      "path": "manual-reconnect-q.txt",
+      "bytes": 683,
+      "sha256": "f25165c832041bea859f2a7b3666bcc20422e532b57a6a1f81dc377fccff4817"
+    },
+    {
+      "path": "manual-renew-q.txt",
+      "bytes": 546,
+      "sha256": "f4abf032a905bbe1c626ecb40336683f19af39b477e0a0049e09f5facbc8d868"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "bytes": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "near-restore-action.txt",
+      "bytes": 1821,
+      "sha256": "fe6c12b13086021078baed7bf06e4178b453d4faf7bffd0777422e7c5798f977"
+    },
+    {
+      "path": "plan.txt",
+      "bytes": 1718,
+      "sha256": "0c16f964bba762fdc4ae72f93a6fa9b60121da05338d5cd64fddc0d7b4a32fd8"
+    },
+    {
+      "path": "probe-early-snapshot.jsonl",
+      "bytes": 32225,
+      "sha256": "3ca3e071f061174b02da87df19fc1cde03c1b2ba8069dfef373feec2110720c0"
+    },
+    {
+      "path": "probe-no-intervention-120s.jsonl",
+      "bytes": 50470,
+      "sha256": "a4a239c9b67b72fb67f403b906c15ec4f9427cad24f2243d5f058110c2d4aa1a"
+    },
+    {
+      "path": "qualification/analyze_linux_lease.py",
+      "bytes": 2279,
+      "sha256": "0547148fb8cdf7abde41eb10a96b44db616f6a808fcca058f448a630cd3b7558"
+    },
+    {
+      "path": "qualification/dhcp_capture_guest.py",
+      "bytes": 2314,
+      "sha256": "24e57c12a1f774502e90d4a337670e206c451e0b91ba741f89690bf2be951ab0"
+    },
+    {
+      "path": "qualification/dhcp_endpoint_guest.py",
+      "bytes": 4640,
+      "sha256": "5aa27297bae956c42feb1f5f498a674733cd969f57fe0484347037e635f95222"
+    },
+    {
+      "path": "qualification/dhcp_packet_timeline.py",
+      "bytes": 2801,
+      "sha256": "b1daf31a7a50352e827e850d4d433d87985ca4ff48ffbe75b06a2dbd41f0dcea"
+    },
+    {
+      "path": "qualification/dhcp_probe_control_guest.py",
+      "bytes": 4955,
+      "sha256": "fe297b54d332f7c77a2bcaa672c7706e5f7209cdbb0ce62859e636e97a0a4ca3"
+    },
+    {
+      "path": "qualification/dhcp_service_health_guest.py",
+      "bytes": 2548,
+      "sha256": "9773cda18f1d79a55cc44e2aeac978196e5d9400d368f8b27cc232b631ec7ff7"
+    },
+    {
+      "path": "qualification/merge_probe_jsonl.py",
+      "bytes": 1020,
+      "sha256": "1b4f8cb3be2605f0241b6766bb8232da2d24a431198c8f5d0c67ca1586d4d676"
+    },
+    {
+      "path": "qualification/pcap_timeline.py",
+      "bytes": 4879,
+      "sha256": "3ab02ceb975edf5022697528823087e341b2eb979ae17acfd80a3d066e3b5620"
+    },
+    {
+      "path": "qualification/rc10_product_action_guest.py",
+      "bytes": 3749,
+      "sha256": "c7309d053911fbd468e1b742b719f670479ad67c7b928c43d4bb64a7962c3072"
+    },
+    {
+      "path": "qualification/run_dhcp_candidate.py",
+      "bytes": 5535,
+      "sha256": "846f8f7ce4913dad078d47c496da110378484d9fd0bdd119b11c4f4123888e2c"
+    },
+    {
+      "path": "quarantine-dhcp-manual-reconnect.txt",
+      "bytes": 4954,
+      "sha256": "de430682c0f180e989432b2aa6c9359f6599f3ce5f68829d3de434125e3df331"
+    },
+    {
+      "path": "quarantine-dhcp.pcap0",
+      "bytes": 2184,
+      "sha256": "39ac66df60db30ef12435f7994f91e14f7e5fe71672f586f37f1c7dffc1cbda3"
+    },
+    {
+      "path": "radius-early.pcap0",
+      "bytes": 16517,
+      "sha256": "a9d26c9e3837adb71ac56f6359f09e7a359ed380d193a62befb2e1a9d065ed70"
+    },
+    {
+      "path": "radius-timeline.txt",
+      "bytes": 10016,
+      "sha256": "22add1c6b7dfe47d5d544db259a14a77d203fcc3563964ab065331bb92e54828"
+    },
+    {
+      "path": "radius.pcap0",
+      "bytes": 25043,
+      "sha256": "b4841fa66d383a748c5b80fd76d91c8d63e59b1a6b442eac2e87054b9a059d66"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 3381,
+      "sha256": "caf2513d1a6750dc0dac0731cc61e81daa8ae8fa3d8898bf57dab2b56b8139ac"
+    },
+    {
+      "path": "service-health-final.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "service-health-midrun.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "service-health-t1.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "service-health-t2.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "storage-before-t1.txt",
+      "bytes": 246,
+      "sha256": "e14ddeb19357be2ae69bc4fad89f4c73b7e31e47b2ab0013891fb885bdfbf859"
+    },
+    {
+      "path": "storage-final.txt",
+      "bytes": 129,
+      "sha256": "812e884a23593d80597f9fe85d807a52f672eb555bb28bc7674dccc309ac5013"
+    },
+    {
+      "path": "storage-midrun.txt",
+      "bytes": 246,
+      "sha256": "e14ddeb19357be2ae69bc4fad89f4c73b7e31e47b2ab0013891fb885bdfbf859"
+    },
+    {
+      "path": "storage-t1.txt",
+      "bytes": 701,
+      "sha256": "199d49b30a0076e71f40301f2f07d54534187d28d9a0cca2353da32c592c52e3"
+    },
+    {
+      "path": "storage-t2.txt",
+      "bytes": 129,
+      "sha256": "812e884a23593d80597f9fe85d807a52f672eb555bb28bc7674dccc309ac5013"
+    },
+    {
+      "path": "switch-after-near.txt",
+      "bytes": 1141,
+      "sha256": "98ba1c1f1084c20f22d3646a10f4b1925a394ec004e6fd8fb813dfc14fd3ec98"
+    },
+    {
+      "path": "switch-before-near.txt",
+      "bytes": 1141,
+      "sha256": "07f4f12c2da74250e17a7c53f28180186fbb19494f095e622d2f1e689b9edf44"
+    },
+    {
+      "path": "switch-final.txt",
+      "bytes": 1141,
+      "sha256": "98ba1c1f1084c20f22d3646a10f4b1925a394ec004e6fd8fb813dfc14fd3ec98"
+    },
+    {
+      "path": "switch-inventory.txt",
+      "bytes": 700,
+      "sha256": "94597ac17db8c3b4f99dc5076201e77a3c8b71529b2661e8d0ab3bc8107677eb"
+    },
+    {
+      "path": "verify_package.py",
+      "bytes": 1590,
+      "sha256": "90ff5807959441a56ef035187f8f85fbfc438b3d4ab949e6da7386ad6417d175"
+    },
+    {
+      "path": "versions.txt",
+      "bytes": 267,
+      "sha256": "87bd26e324cbf18b7fca1703360a8503ccf61266848ccdefd769c713fd06ef6e"
+    }
+  ]
+}

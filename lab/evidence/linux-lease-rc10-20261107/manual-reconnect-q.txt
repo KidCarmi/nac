@@ -1,0 +1,15 @@
+DIAGNOSTIC_MANUAL_RECONNECT_AT date -u +%FT%T.%3NZ
+2026-11-07T12:16:33.817Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+DOWN networkctl down ens3; sleep 2; ip -br addr show ens3
+ens3             DOWN           
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+UP networkctl up ens3; sleep 5; ip -br addr show ens3; ip -4 route
+ens3             UP             10.70.20.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.20.10 dev ens3 proto dhcp src 10.70.20.80 metric 100 
+10.70.20.0/24 dev ens3 proto kernel scope link src 10.70.20.80 metric 100 
+10.70.20.10 dev ens3 proto dhcp scope link src 10.70.20.80 metric 100 
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 

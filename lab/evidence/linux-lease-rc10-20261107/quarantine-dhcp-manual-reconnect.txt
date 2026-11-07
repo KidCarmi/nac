@@ -1,0 +1,85 @@
+2026-11-07 12:16:40.061272 IP (tos 0xc0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 330)
+    0.0.0.0.bootpc > 255.255.255.255.bootps: [udp sum ok] BOOTP/DHCP, Request from 00:50:00:00:02:00 (oui Unknown), length 302, xid 0xbd224942, secs 1, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Request
+	    Client-ID (61), length 19: hardware-type 255, b5:5e:67:ff:00:02:00:00:ab:11:10:06:11:b8:ca:75:5d:8e
+	    Parameter-Request (55), length 11: 
+	      Subnet-Mask (1), Default-Gateway (3), Domain-Name-Server (6), Hostname (12)
+	      Domain-Name (15), MTU (26), Static-Route (33), NTP (42)
+	      Unknown (119), Unknown (120), Classless-Static-Route (121)
+	    MSZ (57), length 2: 576
+	    Requested-IP (50), length 4: 10.70.10.80
+	    Hostname (12), length 12: "nac-endpoint"
+	    END (255), length 0
+2026-11-07 12:16:40.061516 IP (tos 0x0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 328)
+    10.70.20.10.bootps > 255.255.255.255.bootpc: [udp sum ok] BOOTP/DHCP, Reply, length 300, xid 0xbd224942, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: NACK
+	    Server-ID (54), length 4: 10.70.20.10
+	    END (255), length 0
+	    PAD (0), length 0, occurs 50
+2026-11-07 12:16:40.064368 IP (tos 0xc0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 330)
+    0.0.0.0.bootpc > 255.255.255.255.bootps: [udp sum ok] BOOTP/DHCP, Request from 00:50:00:00:02:00 (oui Unknown), length 302, xid 0x88916175, secs 1, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Discover
+	    Client-ID (61), length 19: hardware-type 255, b5:5e:67:ff:00:02:00:00:ab:11:10:06:11:b8:ca:75:5d:8e
+	    Parameter-Request (55), length 11: 
+	      Subnet-Mask (1), Default-Gateway (3), Domain-Name-Server (6), Hostname (12)
+	      Domain-Name (15), MTU (26), Static-Route (33), NTP (42)
+	      Unknown (119), Unknown (120), Classless-Static-Route (121)
+	    MSZ (57), length 2: 576
+	    Requested-IP (50), length 4: 10.70.10.80
+	    Hostname (12), length 12: "nac-endpoint"
+	    END (255), length 0
+2026-11-07 12:16:40.064613 IP (tos 0x0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 328)
+    10.70.20.10.bootps > 255.255.255.255.bootpc: [udp sum ok] BOOTP/DHCP, Reply, length 300, xid 0x88916175, Flags [none] (0x0000)
+	  Your-IP 10.70.20.80
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Offer
+	    Server-ID (54), length 4: 10.70.20.10
+	    Lease-Time (51), length 4: 3600
+	    Subnet-Mask (1), length 4: 255.255.255.0
+	    Default-Gateway (3), length 4: 10.70.20.10
+	    Domain-Name-Server (6), length 4: 10.70.20.10
+	    Domain-Name (15), length 12: "nac-lab.test"
+	    END (255), length 0
+	    PAD (0), length 0, occurs 12
+2026-11-07 12:16:40.067416 IP (tos 0xc0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 336)
+    0.0.0.0.bootpc > 255.255.255.255.bootps: [udp sum ok] BOOTP/DHCP, Request from 00:50:00:00:02:00 (oui Unknown), length 308, xid 0x88916175, secs 1, Flags [none] (0x0000)
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: Request
+	    Client-ID (61), length 19: hardware-type 255, b5:5e:67:ff:00:02:00:00:ab:11:10:06:11:b8:ca:75:5d:8e
+	    Parameter-Request (55), length 11: 
+	      Subnet-Mask (1), Default-Gateway (3), Domain-Name-Server (6), Hostname (12)
+	      Domain-Name (15), MTU (26), Static-Route (33), NTP (42)
+	      Unknown (119), Unknown (120), Classless-Static-Route (121)
+	    MSZ (57), length 2: 576
+	    Server-ID (54), length 4: 10.70.20.10
+	    Requested-IP (50), length 4: 10.70.20.80
+	    Hostname (12), length 12: "nac-endpoint"
+	    END (255), length 0
+2026-11-07 12:16:40.067577 IP (tos 0x0, ttl 64, id 0, offset 0, flags [none], proto UDP (17), length 328)
+    10.70.20.10.bootps > 255.255.255.255.bootpc: [udp sum ok] BOOTP/DHCP, Reply, length 300, xid 0x88916175, Flags [none] (0x0000)
+	  Your-IP 10.70.20.80
+	  Client-Ethernet-Address 00:50:00:00:02:00 (oui Unknown)
+	  Vendor-rfc1048 Extensions
+	    Magic Cookie 0x63825363
+	    DHCP-Message (53), length 1: ACK
+	    Server-ID (54), length 4: 10.70.20.10
+	    Lease-Time (51), length 4: 3600
+	    Subnet-Mask (1), length 4: 255.255.255.0
+	    Default-Gateway (3), length 4: 10.70.20.10
+	    Domain-Name-Server (6), length 4: 10.70.20.10
+	    Domain-Name (15), length 12: "nac-lab.test"
+	    END (255), length 0
+	    PAD (0), length 0, occurs 12

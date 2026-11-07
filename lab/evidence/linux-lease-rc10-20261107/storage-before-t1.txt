@@ -1,0 +1,7 @@
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv   77G   63G   11G  87% /
+corp-dhcp.pcap0 24 bytes
+endpoint.pcap0 14474 bytes
+quarantine-dhcp.pcap0 2184 bytes
+radius.pcap0 16517 bytes
+0
