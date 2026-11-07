@@ -55,8 +55,8 @@
   accepted, not that the endpoint is connected now.
 - **Switch-observed state** comes only from eAPI (`show dot1x hosts | json`).
   The `fe7c981` lab run had no eAPI configured, so observation showed
-  "unavailable" and **Verify** was "decision only". The eAPI and accounting
-  paths are being qualified on `pilot-rc2`; see
+  "unavailable" and **Verify** was "decision only". eAPI observation and
+  accounting passed later (`pilot-rc7` onward); see
   [qualification status](qualification-status.md).
 - **CoA retry guard.** Before every retransmission, nacd checks that the
   captured session is still current in NAC: not ended, same start time, same
@@ -109,20 +109,30 @@ page and API show the three facts separately: switch authorization, the
 switch's observation, and endpoint reachability (`not_observed`, because NAC
 never tests the endpoint). The third one is new in `pilot-rc10`.
 
-Measured on `pilot-rc7` (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP
-endpoint, ASTRA):
-- The endpoint moved corp → quarantine → corp without manual renewal and
-  without a port bounce.
-- The **old** segment was denied within 0.1–2 s of the CoA.
-- The **new** segment was reachable 87–117 s after the CoA. A CoA
+Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
+- The endpoint moved corp → quarantine → corp without manual renewal,
+  reconnect or port bounce, on `pilot-rc7`, `pilot-rc8` and `pilot-rc9`.
+- The **old** segment was denied within about 0.1–2.2 s of the CoA.
+- The **new** segment was reachable 76–117 s after the CoA. A CoA
   re-authentication keeps the link (carrier) up, so the DHCP client keeps
-  its old lease until its normal renewal. Reachability on the new segment
-  arrives with that renewal.
-- Expect an outage of roughly one DHCP renewal interval after quarantine or
-  restore. To shorten it, use shorter leases on the corp and quarantine
-  scopes: renewal normally starts at half the lease time. This sizing is
-  guidance derived from the measurement, not a separately lab-tested
-  setting.
+  its old lease until it gets a new one.
+
+| Run | DHCP lease | Old segment denied | New segment reachable |
+|---|---|---|---|
+| `pilot-rc7` | not reported | 0.1–2 s | 87–117 s |
+| `pilot-rc8`, after a full restart | not reported | 0.703 / 0.685 s | 112.7 / 84.2 s |
+| Clean `pilot-rc9` instance, console Quarantine then Restore | **120 s** | 1.436 s / 2.201 s | 75.9 s / 116.1 s |
+
+- **Why it takes this long (inference, to be confirmed in the captures).**
+  - At half the lease (T1, 60 s for 120 s) the client renews by unicast to
+    its old DHCP server, which is not reachable from the new VLAN.
+  - It gets a new address only when it broadcasts at the rebinding time
+    (T2, about 87.5 % of the lease, 105 s for 120 s) or the lease expires.
+  - So expect up to about **0.9 × the lease time** after quarantine or
+    restore, depending on where in its lease the endpoint is.
+  - Shorter leases on the corp and quarantine scopes shorten the outage
+    proportionally, at the cost of more DHCP traffic. This sizing is
+    derived from the measurement, not a separately lab-tested setting.
 - **Windows endpoints are untested.** Other DHCP clients may renew sooner
   or later.
 
@@ -166,14 +176,13 @@ port, and the lab shows endpoints recover without one.
     `pilot-rc8`, through the API).
   - The console workflows (sign-in, status, policy edit, preview, publish
     and restore, quarantine and restore CoA) passed on `pilot-rc9`.
+  - Console switch onboarding, certificate binding, policy and CoA passed
+    with a real vEOS switch on a clean `pilot-rc9` instance.
   - Not lab-run:
-    - the console **Account** page (password change and host reset passed
-      through the API and `nac-reset-password` on the clean `pilot-rc9`
-      instance)
+    - the console **Account** page, which is in the user handoff
+      (password change and host reset passed through the API and
+      `nac-reset-password` on the clean `pilot-rc9` instance)
     - a clean-instance install of exact `pilot-rc8` (blocked in the lab)
-    - switch onboarding on the clean `pilot-rc9` instance. Switch
-      registration through the console last passed on `pilot-rc1`; the rc9
-      UI run used an already registered switch.
   - Untested: physical Arista hardware (including MAB and unplug) and
     Windows endpoints.
 - **One operator account.** The bootstrapped administrator can change its own
@@ -196,7 +205,8 @@ port, and the lab shows endpoints recover without one.
   - The unverified fallback (`NAC_EAPI_INSECURE_SKIP_VERIFY=true`, plus
     `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` for stock EOS 4.29.2F) also applies to
     all switches.
-  - Verified TLS against a real EOS switch is being qualified.
+  - Verified TLS passed on vEOS-lab 4.29.2F (clean `pilot-rc9` instance):
+    Probe and Verify succeeded, and a wrong IP SAN was rejected.
 - **Reproducible build:** `nacd` builds to the same SHA-256 from the same
   commit and `VERSION`. The bundle tarball does not, because of archive
   timestamps.

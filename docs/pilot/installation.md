@@ -22,9 +22,10 @@ These are the setups the lab actually ran (ASTRA, EVE-NG, vEOS-lab
 | In-place upgrade | Installer re-run over the previous candidate: settings kept, nacd restarted, running build checked | `pilot-rc7`, `pilot-rc8`, `pilot-rc9` |
 | Reboot / full restart | All services come back automatically. Sessions, policy and switches persist | `pilot-rc8`, `pilot-rc9` |
 | nacd outage | New logins rejected (fail closed), existing switch sessions kept, automatic recovery | `pilot-rc7`, `pilot-rc8` |
-| Password change and forgotten password | API change and `nac-reset-password` on the clean `pilot-rc9` instance. The console Account page is lab-qualification pending; the build's browser check (`scripts/ui-walkthrough.js`, simulated switch) exercises it | `pilot-rc9` |
+| Password change and forgotten password | API change and `nac-reset-password` on the clean `pilot-rc9` instance. The console Account page is in the user handoff; the build's browser check (`scripts/ui-walkthrough.js`, simulated switch) exercises it | `pilot-rc9` |
 | Operator certificates | Lab disposable PKI only (`--test-pki` on the clean `pilot-rc9` install). Your own CA (`--ca`) follows section 5 and has not been lab-run | — |
-| eAPI TLS | Section 7a. Verified TLS was checked against a TLS test endpoint on the build environment; validation on EOS is in progress | — |
+| eAPI TLS | Section 7a, verified TLS (`SSL_CERT_FILE`, TLS 1.2 / ECDHE, SAN = switch IP) on vEOS-lab 4.29.2F. A wrong SAN is rejected | clean `pilot-rc9` instance |
+| Switch onboarding, binding, policy, CoA in the console | A clean instance with a real vEOS switch: register switch, bind the EAP-TLS certificate, preview, publish, corp admission, Quarantine and Restore | clean `pilot-rc9` instance |
 
 ## 1. What you need
 
@@ -287,8 +288,7 @@ independent.
 
 > eAPI observation and RADIUS accounting passed on `pilot-rc7` in the lab
 > (vEOS-lab 4.29.2F; see [qualification status](qualification-status.md)).
-> The EOS SSL-profile alternative for eAPI TLS (step 2) is still not
-> lab-validated.
+> Verified eAPI TLS (step 2, setup A) passed on vEOS-lab 4.29.2F.
 
 **eAPI (switch state, polled every 30 s):**
 
@@ -314,8 +314,10 @@ independent.
    - On the build environment, with the `pilot-rc9` server code, a valid
      chain with a matching IP SAN gives *Reachable* **yes**. An unknown CA
      or a wrong SAN gives **no**, and the detail says why.
-   - The EOS steps are being validated by ASTRA; see
-     [qualification status](qualification-status.md).
+   - **Lab-validated on vEOS-lab 4.29.2F** (ASTRA): with this setup,
+     Probe, Refresh and Verify succeeded (switch SUCCESS, VLAN 10). A
+     certificate from the same CA with a wrong IP SAN was rejected with an
+     x509 hostname mismatch.
 
    1. Issue the switch's eAPI certificate from a CA you control. The SAN
       must contain the host used in the eAPI URL, for example
@@ -336,16 +338,24 @@ independent.
 
       Keep `eapi-ca.key` offline. It is not needed on the control node.
    2. Copy `$SWITCH-eapi.pem` and `$SWITCH-eapi.key` to the switch's
-      `certificate:` and `sslkey:` file systems (for example with `copy
-      scp:... certificate:`). Then use them in an SSL profile with ECDHE
-      ciphers for eAPI:
+      `flash:` as `nac-eapi.crt` and `nac-eapi.key` (for example with `scp`).
+      Then **import** them into the switch's certificate and key stores. EOS
+      4.29.2F requires this step: the SSL profile refers only to bare names
+      in `certificate:` and `sslkey:`.
+
+      ```
+      copy flash:nac-eapi.crt certificate:nac-eapi.crt
+      copy flash:nac-eapi.key sslkey:nac-eapi.key
+      ```
+
+      Use them in an SSL profile with ECDHE ciphers for eAPI:
 
       ```
       management security
          ssl profile nac-eapi
             tls versions 1.2
             cipher-list ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256
-            certificate <SWITCH>-eapi.pem key <SWITCH>-eapi.key
+            certificate nac-eapi.crt key nac-eapi.key
       management api http-commands
          protocol https ssl profile nac-eapi
       ```
@@ -434,7 +444,7 @@ bindings in the console.
 | Copy the bundle and run `install.sh` | Shell on the control node, once | Initial setup |
 | Read the first admin password from `/root/nac-initial-admin.txt`, then delete the file after changing the password in the console | Shell, once | It is never shown over the network |
 | Reset a forgotten password with `sudo nac-reset-password <email>` | Shell, when needed | Recovery must not be possible over the network |
-| Enable eAPI and RADIUS accounting on the switch, and `NAC_EAPI_INSECURE_SKIP_VERIFY` for a self-signed eAPI certificate (section 7a) | Switch CLI, `/etc/nac/nacd.env` | Optional session observation |
+| Enable eAPI and RADIUS accounting on the switch. For verified eAPI TLS, issue and import the switch certificate and set `SSL_CERT_FILE` (section 7a) | Switch CLI, `/etc/nac/nacd.env` | Optional session observation |
 | Cancel ZeroTouch Provisioning on a factory-fresh switch, apply the generated EOS configuration, `write memory` | Switch CLI | NAC does not write switch configuration |
 | Renew the endpoint's IP address after a VLAN change, if its DHCP client does not | Endpoint | See known limitations |
 | Replace certificates or enable a CRL | Shell (section 5) | Not in the console in the pilot |
