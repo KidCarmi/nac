@@ -189,8 +189,9 @@ constant. Only the DHCP server changed: Ubuntu dnsmasq-base 2.91,
   T1 renewal is unicast to the old server, which is unreachable from the new
   VLAN.
 
-**Proposed acceptance target (ASTRA; not yet agreed by the owner, not
-measured):**
+**Proposed acceptance target (ASTRA; proposed, not agreed by the owner. The
+short-timer configuration below was measured against it and failed on
+vEOS-lab):**
 - fresh TCP to the new permitted segment within 60 s of the CoA
 - old segment denied within 5 s
 - no manual endpoint action
@@ -309,8 +310,10 @@ Earlier measurements (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   - At about 60 s (half the 120 s lease) it renews by unicast to its old
     DHCP server, which is not reachable from the new VLAN.
   - At about 105 s (87.5 % of the lease) it broadcasts a rebind for its old
-    address. That reaches the new VLAN's server (BusyBox udhcpd in the lab),
-    which **does not answer** it.
+    address. In these 120 s runs it reached the new VLAN's server (BusyBox
+    udhcpd in the lab), which **does not answer** it. A rebind is not
+    guaranteed to arrive: in the short-timer Restore run it was seen on
+    neither segment.
   - When the lease expires, the client starts over with a Discover. The new
     VLAN's server answers that, about 15 s after the rebind.
   - So the Linux endpoint reaches the new VLAN when its old lease
