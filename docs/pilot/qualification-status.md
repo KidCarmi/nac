@@ -9,16 +9,18 @@ tests. A row stays **pending** until a lab result names the commit it ran on.
 | Candidate | Commit | nacd SHA-256 (`make pilot-bundle VERSION=<name>`) | Status |
 |---|---|---|---|
 | `pilot-rc1` | `fe7c9810848910aa4dc4536a5074d3ebaef72c7e` | `062e948ac922ed703ed3743a75a2bc85241bf59597b963282dae2cef3e764204` | **PASS** (static addressing, no eAPI/accounting), 2026-11-06 |
-| `pilot-rc2` | `c121a952cf86c78f6a29b5950d62101c7f9bab6b` | `babe6ff523acadd0d382ca6df5dfcad5f96189b1c1b68e297027625c2f7fa6cf` | In qualification: DHCP transitions, eAPI observation, accounting |
+| `pilot-rc2` | `c121a952cf86c78f6a29b5950d62101c7f9bab6b` | `babe6ff523acadd0d382ca6df5dfcad5f96189b1c1b68e297027625c2f7fa6cf` | **Defects found**: quarantine lost on accounting Stop; eAPI TLS handshake with stock EOS (fixed in later candidates) |
 | `pilot-rc3` | `74e5a1e338e386ad1dcbe7630dde17b9e754a9c2` | `f746d5d0908ee50644e15afce64a50e413b169aab5114a5f8d6e11488abcffc0` | **Superseded before qualification**: Codex found a quarantine bypass (failed attempt between accounting Stop and the valid login) |
 | `pilot-rc4` | `76a53fd52da3e9f9e2f74b08e7b8f6064c38e7e2` | `5162ad2699f90ee62203d6df0f5ad2d52dbd5b40484ae776838799a4f3f86a40` | **Superseded before qualification**: Codex found that a replacement session could briefly exist without its inherited quarantine |
 | `pilot-rc5` | `23349b7d871c9db323d09309b428b9c80046164f` | `8821f28f0df89efef135c8d38465ea1b9b10ed21f973d3de4b6f152388a0457a` | **Superseded before qualification**: Codex found that concurrent exchanges could bypass quarantine on an insert conflict |
-| `pilot-rc6` | `cf8920656b44dd628334cf2934c4ba12c22a28d4` | `fa39d5be994661385a369067f56b61f529a8b446e406e6d71763b2bcccd6b4bd` | **Superseded before qualification** by rc7, which adds only the installer fix (a re-install now restarts nacd and verifies the running build) |
-| `pilot-rc7` | the commit that adds this row; commit and nacd hash in the PR / release notes (a commit cannot contain its own hash) | — | rc6 plus the installer restart fix. In qualification: DHCP, eAPI, accounting, rc2 defect retests, password change, in-place re-install |
+| `pilot-rc6` | `cf8920656b44dd628334cf2934c4ba12c22a28d4` | `fa39d5be994661385a369067f56b61f529a8b446e406e6d71763b2bcccd6b4bd` | **Lab run completed** by ASTRA (results in ASTRA's local handoff). Succeeded by rc7, which adds only the installer restart fix; nacd source is identical |
+| `pilot-rc7` | `e7d41626c88eef8c708b9e0dd15fa295d455193c` | `16740a48aa8a869fa50e667eaadd6ee2df3a8ef45df48ef05c4557818fba8270` | **PASS** on the API workflows below (2026-11-06), plus **one defect**: the switch Verified badge read as current after its session ended. Console UI actions not yet qualified |
+| `pilot-rc8` | the commit that adds this row (commit and nacd hash in the PR; a commit cannot contain its own hash) | — | rc7 plus the Verified badge fix (marked historical, with the state of its session) and these docs. To retest: the Verified badge, console UI actions |
 
 Evidence lives on branch `astra/lab-evidence`:
 - `fe7c981` run: commit `1e0d2a3`, `lab/runs/candidate-fe7c981-20261106/`
 - MikroTik MAB run: commit `43980c6`, `lab/runs/mikrotik-mab-20261106/`
+- `pilot-rc7` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc7-20261106/report.md`, observer outage under `runs/candidate-e7d4162-dhcp-rc7-observer-outage-20261106/`). Packet captures remain local; not on the evidence branch.
 
 ## Lab results by capability
 
@@ -36,10 +38,18 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
 | Quarantine / Restore CoA without endpoint action | PASS | `fe7c981` | ACK and switch-initiated re-authentication; restore 21.3 s to permitted TCP |
 | nacd outage: existing session kept, new login rejected, automatic recovery | PASS | `fe7c981` | Recovery 30.2 s after nacd restart; no authorization cache |
 | Full restart of all nodes | PASS | `fe7c981` | The final restore used an operator `wpa_cli reauthenticate` (disclosed) |
-| DHCP addressing across corp ⇄ quarantine | **pending** | `pilot-rc2` | `fe7c981` used static addresses |
-| eAPI session observation (fresh / stale / absent, Verify with observation) | **defect found** → fix in `pilot-rc7` | `pilot-rc2` | Probe failed with a TLS handshake failure: stock EOS 4.29.2F eAPI offers only RSA key exchange, and Go 1.22+ does not offer it. With a lab-only `GODEBUG=tlsrsakex=1`, Probe answered `vEOS-lab EOS 4.29.2F`. rc3 adds `NAC_EAPI_TLS_ALLOW_RSA_KEX` (eAPI client only), a Probe error that names the fix, and the EOS SSL-profile alternative (to be validated) |
-| RADIUS accounting (Start/Stop, Class echo, session end) | **defect found** → fix in `pilot-rc7` | `pilot-rc2` | With accounting on, a Quarantine CoA was ACKed and vEOS re-authenticated, but its accounting Stop ended the session first. The replacement session had no override, so the endpoint got corp VLAN 10 and the CoA stayed "acked". rc6 carries the override to the replacement session of the same identity and port (also when a failed attempt came in between, created atomically with the session) and correlate the CoA with it (`TestQuarantineSurvivesAccountingStopAndSessionReplacement`). Silently ignored accounting is also visible |
-| Password change and host reset | **pending** | `pilot-rc7` | Unit and integration tested |
+| Clean install and in-place upgrade rc6 → rc7 | PASS | `e7d4162` | About 63 s on clean Ubuntu 24.04.5. After the upgrade, the installed and running nacd hashes matched and settings were preserved |
+| Unauthenticated block; valid EAP-TLS → corp VLAN 10 with DHCP and TCP; invalid certificate rejected | PASS | `e7d4162` | One-NIC Linux DHCP endpoint |
+| Quarantine / Restore (API) with accounting on | PASS | `e7d4162` | CoA-ACK, switch-initiated EAP-TLS, RADIUS VLAN 20 / 10, accounting Stop/Start, endpoint TCP. This is the rc2 defect scenario. The failed-attempt variant was not reported |
+| DHCP addressing across corp ⇄ quarantine | PASS | `e7d4162` | No manual renewal, no port bounce. Old segment denied within 0.1–2 s. New segment reachable 87–117 s after the CoA, at the next DHCP renewal: carrier stays up, so the old lease is kept until then. See known limitations |
+| Rule-only publish (v6) and restore (v2) after a full EVE restart | PASS | `e7d4162` | The preview predicted the policy result |
+| nacd outage: existing session kept, new login rejected, automatic recovery | PASS | `e7d4162` | |
+| Accounting Stop replay for an older session | PASS | `e7d4162` | Ignored for the newer session |
+| eAPI observation through an eAPI outage | PASS | `e7d4162` | Unreachable, then stale/unknown after 5 min 20 s, then fresh/connected on recovery. Session freshness and liveness were correct |
+| Switch **Verified** status during an eAPI outage | **defect** → fixed in `pilot-rc8` | `e7d4162` | Verified=yes still named an ended session while a newer one was active and reachability was "no". rc8 marks Verified as a historical record and states whether its session is still active (`TestVerifiedIsMarkedAsHistoricalRecord`) |
+| Console UI: onboarding, policy and CoA actions | **pending** | `e7d4162` | The API passes above are not claimed as UI passes |
+| Password change and host reset | **not reported** | — | Unit and integration tested |
+| Windows endpoint | untested | — | |
 | MAB / fallback | BLOCKED on Arista | — | vEOS rejects MAB. Separate MikroTik run: a spoofed allowlisted MAC can pass switch fallback after an EAP-TLS reject (non-product rule). The product rejects non-EAP requests; see known limitations |
 
 ## Automated tests (every commit)
@@ -57,6 +67,8 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
 
 ## Manual interventions recorded during lab runs
 
+- `e7d4162`: none reported. The DHCP transitions needed no manual renewal or
+  port bounce.
 - `fe7c981`: after the full restart, the final policy restore was completed
   with an endpoint `wpa_cli reauthenticate`. Policy restore applies at the
   next authentication; the product path is the session's **Re-authenticate**.

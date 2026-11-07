@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc8 (after pilot-rc7 `e7d4162`, which passed the API workflows in the lab)
+- **Switch Verified status read as current** (ASTRA, rc7). After a newer
+  session replaced the verified one, the badge still said verified=yes,
+  naming the ended session, while reachability was "no". Verified is now
+  marked `historical`, with a `note` saying whether its session is still
+  active. The console labels it "Verified test (record)".
+- Docs: measured DHCP behavior on corp ⇄ quarantine transitions (old segment
+  denied in ≤ 2 s; new segment reachable at the next DHCP renewal, 87–117 s
+  in the lab, because the link stays up), and the distinction between switch
+  authorization and endpoint reachability. The qualification status records
+  the rc7 results and corrects the rc6 entry: its lab run was completed, not
+  superseded before qualification.
+
 ### pilot-rc7 (supersedes pilot-rc6 `cf89206`, which was never qualified)
 - `install.sh` restarts nacd. Re-running it on an active installation used
   `enable --now`, which left the old nacd process running the previous

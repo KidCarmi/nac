@@ -161,7 +161,7 @@ async function overview() {
       ["Outage log import", h("span", {}, stateChip(health.outage_log_import.state || "unknown"), " ", txt(health.outage_log_import.detail))],
       ["FreeRADIUS client file", h("span", {}, stateChip(health.radius_client_file.state || "unknown"), " ", txt(health.radius_client_file.detail))],
     ]), h("p", { class: "note" }, health.outage_semantics)),
-    panel("Switches", table(["Switch", "Configured", "Reachable", "Auth request seen", "Verified"],
+    panel("Switches", table(["Switch", "Configured", "Reachable", "Auth request seen", "Verified (record)"],
       sw.switches.map((s) => ({ id: s.id, cells: [s.name, stateChip(s.status.configured.state), stateChip(s.status.reachable.state),
         stateChip(s.status.auth_request_seen.state), stateChip(s.status.verified.state)] })), (r) => go("#/switch/" + r.id))),
     panel("Recent rejections", eventsTable(rejects.events)));
@@ -171,7 +171,7 @@ async function overview() {
 async function switches() {
   const d = await api("GET", "/switches");
   show(h("h1", {}, "Switches"),
-    panel(null, table(["Name", "RADIUS source", "VLANs", "Configured", "Reachable", "Auth seen", "Verified"],
+    panel(null, table(["Name", "RADIUS source", "VLANs", "Configured", "Reachable", "Auth seen", "Verified (record)"],
       d.switches.map((s) => ({ id: s.id, cells: [s.name, h("code", {}, s.radius_source_ip), vlans(s.segment_vlans),
         stateChip(s.status.configured.state), stateChip(s.status.reachable.state), stateChip(s.status.auth_request_seen.state),
         stateChip(s.status.verified.state)] })), (r) => go("#/switch/" + r.id))),
@@ -223,13 +223,14 @@ async function switchDetail(id) {
   const sw = await api("GET", "/switches/" + id);
   const cfg = await api("GET", "/switches/" + id + "/config");
   const st = sw.status;
-  const item = (label, s) => h("div", { class: "panel" }, h("h3", {}, label, " ", stateChip(s.state)), h("p", {}, txt(s.detail)), s.at ? h("p", { class: "muted" }, when(s.at)) : null);
+  const item = (label, s) => h("div", { class: "panel" }, h("h3", {}, label, " ", stateChip(s.state)), h("p", {}, txt(s.detail)),
+    s.note ? h("p", { class: s.historical ? "warn" : "" }, s.note) : null, s.at ? h("p", { class: "muted" }, (s.historical ? "recorded " : "") + when(s.at)) : null);
   const sessions = await api("GET", "/sessions?switch_id=" + id);
   const pre = h("pre", {}, cfg);
   show(
     h("h1", {}, "Switch ", sw.name),
     h("div", { class: "grid" }, item("1. Configured", st.configured), item("2. Reachable (management)", st.reachable),
-      item("3. Authentication request seen", st.auth_request_seen), item("4. Verified test", st.verified)),
+      item("3. Authentication request seen", st.auth_request_seen), item("4. Verified test (record)", st.verified)),
     panel("Actions", h("div", { class: "row" },
       h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/probe"), "Probe finished.")) render(); } }, "Probe management (eAPI)"),
       h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/observe"), "Switch state refreshed.")) render(); } }, "Refresh session observation"),

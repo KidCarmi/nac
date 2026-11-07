@@ -90,24 +90,42 @@
   - **`pilot-rc1` (`fe7c981`) and `pilot-rc2` (`c121a95`) lose the override**
     when the switch sends accounting Stop before re-authenticating: the
     endpoint is re-authorized by policy (ASTRA, rc2, accounting enabled).
-    Fixed in `pilot-rc6` and later (`pilot-rc7` is the candidate), which also closes the variants found in review of
+    Fixed in `pilot-rc6` and later (the replacement scenario passed in the lab on `pilot-rc7`), which also closes the variants found in review of
     `pilot-rc3` (a failed attempt between the Stop and the valid login),
     `pilot-rc4` (a replacement briefly stored without the override) and
     `pilot-rc5` (a rejected and a valid exchange racing to create the
     session). Do not enable switch accounting with earlier candidates.
 
-## Endpoint addressing after a VLAN change
+## Switch authorization is not endpoint reachability
 
-After a CoA or a re-authentication moves an endpoint between VLANs, the
-endpoint needs an address in the new subnet.
+NAC controls and reports **switch authorization**: which VLAN the switch is
+told to put a session in, and (with eAPI) which VLAN the switch reports.
+- CoA **observed** means a re-authentication returned the requested VLAN.
+- A fresh **Observed on the switch** with "matches requested" means the
+  switch reports that VLAN.
 
-- NAC does not force DHCP renewal and has no automatic recovery action. A
-  port bounce is not implemented. It would need documented switch support,
-  must target one port, and disconnects every device on that port.
-- The `fe7c981` qualification used **static** addresses on the endpoint, so
-  DHCP behavior was not exercised. ASTRA is qualifying DHCP transitions on
-  `pilot-rc2`. Until that result is in, treat re-addressing as the endpoint's
-  job: check the endpoint's address after quarantine or restore.
+Neither means the endpoint has a usable address in that VLAN.
+
+Measured on `pilot-rc7` (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP
+endpoint, ASTRA):
+- The endpoint moved corp → quarantine → corp without manual renewal and
+  without a port bounce.
+- The **old** segment was denied within 0.1–2 s of the CoA.
+- The **new** segment was reachable 87–117 s after the CoA. A CoA
+  re-authentication keeps the link (carrier) up, so the DHCP client keeps
+  its old lease until its normal renewal. Reachability on the new segment
+  arrives with that renewal.
+- Expect an outage of roughly one DHCP renewal interval after quarantine or
+  restore. To shorten it, use shorter leases on the corp and quarantine
+  scopes: renewal normally starts at half the lease time. This sizing is
+  guidance derived from the measurement, not a separately lab-tested
+  setting.
+- **Windows endpoints are untested.** Other DHCP clients may renew sooner
+  or later.
+
+NAC has no automatic re-addressing action, by design. A port bounce has no
+documented support on vEOS 4.29.2F, would disconnect every device on the
+port, and the lab shows endpoints recover without one.
 
 ## Security and operations
 
@@ -122,9 +140,13 @@ endpoint needs an address in the new subnet.
 - Posture has no integration in the pilot: it is set through the device
   record (API/console), is considered stale after `NAC_POSTURE_MAX_AGE`
   (24 h), and is never taken from RADIUS.
-- **Validation:** the documented install (systemd units included), product
-  CoA, outage and full-restart recovery were validated on vEOS-lab 4.29.2F in
-  the `fe7c981` lab run. Physical Arista hardware is untested.
+- **Validation:** see [qualification status](qualification-status.md).
+  - The documented install (clean and in-place upgrade), CoA, accounting,
+    eAPI observation, DHCP transitions, outage and full-restart recovery
+    passed on vEOS-lab 4.29.2F (`pilot-rc7`). Those runs used the API.
+  - The console's onboarding and policy/CoA actions on `pilot-rc7` are not
+    yet lab-validated.
+  - Physical Arista hardware and Windows endpoints are untested.
 - **One operator account.** The bootstrapped administrator can change its own
   password (console **Account**, or `POST /api/v1/auth/password`), and root on
   the control node can reset it (`nac-reset-password`). There is no operator

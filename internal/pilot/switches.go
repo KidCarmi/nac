@@ -206,6 +206,10 @@ type StatusItem struct {
 	State  string     `json:"state"` // yes | no | unknown
 	At     *time.Time `json:"at,omitempty"`
 	Detail string     `json:"detail"`
+	// Historical marks a record of a past event (Verified) as opposed to
+	// current state; Note then says how that record relates to now.
+	Historical bool   `json:"historical,omitempty"`
+	Note       string `json:"note,omitempty"`
 }
 
 // SwitchView is a switch plus its status.
@@ -222,7 +226,7 @@ func (s *Service) ListSwitches(ctx context.Context) ([]SwitchView, error) {
 	}
 	out := make([]SwitchView, 0, len(sws))
 	for _, sw := range sws {
-		out = append(out, SwitchView{Switch: sw, Status: s.status(&sw)})
+		out = append(out, SwitchView{Switch: sw, Status: s.status(ctx, &sw)})
 	}
 	return out, nil
 }
@@ -233,10 +237,10 @@ func (s *Service) GetSwitch(ctx context.Context, id uuid.UUID) (*SwitchView, err
 	if err != nil {
 		return nil, err
 	}
-	return &SwitchView{Switch: *sw, Status: s.status(sw)}, nil
+	return &SwitchView{Switch: *sw, Status: s.status(ctx, sw)}, nil
 }
 
-func (s *Service) status(sw *domain.Switch) SwitchStatus {
+func (s *Service) status(ctx context.Context, sw *domain.Switch) SwitchStatus {
 	st := SwitchStatus{}
 	if sw.SecretSet && len(sw.SegmentVLANs) > 0 {
 		st.Configured = StatusItem{State: "yes", At: &sw.UpdatedAt, Detail: fmt.Sprintf("registered in NAC: RADIUS source %s, VLANs %s. "+
@@ -261,7 +265,12 @@ func (s *Service) status(sw *domain.Switch) SwitchStatus {
 		st.AuthSeen = StatusItem{State: "no", Detail: "no RADIUS request from " + sw.RadiusSourceIP + " has reached NAC yet. Check the switch radius-server host/key and the FreeRADIUS client entry."}
 	}
 	if sw.VerifiedAt != nil {
-		st.Verified = StatusItem{State: "yes", At: sw.VerifiedAt, Detail: sw.VerifiedDetail}
+		// Verified is a commissioning record (the switch once carried a NAC
+		// decision end to end), not live state. Say which session it was
+		// and whether that session is still the active one, so it is never
+		// read as describing the current session (ASTRA, pilot-rc7).
+		st.Verified = StatusItem{State: "yes", At: sw.VerifiedAt, Detail: sw.VerifiedDetail, Historical: true,
+			Note: s.verifiedNote(ctx, sw)}
 	} else {
 		st.Verified = StatusItem{State: "no", Detail: "run Verify after a test endpoint authenticates"}
 	}
@@ -269,6 +278,26 @@ func (s *Service) status(sw *domain.Switch) SwitchStatus {
 	st.ClientsFile = s.clientsFileStatus
 	s.mu.Unlock()
 	return st
+}
+
+// verifiedNote relates the Verified record to the present.
+func (s *Service) verifiedNote(ctx context.Context, sw *domain.Switch) string {
+	const tail = " For the current state, see Reachable and each session's observation and liveness."
+	if sw.VerifiedSessionID == nil {
+		return "Record of a past verification." + tail
+	}
+	id := sw.VerifiedSessionID.String()
+	sess, err := s.store.GetSession(ctx, *sw.VerifiedSessionID)
+	switch {
+	case err != nil:
+		return "Record of a past verification with session " + id + ", which no longer exists." + tail
+	case sess.State == domain.SessionActive:
+		return "Verified with session " + id + ", which is still active." + tail
+	case sess.EndedAt != nil:
+		return "Record of a past verification: session " + id + " ended at " + sess.EndedAt.UTC().Format(time.RFC3339) + "." + tail
+	default:
+		return "Record of a past verification: session " + id + " is no longer active (" + string(sess.State) + ")." + tail
+	}
 }
 
 func formatVLANs(m map[string]int) string {

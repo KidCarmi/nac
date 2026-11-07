@@ -34,7 +34,7 @@ page to use.
    | Configured | NAC has the switch, secret and VLAN mappings |
    | Reachable | eAPI answered a probe (shows "unknown" without eAPI) |
    | Auth request seen | A RADIUS request from this switch reached NAC |
-   | Verified | You ran **Verify** after a test endpoint was granted access |
+   | Verified (record) | You ran **Verify** after a test endpoint was granted access. This is a **record** of that check, marked historical: it names the session used and says whether that session is still active. It does not describe the current state. For that, use Reachable and the sessions' observation and liveness. |
 
 ## 2. Authenticate an endpoint (Sessions, Devices)
 
@@ -109,9 +109,13 @@ Click the row to open the session on that port.
    NAC answered with the requested VLAN. It does not prove the endpoint has a
    working address in that VLAN. With eAPI configured, **Observed on the
    switch** also shows the switch's own view (status and VLAN).
-3. Check the endpoint's address. Whether it renews its IP address in the new
-   VLAN depends on its DHCP client. NAC does not bounce the port. In the lab,
-   with static addresses, reachability changed about 20 s after the CoA.
+3. Check the endpoint, not only NAC. **observed** and a matching switch
+   observation prove switch authorization, not endpoint reachability.
+   - In the lab, a Linux DHCP endpoint lost the old segment within about 2 s.
+     It reached the new one 87–117 s after the CoA, at its next DHCP renewal:
+     the link stays up, so the old lease is kept until then.
+   - NAC does not bounce the port. See
+     [known limitations](known-limitations.md#switch-authorization-is-not-endpoint-reachability).
 4. **Restore** clears the override and sends a CoA. The re-authentication gets
    what the active policy decides.
 

@@ -2060,6 +2060,16 @@ components:
         state: { type: string, enum: ["yes", "no", "unknown"] }
         at: { type: string, format: date-time }
         detail: { type: string }
+        historical:
+          type: boolean
+          description: |
+            True when the item records a past event rather than current
+            state. `verified` is always historical: a commissioning record
+            of one session, which may have ended since. Read current state
+            from `reachable` and from each session's observation and liveness.
+        note:
+          type: string
+          description: How a historical item relates to now, e.g. whether the verified session is still active.
     SwitchStatus:
       type: object
       required: [configured, reachable, auth_request_seen, verified, radius_client_file]

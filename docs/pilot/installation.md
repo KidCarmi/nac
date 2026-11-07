@@ -269,10 +269,10 @@ the endpoint is still connected. The session view then shows observation
 **unavailable** and liveness **unknown**. Both sources are optional and
 independent.
 
-> The product side of both is tested: the eAPI parser against the vEOS
-> capture, accounting correlation in the integration tests. The EOS lines
-> below have not yet passed a lab run; see
-> [qualification status](qualification-status.md).
+> eAPI observation and RADIUS accounting passed on `pilot-rc7` in the lab
+> (vEOS-lab 4.29.2F; see [qualification status](qualification-status.md)).
+> The EOS SSL-profile alternative for eAPI TLS (step 2) is still not
+> lab-validated.
 
 **eAPI (switch state, polled every 30 s):**
 
