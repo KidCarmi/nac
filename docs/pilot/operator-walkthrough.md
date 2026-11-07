@@ -162,6 +162,10 @@ Click your email at the top right:
 
 ## 10. After a restart or a NAC outage
 
-Nothing needs re-entering: all state is in the database. Logins rejected while
+Nothing needs re-entering in NAC: all state is in the database. **After a
+switch reboot**, check that the switch kept the NAC configuration: its
+RADIUS target and the eAPI SSL profile must match **Generated EOS
+configuration**. If they don't, apply it again and run `write memory`. The
+lab switch once came back with an older saved RADIUS target. Logins rejected while
 nacd was unreachable appear in the timeline as `outage` events with source
 `freeradius-outage-log`. They are not NAC decisions.

@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### pilot-rc10 (`b39649f`; passed ASTRA retest 2026-11-07, apart from the Account page and Windows)
+### pilot-rc10 (`b39649f`; qualified by ASTRA closeout 2026-11-07, including Windows Server 2025 and the console Account page)
 - **Endpoint reachability is a separate, explicit fact.** Session views
   (API `endpoint_reachability`, always `not_observed`) and the console's
   third session panel keep it apart from switch authorization and the

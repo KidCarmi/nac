@@ -125,6 +125,8 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
 | Clean `pilot-rc9` instance, console Quarantine then Restore | **120 s** | 1.436 s / 2.201 s | 75.9 s / 116.1 s |
 | `pilot-rc10` Quarantine CoA / Restore CoA | 120 s | 1.964 s / 1.386 s | 24.4 s / 110.9 s |
 | `pilot-rc10` rule-only publish v3 (corp → quarantine) / v4 (back) | 120 s | 1.065 s / 1.601 s | 72.1 s / 79.5 s |
+| `pilot-rc10` **Windows Server 2025**, Q1 / R1 / Q2 / R2 (console) | 120 s | 2.027 / 1.776 / 1.728 / 2.290 s | 33.4 / 61.4 / 63.9 / 34.4 s |
+| `pilot-rc10` Windows after a full lab restart, Q / R (console) | 120 s | 2.378 / 2.345 s | 62.6 / 35.5 s |
 
 - **Why it takes this long (confirmed in the `pilot-rc10` captures).**
   - The DHCP server sends no T1/T2 options, so the client uses the
@@ -133,16 +135,19 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
     DHCP server, which is not reachable from the new VLAN.
   - At about 105 s (87.5 % of the lease) it broadcasts a rebind, and the new
     VLAN's server answers.
-  - So the endpoint reaches the new VLAN at its next rebinding time. The
-    delay is anywhere from a few seconds to about **0.9 × the lease time**,
+  - So the Linux endpoint reaches the new VLAN at its next rebinding time.
+    The delay is anywhere from a few seconds to about **0.9 × the lease time**,
     depending on where in its lease the endpoint was at the CoA. This
     explains the 24–117 s spread.
   - Shorter leases on the corp and quarantine scopes shorten the worst
     case proportionally, at the cost of more DHCP traffic. This sizing
     follows from the measured behavior but was not run as a separate lab
     configuration.
-- **Windows endpoints are untested.** Other DHCP clients may renew sooner
-  or later.
+- **Windows Server 2025** (Desktop Experience, machine EAP-TLS, one NIC)
+  also recovered without manual action, within 33–64 s of the CoA. Its
+  renewals were observed at about 60 s; T2 was not measured. Windows Server
+  Core lacks the wired 802.1X service (`dot3svc`) and cannot be used. Other
+  DHCP clients are untested.
 
 **Re-authentication can briefly interrupt traffic, even without a VLAN
 change.** On `pilot-rc8`, a same-VLAN re-authentication (CoA on a session
@@ -186,13 +191,24 @@ port, and the lab shows endpoints recover without one.
     and restore, quarantine and restore CoA) passed on `pilot-rc9`.
   - Console switch onboarding, certificate binding, policy and CoA passed
     with a real vEOS switch on a clean `pilot-rc9` instance.
+  - `pilot-rc10` passed the closeout qualification: clean install, real vEOS
+    switch, CoA and rule-only policy, Linux and Windows Server 2025 DHCP,
+    invalid certificate, nacd outage, verified eAPI TLS, the console Account
+    page, and a full lab restart. Evidence: https://github.com/KidCarmi/nac/tree/bb40c446d8ce522187005e80a244253d85ea775e/lab/evidence/pilot-closeout-20261107
   - Not lab-run:
-    - the console **Account** page, which is in the user handoff
-      (password change and host reset passed through the API and
-      `nac-reset-password` on the clean `pilot-rc9` instance)
+    - revocation of a separately kept pre-change token (the Account change
+      rejected the old password; token revocation is covered by the
+      integration tests and the `pilot-rc9` API run)
     - a clean-instance install of exact `pilot-rc8` (blocked in the lab)
-  - Untested: physical Arista hardware (including MAB and unplug) and
-    Windows endpoints.
+  - Untested: physical Arista hardware (unplug/reconnect, MAB) and endpoint
+    operating systems other than Linux and Windows Server 2025.
+- **The switch must save the NAC configuration.** After a full lab restart,
+  the vEOS switch came back with an older saved RADIUS target and the
+  default TLS profile, and the NAC configuration had to be reapplied (rc10
+  closeout). NAC does not configure or check the switch's saved
+  configuration. Run `write memory` after applying the generated
+  configuration and the eAPI TLS profile. After a switch reboot, compare
+  `show running-config` with **Generated EOS configuration**.
 - **One operator account.** The bootstrapped administrator can change its own
   password (console **Account**, or `POST /api/v1/auth/password`), and root on
   the control node can reset it (`nac-reset-password`). There is no operator
