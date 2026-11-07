@@ -121,9 +121,15 @@ Click the row to open the session on that port.
    switch** also shows the switch's own view (status and VLAN).
 3. Check the endpoint, not only NAC. **observed** and a matching switch
    observation prove switch authorization, not endpoint reachability.
-   - In the lab, a Linux DHCP endpoint lost the old segment within about 2 s.
-     It reached the new one 87–117 s after the CoA, at its next DHCP renewal:
-     the link stays up, so the old lease is kept until then.
+   - In the lab, every endpoint lost the old segment within about 1–2.5 s.
+   - **Windows Server 2025** reached the new segment in about 30–65 s,
+     whatever the lease.
+   - **A Linux (systemd-networkd) endpoint** reached it only when its old
+     lease expired, up to the full lease time later. That was 30 min in one
+     run with a 1-hour lease. The link stays up, and the lab DHCP server
+     ignores the client's earlier attempts to keep its old address.
+   - Plan lease lengths for your endpoints with the
+     [operating envelope](known-limitations.md#operating-envelope-measured-pilot-rc10).
    - NAC does not bounce the port. See
      [known limitations](known-limitations.md#switch-authorization-is-not-endpoint-reachability).
 4. **Restore** clears the override and sends a CoA. The re-authentication gets

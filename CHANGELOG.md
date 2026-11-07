@@ -14,6 +14,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stays pinned. Next candidate: correct the console's "about 20 s" warning.
 - A saved rc10 switch configuration survived a switch reboot without
   reapplication.
+- **Operating envelope measured (ASTRA, 1-hour lease):** Windows Server 2025
+  recovers in about 30–65 s whatever the lease. Linux (systemd-networkd)
+  recovers only at lease expiry (1,811.9 s measured), because the lab DHCP
+  server ignores rebinds for an address from another subnet. The docs now
+  state which deployments this supports.
 
 ### pilot-rc10 (`b39649f`; qualified by ASTRA closeout 2026-11-07, including Windows Server 2025 and the console Account page)
 - **Endpoint reachability is a separate, explicit fact.** Session views

@@ -109,7 +109,52 @@ page and API show the three facts separately: switch authorization, the
 switch's observation, and endpoint reachability (`not_observed`, because NAC
 never tests the endpoint). The third one is new in `pilot-rc10`.
 
-Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
+### Operating envelope (measured, `pilot-rc10`)
+
+The lab DHCP servers are BusyBox udhcpd and send no T1/T2 options. The
+**old** segment is denied within about 1–2.5 s of the CoA in every run,
+whatever the endpoint or lease. How long the endpoint takes to reach the
+**new** segment depends on the endpoint's DHCP client:
+
+| Endpoint | Recovery on the new segment | Measured with |
+|---|---|---|
+| Windows Server 2025 Standard Evaluation, Desktop Experience (build 26100), one NIC | **about 30–65 s**, whatever the lease length or lease age. Windows changes its address, DNS and route by itself | 120 s and 3600 s leases; early, near-T1 and console transitions ([evidence `f2cbf3a`](https://github.com/KidCarmi/nac/tree/f2cbf3aeeecba95075aa7e9f1881421006092b30/lab/evidence/windows-lease-rc10-20261107)) |
+| Linux (systemd-networkd), one NIC | **only when the old lease expires**: the delay is the lease time left at the CoA, so the worst case is about the full lease | 120 s lease: 24–117 s. 3600 s lease: **1,811.9 s** (30 min) for a Restore about 30 min before expiry ([evidence `a6df762`](https://github.com/KidCarmi/nac/tree/a6df7627bcdf87d9e4b3c81d412dc91a949c4bd8/lab/evidence/linux-lease-rc10-20261107)) |
+
+**What this supports:**
+- **Windows endpoints:** the tested lease lengths (120 s and 1 h).
+- **Linux endpoints:** only where an outage of up to the full lease is
+  acceptable after a quarantine change or a restore. In practice that means
+  short leases. 120 s is the only short lease measured.
+
+**Not yet measured:**
+- **Shorter leases.** They shorten the Linux worst case proportionally, at
+  the cost of more DHCP traffic and more dependence on the server.
+- **A DHCP server that NAKs a rebind for an address from another subnet.**
+  This should end the Linux wait at T2 (87.5 % of the lease). The lab udhcpd
+  stays silent instead.
+- **An endpoint hook that renews the address after 802.1X succeeds.**
+
+None of these is recommended until it has been run in the lab.
+
+**Linux 1-hour details (ASTRA, [`a6df762`](https://github.com/KidCarmi/nac/tree/a6df7627bcdf87d9e4b3c81d412dc91a949c4bd8/lab/evidence/linux-lease-rc10-20261107)):**
+- **Restore near T1:**
+  - The old segment was denied at +1.419 s.
+  - At T1, a unicast renewal went to the old server, which was out of reach.
+  - From T2 (13:09:09 UTC), four broadcast rebinds reached the corp udhcpd,
+    which did not reply.
+  - At expiry (13:16:40), a Discover/Offer/Request/ACK took about 8 ms.
+    Fresh corp TCP succeeded at +1,811.866 s.
+  - Throughout, the switch showed SUCCESS VLAN 10, both services were
+    healthy, and no one touched the endpoint.
+- **Early Quarantine:** there was no automatic recovery within the
+  148 s observation window. The diagnostics then started, so the longer-term
+  automatic outcome is **blocked by intervention**, not a failure.
+  Diagnostics, recorded separately:
+  - `networkctl renew` did not help: it sends the same unicast renewal.
+  - `networkctl down` / `up` reached quarantine in 6.9 s.
+
+Earlier measurements (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
 - The endpoint moved corp → quarantine → corp without manual renewal,
   reconnect or port bounce, on `pilot-rc7` to `pilot-rc10`. This held for
   CoA and for rule-only policy changes.
@@ -151,10 +196,12 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   - Shorter leases on the corp and quarantine scopes shorten the worst
     case proportionally, at the cost of more DHCP traffic. This follows
     from the measured behavior but was not run as a separate lab
-    configuration. ASTRA is measuring the 1-hour lease.
+    configuration. The 1-hour lease confirmed recovery at expiry (see the
+    operating envelope above).
 - **Windows Server 2025** (Desktop Experience, machine EAP-TLS, one NIC)
-  also recovered without manual action, within 33–64 s of the CoA. Its
-  renewals were observed at about 60 s; T2 was not measured. Windows Server
+  also recovered without manual action, within 33–64 s of the CoA on a
+  120 s lease, and within 33–62 s on a 1-hour lease, at any lease age. Its
+  recovery does not wait for a lease timer. Windows Server
   Core lacks the wired 802.1X service (`dot3svc`) and cannot be used. Other
   DHCP clients are untested.
 
@@ -194,16 +241,16 @@ ASTRA measured it on exact `pilot-rc10` ([evidence `7b34ef5`](https://github.com
   - On a session that should stay where it is, expect a 20–60 s outage on
     vEOS.
   - The console's CoA confirmation says "about 20 s", which understates
-    this. The wording will be corrected in the next candidate. It is not a
+    this. It also says a VLAN change reaches the endpoint "at its next DHCP
+    renewal". That is wrong for the Linux client, which waits for lease
+    expiry. The wording will be corrected in the next candidate. It is not a
     lab-contract defect, so it does not move `pilot-rc10`.
 - `pilot-rc8` showed the same effect in quarantine: two pauses of about
   20 s.
-- **Not yet measured:**
-  - a 1-hour DHCP lease on Linux and Windows. The supported envelope is
-    established for the 120 s lease only, and ASTRA is running the 1-hour
-    case.
-  - an established (long-lived) connection. The probes measured fresh
-    TCP connections only.
+- **Established connections:** one established corp TCP connection
+  failed 2.8 s after a Quarantine on Windows and did not reconnect
+  ([`f2cbf3a`](https://github.com/KidCarmi/nac/tree/f2cbf3aeeecba95075aa7e9f1881421006092b30/lab/evidence/windows-lease-rc10-20261107)). Applications must reconnect after a VLAN
+  change.
 
 NAC has no automatic re-addressing action, by design. A port bounce has no
 documented support on vEOS 4.29.2F, would disconnect every device on the
