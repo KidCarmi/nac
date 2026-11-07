@@ -159,8 +159,11 @@ whatever the endpoint or lease. How long the endpoint takes to reach the
 - **Linux endpoints:** only where an outage of up to the remaining lease is
   acceptable after a quarantine change or a restore. In practice that means
   short leases, and 120 s is the only short lease measured.
-- **Long leases with Linux clients:** unresolved. An authoritative DHCP
-  server only moves recovery from lease expiry to T2.
+- **Long leases with Linux clients:** unresolved.
+  - An authoritative DHCP server only moves recovery from lease expiry to
+    T2.
+  - Short T1/T2 on a long lease failed the reverse direction (no recovery
+    within 165 s).
 
 ### Recovery boundary (dnsmasq comparison, `pilot-rc10`)
 
@@ -201,32 +204,57 @@ exceeded 60 s (61.4, 61.9, 63.9 s). On this virtual switch the 60 s target
 may be unreachable whatever DHCP does. The owner should decide whether it
 applies per platform.
 
-**Remedies, smallest first (none measured against the target yet):**
-1. **Short T1/T2 with a long lease, on an authoritative server (DHCP
-   configuration only).**
-   - What it does: the server advertises, for example, T1 = 30 s and
-     T2 = 45 s with a 3600 s lease (DHCP options 58/59). Recovery then
-     follows the measured NAK-at-T2 path. The expected worst case is about
-     T2 plus the Discover/Offer time: 3 s in this capture, which is
-     dnsmasq's ping check. The vEOS forwarding floor above still applies.
-   - Why it's first: the lease keeps its long validity, so endpoints keep
-     their addresses through a DHCP-server outage. It needs no NAC change,
-     no endpoint change and no port action.
-   - Cost: every client renews every T1, the same renewal load as a 30 s
-     lease.
-   - Needs a lab run: confirm the client honours server-sent T1/T2, measure
-     both directions at both lease ages, check Windows still behaves, and
-     record the DHCP load.
-2. **An endpoint hook for managed Linux.**
-   - What it does: on 802.1X success after a re-authentication, a
-     supplicant action restarts DHCP when the gateway is unreachable. In
-     the lab, a manual `networkctl down/up` recovered in 6.9 s;
-     `networkctl renew` did not help.
-   - Cost: it applies only to endpoints the customer manages. It needs a
-     guard so periodic re-authentication does not churn addresses.
-   - Needs its own compatibility test.
-3. **Shorter leases.** Same effect as remedy 1, but a DHCP outage then costs
-   addresses within minutes. Remedy 1 dominates it.
+**Remedy 1, short T1/T2 with a long lease: measured, FAILED (not recommended).**
+
+ASTRA, [`e86242e`](https://github.com/KidCarmi/nac/tree/e86242efa7985c1b2f5d19ccb9d1f9762778a772/lab/evidence/short-timers-rc10-20261107), 42 files, manifest verified here. Setup: the same
+NAC binary, switch and client as above, with authoritative dnsmasq 2.91 and a
+3600 s lease. The only change was DHCP options 58 = 30 s and 59 = 45 s, on
+both segments. The ACKs carried 3600 / 30 / 45.
+
+| Transition | Old segment denied | New segment reachable | DHCP path |
+|---|---|---|---|
+| Quarantine (corp → quarantine) | +0.769 s | **+25.040 s** | T2 broadcast rebind at +22.0 s → NAK → Discover → ACK |
+| Restore (quarantine → corp), 2.5 s before T1 | +1.217 s | **none through +165.191 s**, the declared end of observation | T1 unicast at +3.1 s to the old server; T2 broadcast at +17.4 s, which **neither the corp nor the quarantine bridge captured**; no ACK; the endpoint kept 10.70.20.52 |
+
+- NAC's part completed: CoA-ACK, Access-Accept VLAN 10 and EAPOL Success
+  were all done by +1.1 s, and the switch later showed Et1 on VLAN 10. The
+  failure is in reaching the new address.
+- The run fails the proposed 60 s target in the reverse direction. One
+  forward success does not make the remedy work.
+- **Hypothesis, not established:** the reverse rebind at +17.4 s fell
+  inside the vEOS-lab post-CoA forwarding gap (about 21–58 s measured
+  above). The forward rebind at +22.0 s got through. After a lost rebind,
+  RFC 2131 retransmission waits half the remaining lease, at least 60 s:
+  about 29 min on a 3600 s lease. If this is right, short timers make
+  recovery depend on whether one DHCP attempt lands inside the switch's
+  CoA gap. ASTRA states the vEOS internal cause is not identified.
+- **Diagnostic only:** after the primary evidence was preserved, a manual
+  `networkctl down/up` got a corp NAK/Offer/ACK, and fresh corp TCP at
+  +6.163 s.
+
+**Remaining options (none measured against the target):**
+1. **An endpoint hook for managed Linux.**
+   - What it does: after 802.1X success following a re-authentication, a
+     supplicant action restarts DHCP (`down/up` or equivalent) when the
+     gateway does not answer. It retries until the gateway does.
+   - Why it is next: it is the only action measured to recover quickly in
+     both diagnostics (6.2 s and 6.9 s). It needs no NAC change.
+   - Cost: it only covers endpoints the customer manages, and it needs a
+     guard so periodic re-authentication doesn't churn addresses.
+2. **Shorter leases.** They bound the wait by the lease itself. A lost
+   rebind is followed by expiry within the lease, but the same CoA-gap
+   timing applies, and a DHCP outage costs addresses within minutes.
+3. **A link-state change on single-endpoint ports.** A port flap would make
+   the client restart DHCP on carrier, but it is a product and switch
+   behavior change:
+   - it needs a documented, supported switch mechanism; vEOS documents no
+     CoA bounce, and eAPI `shutdown` would turn observation into control
+   - it needs a shared-port model (ADR-0009) that limits it to ports with
+     exactly one endpoint
+   - it needs owner approval and its own ADR
+
+   It would need a replacement candidate.
+
 4. **Not proposed:**
    - **A switch port bounce.** vEOS has no documented support for it. It
      disconnects every device on the port, which owner direction forbids for

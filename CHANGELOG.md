@@ -23,9 +23,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **DHCP server comparison (ASTRA, `8db6fe8`):** an authoritative dnsmasq
   moves Linux recovery from lease expiry to T2. That is 23–52 min on a
   1-hour lease: improved, not prompt. ASTRA proposed an acceptance target
-  of 60 s, not yet agreed. The smallest remedy to test is short T1/T2 with
-  a long lease, which needs no product change. See "Recovery boundary" in
-  the known limitations.
+  of 60 s, not yet agreed. See "Recovery boundary" in the known
+  limitations.
+- **Short T1/T2 remedy: FAILED** (ASTRA, `e86242e`). T1 = 30 s and T2 = 45 s
+  on a 1-hour lease recovered the Quarantine direction in 25 s, but the
+  Restore direction did not recover within 165 s: the T2 rebind was not
+  seen on either segment. Not recommended. The next candidate is an
+  endpoint hook for managed Linux. A port flap would be a product/switch
+  change needing owner approval.
 - **Single fresh-instance all-console workflow: PASS** (ASTRA, `af46f02`).
   This closes the coverage gap. It also lab-tested pre-change token
   revocation (401).
