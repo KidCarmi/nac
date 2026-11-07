@@ -25,7 +25,7 @@ These are the setups the lab actually ran (ASTRA, EVE-NG, vEOS-lab
 | Password change and forgotten password | API change and `nac-reset-password` (clean `pilot-rc9` instance); console Account page (`pilot-rc10`) | `pilot-rc9`, `pilot-rc10` |
 | Operator certificates | Lab disposable PKI only (`--test-pki` on the clean `pilot-rc9` install). Your own CA (`--ca`) follows section 5 and has not been lab-run | — |
 | eAPI TLS | Section 7a, verified TLS (`SSL_CERT_FILE`, TLS 1.2 / ECDHE, SAN = switch IP) on vEOS-lab 4.29.2F. A wrong SAN is rejected | clean `pilot-rc9` instance, `pilot-rc10` |
-| Switch onboarding, binding, policy, CoA in the console | A clean instance with a real vEOS switch: register switch, bind the EAP-TLS certificate, preview, publish, corp admission, Quarantine and Restore | clean `pilot-rc9` instance; the whole workflow, Account included, on one fresh `pilot-rc10` instance ([`0e16356`](https://github.com/KidCarmi/nac/tree/0e16356c152c561721b05345b9bae408713fcc68/lab/evidence/clean-ui-rc10-20261107)) |
+| Switch onboarding, binding, policy, CoA in the console | A clean instance with a real vEOS switch: register switch, bind the EAP-TLS certificate, preview, publish, corp admission, Quarantine and Restore | clean `pilot-rc9` instance; the whole workflow, Account included, on one fresh `pilot-rc10` instance ([`af46f02`](https://github.com/KidCarmi/nac/tree/af46f02eb1f9f5f3bb07ef6ac441f12b6840465d/lab/evidence/clean-ui-rc10-20261107)) |
 | Endpoints | One-NIC Linux and Windows Server 2025 Desktop Experience (machine EAP-TLS, DHCP) | `pilot-rc10` |
 
 ## 1. What you need
