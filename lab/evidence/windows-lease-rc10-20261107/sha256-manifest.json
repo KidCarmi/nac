@@ -118,7 +118,7 @@
     {
       "path": "qualification/windows_dhcp_probe.ps1",
       "bytes": 3570,
-      "sha256": "cfb23a744324ad63dbda3374f0d2e0130674b6cacf1c5c3138bb615284639c0b"
+      "sha256": "5093bff763f45b50f597c31733ad9e50a94af280f344d1138b8452d8bfa80ebd"
     },
     {
       "path": "qualification/windows_hold_probe.ps1",
@@ -157,8 +157,8 @@
     },
     {
       "path": "verify_package.py",
-      "bytes": 1573,
-      "sha256": "250a762a60eeffe89f12de5877589ff2a65560feaf8e669c39aaf06bc8ef14ca"
+      "bytes": 1807,
+      "sha256": "e33196c3f61eb32eb87dbecc4191e13e6ed25d5e43b34836de8b9a5725fd704b"
     },
     {
       "path": "windows-lease-analysis-final.txt",

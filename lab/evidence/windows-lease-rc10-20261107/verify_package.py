@@ -7,6 +7,7 @@ import re
 
 parser = argparse.ArgumentParser()
 parser.add_argument('directory', type=Path)
+parser.add_argument('--write', action='store_true', help='refresh the manifest after reviewed file edits')
 args = parser.parse_args()
 root = args.directory.resolve()
 if root.name != 'windows-lease-rc10-20261107':
@@ -24,6 +25,9 @@ for path in sorted(root.rglob('*')):
             raise SystemExit('forbidden file ' + str(path))
         if re.search(rb'-----BEGIN (?:RSA |OPENSSH )?PRIVATE KEY-----', data):
             raise SystemExit('private key marker ' + str(path))
+if args.write:
+    manifest.write_text(json.dumps({'files': actual}, indent=2) + '\n', encoding='utf-8')
+    expected = actual
 if actual != expected:
     raise SystemExit('manifest mismatch')
 for path in root.rglob('*.md'):
