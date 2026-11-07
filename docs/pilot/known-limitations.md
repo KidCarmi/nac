@@ -1,5 +1,31 @@
 # NAC pilot: known limitations
 
+## Support boundary (read first)
+
+**Functional qualification and recovery time are separate results.**
+
+- **Functional (`pilot-rc10`, PASS):** a real vEOS switch passed the full
+  operator workflow on a fresh instance:
+  - onboarding, binding, preview/publish, Quarantine/Restore and Account
+  - enforcement of the old segment within about 1–2.5 s of every CoA
+
+- **Recovery time on the new segment (measured, not a pass criterion):**
+  it depends on the switch, the endpoint's DHCP client and the DHCP server.
+  The results hold only for these tested combinations:
+
+  | Switch | Endpoint | DHCP server, lease | Measured recovery |
+  |---|---|---|---|
+  | vEOS-lab 4.29.2F | Windows Server 2025 Standard Evaluation, Desktop Experience, build 26100 | BusyBox udhcpd; 120 s and 3600 s, at the lease ages tested | about 30–65 s |
+  | vEOS-lab 4.29.2F | Linux, systemd-networkd | BusyBox udhcpd; 120 s | 24–117 s |
+  | vEOS-lab 4.29.2F | Linux, systemd-networkd | BusyBox udhcpd; 3600 s | 1,811.9 s for one Restore about 30 min before expiry |
+
+- **Unresolved: long leases with Linux clients.** In the tested setup, a
+  Linux endpoint reached its new VLAN only when its old lease expired. With
+  ordinary long leases, that is a material usability limitation. No
+  mitigation has been measured yet.
+- **Untested:** physical Arista hardware, Windows 10/11, other DHCP clients
+  and servers, and other accepted CoA forms.
+
 ## Scope
 
 - **One site, Arista EOS 4.29.2F only.** The generated configuration was
@@ -118,14 +144,17 @@ whatever the endpoint or lease. How long the endpoint takes to reach the
 
 | Endpoint | Recovery on the new segment | Measured with |
 |---|---|---|
-| Windows Server 2025 Standard Evaluation, Desktop Experience (build 26100), one NIC | **about 30–65 s**, whatever the lease length or lease age. Windows changes its address, DNS and route by itself | 120 s and 3600 s leases; early, near-T1 and console transitions ([evidence `f2cbf3a`](https://github.com/KidCarmi/nac/tree/f2cbf3aeeecba95075aa7e9f1881421006092b30/lab/evidence/windows-lease-rc10-20261107)) |
-| Linux (systemd-networkd), one NIC | **only when the old lease expires**: the delay is the lease time left at the CoA, so the worst case is about the full lease | 120 s lease: 24–117 s. 3600 s lease: **1,811.9 s** (30 min) for a Restore about 30 min before expiry ([evidence `a6df762`](https://github.com/KidCarmi/nac/tree/a6df7627bcdf87d9e4b3c81d412dc91a949c4bd8/lab/evidence/linux-lease-rc10-20261107)) |
+| Windows Server 2025 Standard Evaluation, Desktop Experience (build 26100), one NIC | **about 30–65 s** at every tested lease length and age. Windows changes its address, DNS and route by itself. Windows 10/11 are unverified | 120 s and 3600 s leases; early, near-T1 and console transitions ([evidence `f2cbf3a`](https://github.com/KidCarmi/nac/tree/f2cbf3aeeecba95075aa7e9f1881421006092b30/lab/evidence/windows-lease-rc10-20261107)) |
+| Linux (systemd-networkd), one NIC | **only when the old lease expires**. The delay is the lease time left at the CoA. *Inference for this setup:* the worst case is about the full lease. The measured 1-hour run had about 30 min left | 120 s lease: 24–117 s. 3600 s lease: **1,811.9 s** (30 min) for a Restore about 30 min before expiry ([evidence `a6df762`](https://github.com/KidCarmi/nac/tree/a6df7627bcdf87d9e4b3c81d412dc91a949c4bd8/lab/evidence/linux-lease-rc10-20261107)) |
 
 **What this supports:**
-- **Windows endpoints:** the tested lease lengths (120 s and 1 h).
-- **Linux endpoints:** only where an outage of up to the full lease is
+- **Windows Server 2025 build 26100:** the tested lease lengths and ages
+  (120 s; 3600 s early and near T1).
+- **Linux endpoints:** only where an outage of up to the remaining lease is
   acceptable after a quarantine change or a restore. In practice that means
-  short leases. 120 s is the only short lease measured.
+  short leases, and 120 s is the only short lease measured.
+- **Long leases with Linux clients:** unresolved. ASTRA is comparing a
+  second DHCP server with the same client and lease.
 
 **Not yet measured:**
 - **Shorter leases.** They shorten the Linux worst case proportionally, at
@@ -184,9 +213,8 @@ Earlier measurements (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   - When the lease expires, the client starts over with a Discover. The new
     VLAN's server answers that, about 15 s after the rebind.
   - So the Linux endpoint reaches the new VLAN when its old lease
-    **expires**. The delay is anywhere from a few seconds to about **the
-    full lease time**, depending on where in its lease the endpoint was at
-    the CoA. This explains the 24–117 s spread.
+    **expires**. The delay is the lease time left at the CoA, from a few
+    seconds up to, by inference, about **the full lease time**. This explains the 24–117 s spread.
   - Correction: earlier versions of this page said the rebind succeeds
     (worst case 0.9 × the lease). The rc10 captures show it does not
     (`runs/rc10-core/findings.md` in the closeout package, and the 1-hour
@@ -205,9 +233,11 @@ Earlier measurements (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
   Core lacks the wired 802.1X service (`dot3svc`) and cannot be used. Other
   DHCP clients are untested.
 
-**Limitation: on vEOS-lab 4.29.2F, any accepted CoA interrupts the endpoint,
-even without a VLAN change.** This is a switch/CoA operating limitation, not
-a NAC product defect. Physical Arista hardware is unconfirmed.
+**Limitation: on vEOS-lab 4.29.2F, an ACKed CoA that carries VLAN attributes
+interrupts the endpoint, even without a VLAN change.** That is the CoA form
+NAC sends, and the only accepted form tested. It is a switch/CoA operating
+limitation, not a NAC product defect. Physical Arista hardware and other
+accepted CoA forms are unverified.
 
 ASTRA measured it on exact `pilot-rc10` ([evidence `7b34ef5`](https://github.com/KidCarmi/nac/tree/7b34ef594e71f620fdc657b7e82bf0b57845d2db/lab/evidence/timing-rc10-20261107): 62 files, manifest verified here):
 - **Endpoint:** a one-NIC Windows Server 2025 Standard Evaluation (Desktop
@@ -238,13 +268,15 @@ ASTRA measured it on exact `pilot-rc10` ([evidence `7b34ef5`](https://github.com
 - **Operator guidance:**
   - Use Re-authenticate only when the active policy should change a
     session's VLAN.
-  - On a session that should stay where it is, expect a 20–60 s outage on
-    vEOS.
-  - The console's CoA confirmation says "about 20 s", which understates
-    this. It also says a VLAN change reaches the endpoint "at its next DHCP
-    renewal". That is wrong for the Linux client, which waits for lease
-    expiry. The wording will be corrected in the next candidate. It is not a
-    lab-contract defect, so it does not move `pilot-rc10`.
+  - On a session that should stay where it is, expect an outage of up to
+    about 58 s on vEOS-lab (the measured maximum).
+  - **Console wording:** the `pilot-rc10` CoA confirmation says
+    "about 20 s" and "at its next DHCP renewal". Both are misleading:
+    - same-VLAN gaps reached about 58 s
+    - the Linux client waits for lease expiry
+
+    The next candidate corrects the wording. It is not a lab-contract
+    defect, so it does not move `pilot-rc10`.
 - `pilot-rc8` showed the same effect in quarantine: two pauses of about
   20 s.
 - **Established connections:** one established corp TCP connection

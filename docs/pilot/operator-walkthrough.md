@@ -97,9 +97,9 @@ Click the row to open the session on that port.
    refuses.
 4. Publishing applies at the **next authentication**. To apply it to a
    connected endpoint now, open its session and click **Re-authenticate**.
-   On vEOS, every accepted CoA interrupts the endpoint for 20–60 s, even when
-   its VLAN does not change. So use it only for sessions whose VLAN should
-   change (see [known limitations](known-limitations.md)).
+   On vEOS-lab 4.29.2F, NAC's CoA interrupted the endpoint for up to about
+   58 s, even when its VLAN did not change. So use it only for sessions whose
+   VLAN should change (see [known limitations](known-limitations.md)).
 
 ## 6. Quarantine an active session, then restore access (Sessions → session)
 
@@ -122,11 +122,11 @@ Click the row to open the session on that port.
 3. Check the endpoint, not only NAC. **observed** and a matching switch
    observation prove switch authorization, not endpoint reachability.
    - In the lab, every endpoint lost the old segment within about 1–2.5 s.
-   - **Windows Server 2025** reached the new segment in about 30–65 s,
-     whatever the lease.
+   - **Windows Server 2025 (build 26100)** reached the new segment in about
+     30–65 s, at the tested 120 s and 1-hour leases.
    - **A Linux (systemd-networkd) endpoint** reached it only when its old
-     lease expired, up to the full lease time later. That was 30 min in one
-     run with a 1-hour lease. The link stays up, and the lab DHCP server
+     lease expired, which can take the remaining lease time. That was 30 min
+     in one run with a 1-hour lease. The link stays up, and the lab DHCP server
      ignores the client's earlier attempts to keep its old address.
    - Plan lease lengths for your endpoints with the
      [operating envelope](known-limitations.md#operating-envelope-measured-pilot-rc10).

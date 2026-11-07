@@ -11,14 +11,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   This closes the coverage gap. It also lab-tested pre-change token
   revocation (401).
 - **vEOS CoA limitation (ASTRA), not a NAC defect.** On vEOS-lab 4.29.2F,
-  an accepted CoA interrupts the endpoint for 20–60 s even when the VLAN does
-  not change. An identical CoA sent from outside NAC reproduces it. vEOS
+  an ACKed, VLAN-bearing CoA (the form NAC sends) interrupted the endpoint
+  for up to about 58 s, even when the VLAN did not change. Physical switches
+  and other CoA forms are unverified. An identical CoA sent from outside NAC reproduces it. vEOS
   refuses a CoA without VLAN attributes (NAK 404). No product change; rc10
   stays pinned. Next candidate: correct the console's "about 20 s" warning.
 - A saved rc10 switch configuration survived a switch reboot without
   reapplication.
 - **Operating envelope measured (ASTRA, 1-hour lease):** Windows Server 2025
-  recovers in about 30–65 s whatever the lease. Linux (systemd-networkd)
+  build 26100 recovered in about 30–65 s at the tested leases. Linux (systemd-networkd)
   recovers only at lease expiry (1,811.9 s measured), because the lab DHCP
   server ignores rebinds for an address from another subnet. The docs now
   state which deployments this supports.
