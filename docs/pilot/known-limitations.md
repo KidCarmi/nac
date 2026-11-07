@@ -194,7 +194,8 @@ port, and the lab shows endpoints recover without one.
   - `pilot-rc10` passed the closeout qualification: clean install, real vEOS
     switch, CoA and rule-only policy, Linux and Windows Server 2025 DHCP,
     invalid certificate, nacd outage, verified eAPI TLS, the console Account
-    page, and a full lab restart. Evidence: https://github.com/KidCarmi/nac/tree/bb40c446d8ce522187005e80a244253d85ea775e/lab/evidence/pilot-closeout-20261107
+    page, and a full lab restart. Evidence: https://github.com/KidCarmi/nac/tree/fa2950cbe18191d118661c00aff719a4f638a4fe/lab/evidence/pilot-closeout-20261107
+  - **Coverage gap:** No single fresh instance has run the whole workflow through the console on one candidate. The clean `pilot-rc9` instance did onboarding, binding, preview/publish and CoA in the console. The clean `pilot-rc10` instance did the Account change in the console, but its onboarding and binding used the documented API.
   - Not lab-run:
     - revocation of a separately kept pre-change token (the Account change
       rejected the old password; token revocation is covered by the
