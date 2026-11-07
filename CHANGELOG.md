@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc11 (proposed; not yet qualified; rc10 `b39649f` stays the tested baseline)
+- **Console CoA confirmation wording only.** The text no longer says
+  "about 20 s" or "at its next DHCP renewal". It now states the measured
+  lab behavior, conditional on the tested setup:
+  - same-VLAN interruptions of up to about 58 s on vEOS-lab 4.29.2F
+  - Windows Server 2025 got a new address within about 65 s
+  - a Linux (systemd-networkd) endpoint only at DHCP lease expiry
+
+  The panel hint under "Change access (CoA)" now says the timing depends on
+  the endpoint's DHCP client and lease.
+- `scripts/ui-walkthrough.js` checks the new wording.
+- No API, decision, CoA packet or installer change.
+
 ### Open after pilot-rc10
 - **Single fresh-instance all-console workflow: PASS** (ASTRA, `af46f02`).
   This closes the coverage gap. It also lab-tested pre-change token

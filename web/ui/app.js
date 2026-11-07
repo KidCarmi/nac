@@ -315,8 +315,10 @@ async function sessionDetail(id) {
   const coaBusy = d.last_coa && ["requested", "sent"].includes(d.last_coa.state);
   const coaBtn = (kind, label, cls) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
     const live = d.liveness.state === "connected" ? "" : "\n\nNote: " + d.liveness.note;
-    const pause = "\n\nThe switch re-authenticates the session. Traffic can pause briefly, also without a VLAN change " +
-      "(about 20 s in the virtual lab), and a VLAN change takes effect on the endpoint at its next DHCP renewal.";
+    const pause = "\n\nThe switch re-authenticates the session. In the pilot lab (vEOS-lab 4.29.2F) this interrupted endpoint " +
+      "traffic for up to about 58 s, also when the VLAN did not change. After a VLAN change the endpoint needs an address " +
+      "in the new VLAN: in the lab, Windows Server 2025 got one within about 65 s, but a Linux (systemd-networkd) endpoint " +
+      "only when its DHCP lease expired, which can take the remaining lease time. Check the endpoint, not only this page.";
     if (!await ask(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live + pause, label)) return;
     if (await act(() => api("POST", "/sessions/" + id + "/" + kind), "Requested. Following the CoA…")) render();
   } }, label);
@@ -355,7 +357,7 @@ async function sessionDetail(id) {
         ["Device", d.endpoint ? d.endpoint.mac + " " + (d.endpoint.hostname || "") : "none"], ["Session started", when(d.started_at)], ["Last auth", when(d.last_auth_at)]]))),
     panel("Change access (CoA)", h("p", { class: "muted" },
       "The requested state is recorded first and applies at the next authentication even if the switch refuses the CoA. ",
-      "Changing the VLAN may require the endpoint to renew its IP address (DHCP)."),
+      "Changing the VLAN requires the endpoint to get a new IP address (DHCP). How soon depends on its DHCP client and lease; see the pilot's known limitations."),
       h("div", { class: "row" }, coaBtn("quarantine", "Quarantine", "danger"), coaBtn("restore", "Restore", "primary"),
         coaBtn("reauthenticate", "Re-authenticate (apply active policy)", "")),
       d.coa_requests.length ? table(["Requested", "Action", "By", "State", "Attempts", "Error-Cause", "Detail"],

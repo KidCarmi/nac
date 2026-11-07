@@ -80,7 +80,7 @@ const results = []; const step = (name, ok, extra = '') => { results.push([ok ? 
     await p.click('button.danger:has-text("Quarantine")'); await p.waitForSelector('#confirm-dialog[open]');
     const warn = await p.textContent('#confirm-dialog .dialog-msg');
     await p.click('#confirm-ok'); await p.waitForTimeout(1500);
-    step('CoA: quarantine requested via in-page confirm (warning shown)', warn.includes('DHCP renewal'));
+    step('CoA: quarantine requested via in-page confirm (warning shown)', warn.includes('DHCP lease expired') && warn.includes('58 s'));
     const v2 = await radius(); step('RADIUS: next authentication applies the quarantine (VLAN 20)', v2 === '20', String(v2));
     // 5. Restore the previous policy version.
     await p.goto(BASE + '/ui/#/policy'); await p.waitForSelector('text=Versions');
