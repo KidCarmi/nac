@@ -133,16 +133,25 @@ Measured by ASTRA (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP endpoint):
     defaults.
   - At about 60 s (half the 120 s lease) it renews by unicast to its old
     DHCP server, which is not reachable from the new VLAN.
-  - At about 105 s (87.5 % of the lease) it broadcasts a rebind, and the new
-    VLAN's server answers.
-  - So the Linux endpoint reaches the new VLAN at its next rebinding time.
-    The delay is anywhere from a few seconds to about **0.9 × the lease time**,
-    depending on where in its lease the endpoint was at the CoA. This
-    explains the 24–117 s spread.
+  - At about 105 s (87.5 % of the lease) it broadcasts a rebind for its old
+    address. That reaches the new VLAN's server (BusyBox udhcpd in the lab),
+    which **does not answer** it.
+  - When the lease expires, the client starts over with a Discover. The new
+    VLAN's server answers that, about 15 s after the rebind.
+  - So the Linux endpoint reaches the new VLAN when its old lease
+    **expires**. The delay is anywhere from a few seconds to about **the
+    full lease time**, depending on where in its lease the endpoint was at
+    the CoA. This explains the 24–117 s spread.
+  - Correction: earlier versions of this page said the rebind succeeds
+    (worst case 0.9 × the lease). The rc10 captures show it does not
+    (`runs/rc10-core/findings.md` in the closeout package, and the 1-hour
+    run).
+  - A DHCP server that refuses (NAKs) a rebind for an address from another
+    subnet could end the wait at T2 instead. That is untested.
   - Shorter leases on the corp and quarantine scopes shorten the worst
-    case proportionally, at the cost of more DHCP traffic. This sizing
-    follows from the measured behavior but was not run as a separate lab
-    configuration.
+    case proportionally, at the cost of more DHCP traffic. This follows
+    from the measured behavior but was not run as a separate lab
+    configuration. ASTRA is measuring the 1-hour lease.
 - **Windows Server 2025** (Desktop Experience, machine EAP-TLS, one NIC)
   also recovered without manual action, within 33–64 s of the CoA. Its
   renewals were observed at about 60 s; T2 was not measured. Windows Server
