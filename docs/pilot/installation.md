@@ -286,40 +286,86 @@ independent.
       no shutdown
    ```
 
-2. **TLS.** Stock EOS 4.29.2F eAPI uses a self-signed certificate and
-   offers only TLS 1.2 **RSA key-exchange** ciphers (for example
-   `AES256-SHA`), which nacd does not offer by default. Without a fix,
-   **Probe** reports a TLS handshake failure that names both fixes. Choose
-   one:
-   - **Preferred, on the switch:** an SSL profile with ECDHE ciphers for
-     eAPI. Then only `NAC_EAPI_INSECURE_SKIP_VERIFY=true` is needed (the
-     certificate is still self-signed). These EOS lines are **not yet
-     lab-validated**:
+2. **TLS.** Choose one of the two setups below. Both settings are global
+   for all switches, re-running the installer keeps them, and nacd must be
+   restarted after a change (command below).
 
-     ```
-     security pki key generate rsa 2048 nac-eapi.key
-     security pki certificate generate self-signed nac-eapi.crt key nac-eapi.key validity 3650 parameters common-name <switch-name>
-     management security
-        ssl profile nac-eapi
-           tls versions 1.2
-           cipher-list ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256
-           certificate nac-eapi.crt key nac-eapi.key
-     management api http-commands
-        protocol https ssl profile nac-eapi
-     ```
+   **A. Verified TLS (recommended).** nacd checks the switch certificate
+   chain and that the certificate names the exact host in the eAPI URL.
+   - nacd's eAPI client uses the trust store given by `SSL_CERT_FILE`.
+     eAPI is nacd's only outbound TLS connection, so that file is the
+     complete set of CAs nacd trusts.
+   - On the build environment, with the `pilot-rc9` server code, a valid
+     chain with a matching IP SAN gives *Reachable* **yes**. An unknown CA
+     or a wrong SAN gives **no**, and the detail says why.
+   - The EOS steps are being validated by ASTRA; see
+     [qualification status](qualification-status.md).
 
-     Check it with `show management security ssl profile nac-eapi`
-     (state *valid*), then `write memory`.
-   - **On nacd:** set `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` together with
-     `NAC_EAPI_INSECURE_SKIP_VERIFY=true` in `/etc/nac/nacd.env`. This affects
-     the eAPI client **only**. ECDHE stays preferred, and nacd's other TLS
-     connections are unchanged. RSA key exchange has no forward secrecy, so
-     use it only on a trusted management network.
+   1. Issue the switch's eAPI certificate from a CA you control. The SAN
+      must contain the host used in the eAPI URL, for example
+      `IP:10.70.99.1`, with extended key usage serverAuth. On the control
+      node, with OpenSSL, set `IP` and `SWITCH` first:
+
+      ```bash
+      openssl req -x509 -newkey rsa:2048 -nodes -keyout eapi-ca.key -out eapi-ca.pem -days 3650 -subj "/CN=NAC eAPI CA" -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign"
+      ```
+
+      ```bash
+      openssl req -newkey rsa:2048 -nodes -keyout "$SWITCH-eapi.key" -out "$SWITCH-eapi.csr" -subj "/CN=$SWITCH"
+      ```
+
+      ```bash
+      openssl x509 -req -in "$SWITCH-eapi.csr" -CA eapi-ca.pem -CAkey eapi-ca.key -CAcreateserial -days 825 -out "$SWITCH-eapi.pem" -extfile <(printf 'subjectAltName=IP:%s\nextendedKeyUsage=serverAuth\n' "$IP")
+      ```
+
+      Keep `eapi-ca.key` offline. It is not needed on the control node.
+   2. Copy `$SWITCH-eapi.pem` and `$SWITCH-eapi.key` to the switch's
+      `certificate:` and `sslkey:` file systems (for example with `copy
+      scp:... certificate:`). Then use them in an SSL profile with ECDHE
+      ciphers for eAPI:
+
+      ```
+      management security
+         ssl profile nac-eapi
+            tls versions 1.2
+            cipher-list ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256
+            certificate <SWITCH>-eapi.pem key <SWITCH>-eapi.key
+      management api http-commands
+         protocol https ssl profile nac-eapi
+      ```
+
+      Check it with `show management security ssl profile nac-eapi`
+      (state *valid*), then `write memory`.
+   3. On the control node:
+
+      ```bash
+      sudo install -m 0640 -o root -g nac eapi-ca.pem /etc/nac/eapi-ca.pem
+      ```
+
+      In `/etc/nac/nacd.env` set:
+
+      ```
+      SSL_CERT_FILE=/etc/nac/eapi-ca.pem
+      NAC_EAPI_INSECURE_SKIP_VERIFY=false
+      NAC_EAPI_TLS_ALLOW_RSA_KEX=false
+      ```
+
+      Then restart nacd.
+
+   **B. Unverified TLS (lab or isolated management network only).**
+   - Stock EOS 4.29.2F eAPI uses a self-signed certificate and offers only
+     TLS 1.2 **RSA key-exchange** ciphers (for example `AES256-SHA`), which
+     nacd does not offer by default. Without a fix, **Probe** reports a TLS
+     handshake failure that names the fix.
+   - Set `NAC_EAPI_INSECURE_SKIP_VERIFY=true` and
+     `NAC_EAPI_TLS_ALLOW_RSA_KEX=true`. Both affect the eAPI client
+     **only**, and ECDHE stays preferred.
+   - The switch's identity is **not** checked, and RSA key exchange has no
+     forward secrecy. Anyone on the management path can impersonate the
+     switch to nacd and read the eAPI password.
    - Do **not** use `GODEBUG=tlsrsakex=1`. It widens TLS for every outbound
      connection of nacd.
 
-   Both settings are global for all switches, and re-running the installer
-   keeps them. Restart nacd after changing them (command below).
 3. In the console, open **Switches → (switch) → Edit**, set the eAPI URL
    (for example `https://10.70.99.1`), username and password, and save. Click
    **Probe**: *Reachable* should turn **yes**. **Refresh session observation**

@@ -186,12 +186,14 @@ port, and the lab shows endpoints recover without one.
     `#confirm-dialog`, `#confirm-ok`, `#confirm-cancel`. Escape cancels.
   - Earlier candidates used the native `window.confirm()`. It blocks the
     browser and blocked ASTRA's UI qualification on rc7/rc8.
-- **eAPI TLS settings are global.** `NAC_EAPI_INSECURE_SKIP_VERIFY=true`
-  (needed for self-signed eAPI certificates) disables certificate checking
-  for every switch's eAPI. `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` (needed for stock
-  EOS 4.29.2F eAPI without an ECDHE SSL profile) allows RSA key exchange for
-  every switch's eAPI. Neither affects other connections. Per-switch
-  certificate pinning is not implemented.
+- **eAPI TLS settings are global.**
+  - Verified TLS (installation §7a: `SSL_CERT_FILE` plus a switch
+    certificate whose SAN names the eAPI host) applies one trust store to
+    all switches. There is no per-switch certificate pinning.
+  - The unverified fallback (`NAC_EAPI_INSECURE_SKIP_VERIFY=true`, plus
+    `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` for stock EOS 4.29.2F) also applies to
+    all switches.
+  - Verified TLS against a real EOS switch is being qualified.
 - **Reproducible build:** `nacd` builds to the same SHA-256 from the same
   commit and `VERSION`. The bundle tarball does not, because of archive
   timestamps.
