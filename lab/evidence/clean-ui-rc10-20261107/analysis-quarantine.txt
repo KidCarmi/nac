@@ -1,0 +1,7 @@
+PHASE quarantine 2026-11-07T13:47:32.413305+00:00 2026-11-07T13:49:17.346923+00:00 corp to quarantine
+PROBE_RESOLUTION sequential fresh TCP with 0.8s per-target timeout
+STATE_BEFORE {"addresses": ["10.70.10.80/24"], "at_utc": "2026-11-07T13:46:40.829+00:00", "carrier": "1", "dns": "Link 2 (ens3): 10.70.10.10", "domains": "Link 2 (ens3): nac-lab.test", "event": "network_state", "routes": ["10.70.10.0/24 via on-link", "10.70.10.10 via on-link", "default via 10.70.10.10"]}
+OBSERVED_THROUGH 2026-11-07T13:49:16.387+00:00
+OLD_DENIED {"at": "2026-11-07T13:47:34.147+00:00", "delay_s": 1.734, "source": null}
+NEW_REACHABLE {"at": "2026-11-07T13:48:42.100+00:00", "delay_s": 69.687, "source": "10.70.20.80"}
+NETWORK {"addresses": ["10.70.20.80/24"], "at_utc": "2026-11-07T13:48:41.276+00:00", "carrier": "1", "dns": "Link 2 (ens3): 10.70.20.10", "domains": "Link 2 (ens3): nac-lab.test", "event": "network_state", "routes": ["10.70.20.0/24 via on-link", "10.70.20.10 via on-link", "default via 10.70.20.10"]}

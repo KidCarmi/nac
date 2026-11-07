@@ -1,0 +1,209 @@
+{
+  "files": [
+    {
+      "path": "analysis-quarantine.txt",
+      "bytes": 1013,
+      "sha256": "a1f7289f4a386d612f0773603f6b0f5d057325e0d50bafa71b110af8162e3c8b"
+    },
+    {
+      "path": "analysis-restore.txt",
+      "bytes": 1003,
+      "sha256": "745a7738a8010fc65e5a48e645348f6b39cbdc36264d240c323af18e2b7919bd"
+    },
+    {
+      "path": "configs.sanitized.md",
+      "bytes": 2159,
+      "sha256": "10e242c33c0fdce9834b60b0063e92f61b2e41795ba5f0e9980954c9e73af778"
+    },
+    {
+      "path": "control-ca-diagnostic.txt",
+      "bytes": 167,
+      "sha256": "c49bb090255f67dd1b78522cc98f0f3a6ba1b3741917c0b2e1e59daf6f57894b"
+    },
+    {
+      "path": "corp-dhcp.pcap0",
+      "bytes": 3610,
+      "sha256": "0230071b8fa0d497d61fc00e9de9966bc55ecf04c128c6d0a674a49f366f0803"
+    },
+    {
+      "path": "corp-scope-120.txt",
+      "bytes": 419,
+      "sha256": "77dc80d35aae339c6594a87477c5a7e9ee772560516bf970a3df62e1049710f3"
+    },
+    {
+      "path": "credential-scan.txt",
+      "bytes": 91,
+      "sha256": "069b0083753fb7ad4b516f1dea7042d30b7323f7cf29aed70ba1ef5af8ba9ecf"
+    },
+    {
+      "path": "dhcp-timeline.txt",
+      "bytes": 2898,
+      "sha256": "62cdf41d518aefdeb82e132f3a0466f2f56bb7b560368cc30ce9597db71ddfef"
+    },
+    {
+      "path": "eapi-trust.txt",
+      "bytes": 130,
+      "sha256": "cbbb7eb4197cab6d30ea3918687c752c1f996b78e7c5d3e3a7a89158a3590aeb"
+    },
+    {
+      "path": "eapol-timeline.txt",
+      "bytes": 22637,
+      "sha256": "dc09afbded2805affaa3063ed0001a6f94e7a21408c334407a316e44a5730f66"
+    },
+    {
+      "path": "endpoint-ca-diagnostic.txt",
+      "bytes": 848,
+      "sha256": "91018424d16be0e6af4a71e3504232d9c62b394e63d1586d925dad8f0cf8325b"
+    },
+    {
+      "path": "endpoint-probe.jsonl",
+      "bytes": 569767,
+      "sha256": "a1c4688811e49df9dcb968d86bd2c37a22faa0f5e7d609082e8194e948adc88a"
+    },
+    {
+      "path": "endpoint.pcap0",
+      "bytes": 74122,
+      "sha256": "4cd61aec1602fa4daa322af94d795649cfe0d6bf9d4a5f806d8dedb7d9a2472b"
+    },
+    {
+      "path": "findings.md",
+      "bytes": 7067,
+      "sha256": "96edf6f63a5a11e16ff5980850203861f3a975f9721ccbddc37531a7013bd3f4"
+    },
+    {
+      "path": "initial-state.txt",
+      "bytes": 172,
+      "sha256": "a780674e0d8c38e49ba6bcdea35392c2a1d4d71e6a7f870c1c14f0ebffb457cc"
+    },
+    {
+      "path": "install.txt",
+      "bytes": 397,
+      "sha256": "33652075cb5ec2281c8c7094ae8c4a1c715d015df1113f3c448fe1d4f9662631"
+    },
+    {
+      "path": "nac-evidence.json",
+      "bytes": 45219,
+      "sha256": "44f2044a96f1732d33f9873ab6fbbafad7b42b1ab3488232f97a2b1639d3c1ca"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "bytes": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "password-revocation.txt",
+      "bytes": 64,
+      "sha256": "9e1c36ed251069b8937477c720546383c45e48ba9c530946652062c456bbd530"
+    },
+    {
+      "path": "preinstall.txt",
+      "bytes": 115,
+      "sha256": "e16856ee1e06685685acabbbb656391c7d48b26b0f22ad1b5d1441157bc70806"
+    },
+    {
+      "path": "qualification/analyze_linux_lease.py",
+      "bytes": 2279,
+      "sha256": "0547148fb8cdf7abde41eb10a96b44db616f6a808fcca058f448a630cd3b7558"
+    },
+    {
+      "path": "qualification/dhcp_capture_guest.py",
+      "bytes": 2314,
+      "sha256": "24e57c12a1f774502e90d4a337670e206c451e0b91ba741f89690bf2be951ab0"
+    },
+    {
+      "path": "qualification/dhcp_endpoint_guest.py",
+      "bytes": 5055,
+      "sha256": "34bbcfab62181e50b9c021145433353a6a5e9d41252c95766a78919c469e1d6e"
+    },
+    {
+      "path": "qualification/dhcp_packet_timeline.py",
+      "bytes": 2801,
+      "sha256": "b1daf31a7a50352e827e850d4d433d87985ca4ff48ffbe75b06a2dbd41f0dcea"
+    },
+    {
+      "path": "qualification/dhcp_probe_control_guest.py",
+      "bytes": 4955,
+      "sha256": "fe297b54d332f7c77a2bcaa672c7706e5f7209cdbb0ce62859e636e97a0a4ca3"
+    },
+    {
+      "path": "qualification/dhcp_service_health_guest.py",
+      "bytes": 2548,
+      "sha256": "9773cda18f1d79a55cc44e2aeac978196e5d9400d368f8b27cc232b631ec7ff7"
+    },
+    {
+      "path": "qualification/fresh_ui_export_guest.py",
+      "bytes": 3319,
+      "sha256": "114f91af8bcbc38e2b56c35ed739311562eaf2322abf756c3b78cff3a02ea336"
+    },
+    {
+      "path": "qualification/fresh_ui_token_guest.py",
+      "bytes": 2618,
+      "sha256": "c6fee6685431a518ae306b65c64d07e25bede45b201c3326a2207c6fb88dda19"
+    },
+    {
+      "path": "qualification/pcap_timeline.py",
+      "bytes": 4879,
+      "sha256": "3ab02ceb975edf5022697528823087e341b2eb979ae17acfd80a3d066e3b5620"
+    },
+    {
+      "path": "qualification/run_dhcp_candidate.py",
+      "bytes": 5535,
+      "sha256": "846f8f7ce4913dad078d47c496da110378484d9fd0bdd119b11c4f4123888e2c"
+    },
+    {
+      "path": "quarantine-dhcp.pcap0",
+      "bytes": 1820,
+      "sha256": "1c29c8cd2cfd368da0e9f2aa998ff8285b20527dc0c9b02490b61a27995d2f78"
+    },
+    {
+      "path": "quarantine-scope-120.txt",
+      "bytes": 425,
+      "sha256": "22851cebf1aa99c7a35944f14377ec36003cda91431db0f5ba33c68bb6e8b74b"
+    },
+    {
+      "path": "radius-timeline.txt",
+      "bytes": 32741,
+      "sha256": "b0affc863fec7f56654750d4c77fb70b3a51f5cdf5f18f3977b31467c580facb"
+    },
+    {
+      "path": "radius.pcap0",
+      "bytes": 83249,
+      "sha256": "9d58ab654d8b98d066452a2a10650d4c64a7ee9007c95c9cf19f482979ea6c44"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 3893,
+      "sha256": "30a08b37f65ab3474f56f3316fcabe5b54c609c7d100e05c5d74244dcc5a0cee"
+    },
+    {
+      "path": "service-health-after.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "service-health-before.txt",
+      "bytes": 280,
+      "sha256": "fae96df8b2664ca7425f7f77c1f952cf6664613df6d43f5e01d2a36e9c1f38a3"
+    },
+    {
+      "path": "switch-target-applied.txt",
+      "bytes": 136,
+      "sha256": "16a97e441a8fb5eb8acf6063021a64c817ed4e863e26e7ce0318e4c09f0a8bde"
+    },
+    {
+      "path": "ui-observations.md",
+      "bytes": 2705,
+      "sha256": "b2f74e539ad45e75b97fb072caf1da59c42f6d82ff888c20fb73ec6d2f2677dd"
+    },
+    {
+      "path": "verify_package.py",
+      "bytes": 1577,
+      "sha256": "c868dd589522be5f11fde5b780e6d4d9e0565e6d70a8a5ce6c6b96a86d6d85c4"
+    },
+    {
+      "path": "versions.txt",
+      "bytes": 532,
+      "sha256": "f598ee37612e4fab85017b9474de7c6ccf0e4b8cfb75646d11eb5c679cceb1e1"
+    }
+  ]
+}

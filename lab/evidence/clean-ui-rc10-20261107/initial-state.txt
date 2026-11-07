@@ -1,0 +1,4 @@
+/switches COUNTS [0] KEYS ['switches']
+/endpoints COUNTS [] KEYS ['items', 'page']
+/sessions COUNTS [0] KEYS ['sessions']
+/policy-versions COUNTS [1] KEYS ['versions']

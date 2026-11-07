@@ -1,0 +1,1 @@
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}

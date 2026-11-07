@@ -1,0 +1,10 @@
+INSTALL_EXIT 0
+INSTALL_ELAPSED_S 45.8
+INSTALL_LOG_ROOT_ONLY /root/rc10-install.log
+SERVICE nacd active
+SERVICE freeradius active
+SERVICE postgresql active
+SERVICE nac-freeradius-reload.path active
+NACD_SHA256 35699eac162cc2a7315efced101bee3ec18ed87ab1cb108f06f9bb1a7b48195e
+VERSION {"version":"pilot-rc10","commit":"b39649f","build_date":"2026-11-07T07:42:27Z"}
+READY {"status":"ready"}
