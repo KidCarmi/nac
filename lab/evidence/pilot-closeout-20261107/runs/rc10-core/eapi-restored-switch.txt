@@ -1,0 +1,32 @@
+APPLIED good
+PROFILE show management security ssl profile nac-eapi
+   Profile        State    
+-------------- ----------- 
+   nac-eapi       valid    
+
+nac-veos-rc1#
+nac-veos-rc1#
+EAPI                default
+Hits:               987
+Last hit:           8 seconds ago
+Bytes in:           112510
+Bytes out:          300419
+Requests:           987
+Commands:           987
+Duration:           20.706 seconds
+SSL Profile:        nac-eapi, valid
+FIPS Mode:          No
+QoS DSCP:           0
+Log Level:          none
+CSP Frame Ancestor: None
+TLS Protocols:      1.2
+   User               Requests       Bytes in       Bytes out    Last hit     
+------------------ -------------- -------------- --------------- -------------
+   nac-observer       987            112510         300419       8 seconds ago
+
+URLs                                
+------------------------------------
+Ethernet4   : https://10.70.99.1:443
+
+nac-veos-rc1#
+nac-veos-rc1#

@@ -1,0 +1,72 @@
+{
+  "candidate": "3e92642110f97d3f42a43652d33479e82cfbcc35",
+  "probe_source": "endpoint-probe.jsonl",
+  "probe_interval_note": "fresh TCP connections; sequential probes about 1 second apart",
+  "quarantine_action_utc": "2026-11-07T07:59:25+00:00",
+  "quarantine_first_corp_denial": {
+    "at_utc": "2026-11-07T07:59:26.436+00:00",
+    "seconds_after_action": 1.436
+  },
+  "quarantine_first_quarantine_success": {
+    "at_utc": "2026-11-07T08:00:40.925+00:00",
+    "seconds_after_action": 75.925
+  },
+  "restore_action_utc": "2026-11-07T08:01:45+00:00",
+  "restore_first_quarantine_denial": {
+    "at_utc": "2026-11-07T08:01:47.201+00:00",
+    "seconds_after_action": 2.201
+  },
+  "restore_first_corp_success": {
+    "at_utc": "2026-11-07T08:03:41.100+00:00",
+    "seconds_after_action": 116.1
+  },
+  "network_states": [
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T07:56:51.396+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.20.80/24"
+      ],
+      "at_utc": "2026-11-07T08:00:41.191+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.20.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.20.0/24 via on-link",
+        "10.70.20.10 via on-link",
+        "default via 10.70.20.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T08:03:41.094+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    }
+  ],
+  "event_count": 705,
+  "observation_timeout_seconds": 900
+}

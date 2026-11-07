@@ -1,0 +1,584 @@
+[
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:42.596+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.80",
+    "destination": "10.70.10.10",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:50:42.599+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.80",
+    "destination": "10.70.10.10",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:50:42.600+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "10.70.10.80",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "ACK",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:42.606+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "10.70.10.80",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "ACK",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.412+00:00",
+    "protocol": "eapol",
+    "packet_type": 1
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.415+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.415+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.427+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.439+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.449+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.449+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.454+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.454+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.459+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:50:59.464+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T08:51:00.488+00:00",
+    "protocol": "radius",
+    "message": "Access-Reject",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 4
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:00.505+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:00.506+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:00.511+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.448+00:00",
+    "protocol": "eapol",
+    "packet_type": 1
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.450+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.450+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.454+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.459+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.466+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.466+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.469+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.469+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.473+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:32.475+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T08:51:33.487+00:00",
+    "protocol": "radius",
+    "message": "Access-Reject",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 4
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:33.496+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:33.496+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:33.496+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:51:43.574+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.80",
+    "destination": "10.70.10.10",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request"
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.552+00:00",
+    "protocol": "eapol",
+    "packet_type": 1
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.553+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.553+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.558+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.563+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.568+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.569+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.572+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.572+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.575+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.578+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.582+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.582+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.588+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.588+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T08:52:09.603+00:00",
+    "protocol": "radius",
+    "message": "Access-Accept",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 6,
+    "class": "nac:0be5edcc-6ee8-46d3-8b5e-73cee8fd3c4f",
+    "tunnel_medium": 6,
+    "vlan": "10",
+    "tunnel_type": 13
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:09.607+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.580+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.580+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.597+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.597+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.600+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.601+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.605+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.606+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.609+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.609+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.613+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.615+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.619+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.619+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.624+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.624+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T08:52:18.638+00:00",
+    "protocol": "radius",
+    "message": "Access-Accept",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 6,
+    "class": "nac:26d54585-ea47-44f4-bd4d-adc689db9d9f",
+    "tunnel_medium": 6,
+    "vlan": "10",
+    "tunnel_type": 13
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:18.642+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:27.983+00:00",
+    "protocol": "dhcp",
+    "source": "0.0.0.0",
+    "destination": "255.255.255.255",
+    "ciaddr": "10.70.10.80",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request"
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:42.609+00:00",
+    "protocol": "dhcp",
+    "source": "0.0.0.0",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Discover",
+    "requested_ip": "10.70.10.80"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:52:42.610+00:00",
+    "protocol": "dhcp",
+    "source": "0.0.0.0",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Discover",
+    "requested_ip": "10.70.10.80"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:52:42.611+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Offer",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:42.612+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Offer",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:42.613+00:00",
+    "protocol": "dhcp",
+    "source": "0.0.0.0",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request",
+    "server_id": "10.70.10.10",
+    "requested_ip": "10.70.10.80"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:52:42.615+00:00",
+    "protocol": "dhcp",
+    "source": "0.0.0.0",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "0.0.0.0",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "Request",
+    "server_id": "10.70.10.10",
+    "requested_ip": "10.70.10.80"
+  },
+  {
+    "capture": "corp-dhcp.pcap0",
+    "at_utc": "2026-11-07T08:52:42.615+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "ACK",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T08:52:42.616+00:00",
+    "protocol": "dhcp",
+    "source": "10.70.10.10",
+    "destination": "255.255.255.255",
+    "ciaddr": "0.0.0.0",
+    "yiaddr": "10.70.10.80",
+    "client_mac": "00:50:00:00:02:00",
+    "message": "ACK",
+    "server_id": "10.70.10.10",
+    "lease_seconds": 120
+  }
+]

@@ -1,0 +1,110 @@
+[2026-11-07T08:01:38.090080+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9cleanui02.jsonl sha256 32c40fb2d5f9729b4c3b01234338bc3cc41cae1c499247fa6e372f0533f83624 bytes 64963
+
+[2026-11-07T08:01:38.791878+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9cleanui02\endpoint-probe.jsonl
+
+[2026-11-07T08:03:20.407888+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9cleanui02.jsonl sha256 9abe4147cc34312f21e336fdc4bc6d3dcdc10963f6181aeae17c25dc085b21de bytes 84593
+
+[2026-11-07T08:03:21.331688+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9cleanui02\endpoint-probe.jsonl
+
+[2026-11-07T08:04:43.493955+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc9cleanui02.jsonl sha256 2bf2c249f5675a627d813a8b20d9576aabe27455eee4e5c07551b7998476419b bytes 106717
+
+[2026-11-07T08:04:44.276553+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-3e92642-dhcp-rc9cleanui02\endpoint-probe.jsonl
+
+[2026-11-07T08:05:04.812569+00:00] probe-stop
+PROBE_STOP_REQUESTED rc9cleanui02
+
+[2026-11-07T08:11:03.563683+00:00] endpoint-status
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:10:55.246Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ls /sys/class/net; ip -br addr; ip route; resolvectl status ens3; networkctl status ens3 --no-pager
+ens3  lo
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3)
+    Current Scopes: DNS
+         Protocols: +DefaultRoute +LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+Current DNS Server: 10.70.10.10
+       DNS Servers: 10.70.10.10
+        DNS Domain: nac-lab.test
+ג—� 2: ens3                                                                      
+                     Link File: /usr/lib/systemd/network/99-default.link
+                  Network File: /run/systemd/network/10-netplan-data.network
+                          Type: ether
+                         State: routable (configured)
+                  Online state: unknown
+             Alternative Names: enp0s3
+                          Path: pci-0000:00:03.0
+                        Driver: virtio_net
+                        Vendor: Red Hat, Inc.
+                         Model: Virtio network device
+                    HW Address: 00:50:00:00:02:00 (NEXO COMMUNICATIONS, INC.)
+                           MTU: 1500 (min: 68, max: 65535)
+                         QDisc: fq_codel
+  IPv6 Address Generation Mode: eui64
+          Queue Length (Tx/Rx): 1/1
+              Auto negotiation: no
+                         Speed: n/a
+                       Address: 10.70.10.80 (DHCP4 via 10.70.10.10)
+                                fe80::250:ff:fe00:200
+                       Gateway: 10.70.10.10
+                           DNS: 10.70.10.10
+                Search Domains: nac-lab.test
+             Activation Policy: up
+           Required For Online: no
+               DHCP4 Client ID: IAID:0xb55e67ff/DUID
+             DHCP6 Client DUID: DUID-EN/Vendor:0000ab11100611b8ca755d8e0000
+                  Connected To: nac-veos-rc1 on port Ethernet1
+
+Nov 07 08:00:40 nac-endpoint systemd-networkd[458]: ens3: DHCP lease lost
+Nov 07 08:00:40 nac-endpoint systemd-networkd[458]: ens3: DHCPv4 address 10.ג€¦.10
+Nov 07 08:03:40 nac-endpoint systemd-networkd[458]: ens3: DHCP lease lost
+Nov 07 08:03:40 nac-endpoint systemd-networkd[458]: ens3: DHCPv4 address 10.ג€¦.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CERT openssl x509 -in /root/nac-endpoint.pem -noout -serial -issuer -subject
+serial=2E1B47DC86A00B7F7250500B4A21F454B2EFD819
+issuer=CN = NAC Lab Disposable CA
+subject=CN = wired-endpoint-01
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CONFIG ls -l /root/wired-valid.conf /root/wired-invalid.conf /etc/netplan/*.yaml; wpa_cli -i ens3 status
+-rw------- 1 root root 157 Nov  6 14:52 /etc/netplan/99-nac-lab.yaml
+-rw------- 1 root root 253 Nov  6 09:58 /root/wired-invalid.conf
+-rw------- 1 root root 256 Nov  6 09:58 /root/wired-valid.conf
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=COMPLETED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATED
+suppPortStatus=Authorized
+EAP state=SUCCESS
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=ECDHE-RSA-AES256-GCM-SHA384
+tls_session_reused=0
+eap_session_id=0d61fd874cf59b47cdfe195e1c33930902e5590d155ef11a56406c89062d621dbbf3fcf355a47d8ff33827f191da8fb867906fb1d4e1f15145444f574e47524401
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:15:23.568822+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+

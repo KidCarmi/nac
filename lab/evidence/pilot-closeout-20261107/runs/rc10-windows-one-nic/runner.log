@@ -1,0 +1,210 @@
+[2026-11-07T09:46:17.218376+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+
+[2026-11-07T09:46:24.984349+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-b39649f-dhcp-win2025-02", "state": "started"}
+
+[2026-11-07T09:46:38.610685+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:47:37.955813+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:50:39.166215+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et1, Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+20  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:51:21.929041+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\corp-dhcp.pcap0
+
+[2026-11-07T09:51:22.558686+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\endpoint.pcap0
+
+[2026-11-07T09:51:23.293268+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\quarantine-dhcp.pcap0
+
+[2026-11-07T09:51:24.008189+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\radius.pcap0
+
+[2026-11-07T09:53:27.010188+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUPPLICANT-TIMEOUT      NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:53:47.799012+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\corp-dhcp.pcap0
+
+[2026-11-07T09:53:48.423398+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\endpoint.pcap0
+
+[2026-11-07T09:53:49.073494+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\quarantine-dhcp.pcap0
+
+[2026-11-07T09:53:49.784011+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\radius.pcap0
+
+[2026-11-07T09:56:30.527320+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\corp-dhcp.pcap0
+
+[2026-11-07T09:56:31.236262+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\endpoint.pcap0
+
+[2026-11-07T09:56:31.930080+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\quarantine-dhcp.pcap0
+
+[2026-11-07T09:56:32.573365+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\radius.pcap0
+
+[2026-11-07T09:58:22.323655+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\corp-dhcp.pcap0
+
+[2026-11-07T09:58:22.991782+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\endpoint.pcap0
+
+[2026-11-07T09:58:23.618872+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\quarantine-dhcp.pcap0
+
+[2026-11-07T09:58:24.300815+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\radius.pcap0
+
+[2026-11-07T09:58:49.551914+00:00] capture-stop
+{"sizes": {"corp-dhcp": {"corp-dhcp.pcap0": 6604}, "endpoint": {"endpoint.pcap0": 57364}, "quarantine-dhcp": {"quarantine-dhcp.pcap0": 4412}, "radius": {"radius.pcap0": 42170}}, "state": "stopped"}
+
+[2026-11-07T09:58:59.450002+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\corp-dhcp.pcap0
+
+[2026-11-07T09:59:00.175724+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-02\endpoint.pcap0
+
+[2026-11-07T09:59:00.530876+00:00] download quarantine-dhcp.pcap0
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+

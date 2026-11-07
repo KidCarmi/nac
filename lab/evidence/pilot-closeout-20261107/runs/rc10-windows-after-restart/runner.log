@@ -1,0 +1,126 @@
+[2026-11-07T10:06:33.285439+00:00] switch-status
+PORT_CONFIG 
+VLANS 
+HOSTS 
+
+[2026-11-07T10:10:06.110224+00:00] health
+{"ip_forward": 0, "results": {"corp": {"http_status": 200, "source_address": "10.70.10.254/24", "source_bridge": "vnet0_32", "target": "10.70.10.10"}, "quarantine": {"http_status": 200, "source_address": "10.70.20.254/24", "source_bridge": "vnet0_33", "target": "10.70.20.10"}}}
+
+[2026-11-07T10:10:14.785484+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-b39649f-dhcp-win2025-restart-01", "state": "started"}
+
+[2026-11-07T10:10:31.974884+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T10:11:10.317518+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T10:11:29.400248+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\corp-dhcp.pcap0
+
+[2026-11-07T10:11:30.037089+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\endpoint.pcap0
+
+[2026-11-07T10:11:30.678059+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\quarantine-dhcp.pcap0
+
+[2026-11-07T10:11:31.332466+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\radius.pcap0
+
+[2026-11-07T10:13:25.838348+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\corp-dhcp.pcap0
+
+[2026-11-07T10:13:26.451160+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\endpoint.pcap0
+
+[2026-11-07T10:13:27.077521+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\quarantine-dhcp.pcap0
+
+[2026-11-07T10:13:27.706445+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\radius.pcap0
+
+[2026-11-07T10:13:45.563183+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\corp-dhcp.pcap0
+
+[2026-11-07T10:13:46.173715+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\endpoint.pcap0
+
+[2026-11-07T10:13:46.797544+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\quarantine-dhcp.pcap0
+
+[2026-11-07T10:13:47.413443+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\radius.pcap0
+
+[2026-11-07T10:14:05.153705+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\corp-dhcp.pcap0
+
+[2026-11-07T10:14:05.764711+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\endpoint.pcap0
+
+[2026-11-07T10:14:06.395484+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\quarantine-dhcp.pcap0
+
+[2026-11-07T10:14:07.004847+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\radius.pcap0
+
+[2026-11-07T10:16:23.610999+00:00] capture-stop
+{"sizes": {"corp-dhcp": {"corp-dhcp.pcap0": 4410}, "endpoint": {"endpoint.pcap0": 31701}, "quarantine-dhcp": {"quarantine-dhcp.pcap0": 1486}, "radius": {"radius.pcap0": 24469}}, "state": "stopped"}
+
+[2026-11-07T10:16:35.390290+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\corp-dhcp.pcap0
+
+[2026-11-07T10:16:36.032111+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\endpoint.pcap0
+
+[2026-11-07T10:16:36.661499+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\quarantine-dhcp.pcap0
+
+[2026-11-07T10:16:37.309690+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-restart-01\radius.pcap0
+

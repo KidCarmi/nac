@@ -1,0 +1,6 @@
+2026-11-07T08:57:39.159Z
+active
+active
+active
+{"status":"ready"}
+35699eac162cc2a7315efced101bee3ec18ed87ab1cb108f06f9bb1a7b48195e  /usr/local/bin/nacd

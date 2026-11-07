@@ -1,0 +1,16 @@
+PROBE_ROWS 2943 FIRST 2026-11-07T09:43:56.132Z LAST 2026-11-07T10:16:08.915Z
+ACTION quarantine 2026-11-07T10:13:00Z
+TCP corp False 2026-11-07T10:13:02.378Z delay_seconds 2.378 source None
+TCP corp True 2026-11-07T10:13:00.694Z delay_seconds 0.694 source 10.70.10.80:49786
+TCP quarantine False 2026-11-07T10:13:00.436Z delay_seconds 0.436 source None
+TCP quarantine True 2026-11-07T10:14:02.551Z delay_seconds 62.551 source 10.70.20.80:58940
+NETWORK 2026-11-07T10:13:56.037Z delay_seconds 56.037 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794046496000)/', 'obtained': '/Date(1794046376000)/'}]
+NETWORK 2026-11-07T10:14:02.972Z delay_seconds 62.972 addresses ['10.70.20.80/24'] dns ['10.70.20.10'] routes ['10.70.20.10'] lease [{'dhcp_server': '10.70.20.10', 'expires': '/Date(1794046561000)/', 'obtained': '/Date(1794046441000)/'}]
+ACTION restore 2026-11-07T10:14:22Z
+TCP corp False 2026-11-07T10:14:22.000Z delay_seconds 0.0 source None
+TCP corp True 2026-11-07T10:14:57.478Z delay_seconds 35.478 source 10.70.10.80:59059
+TCP quarantine False 2026-11-07T10:14:24.345Z delay_seconds 2.345 source None
+TCP quarantine True 2026-11-07T10:14:22.008Z delay_seconds 0.008 source 10.70.20.80:58976
+NETWORK 2026-11-07T10:14:51.760Z delay_seconds 29.76 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794046561000)/', 'obtained': '/Date(1794046441000)/'}]
+NETWORK 2026-11-07T10:14:58.603Z delay_seconds 36.603 addresses ['169.254.124.62/16', '10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794046617000)/', 'obtained': '/Date(1794046497000)/'}]
+NETWORK 2026-11-07T10:15:02.295Z delay_seconds 40.295 addresses ['10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794046617000)/', 'obtained': '/Date(1794046497000)/'}]

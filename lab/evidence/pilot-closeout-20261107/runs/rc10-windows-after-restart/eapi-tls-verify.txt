@@ -1,0 +1,11 @@
+Can't use SSL_get_servername
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.2
+Ciphersuite: ECDHE-RSA-AES256-GCM-SHA384
+Peer certificate: CN = nac-veos-rc1
+Hash used: SHA512
+Signature type: RSA
+Verification: OK
+Supported Elliptic Curve Point Formats: uncompressed:ansiX962_compressed_prime:ansiX962_compressed_char2
+Server Temp Key: ECDH, prime256v1, 256 bits
+DONE

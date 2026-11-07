@@ -1,0 +1,140 @@
+{
+  "candidate": "b39649f138e126ed6689a53b590855061042e341",
+  "observation_timeout_seconds": 600,
+  "probe_interval_note": "fresh TCP connections sampled sequentially",
+  "transitions": [
+    {
+      "name": "operator_quarantine",
+      "action_at_utc": "2026-11-07T08:38:16.663706+00:00",
+      "old_segment": "corp",
+      "new_segment": "quarantine",
+      "old_denied": {
+        "at_utc": "2026-11-07T08:38:18.628+00:00",
+        "seconds_after_action": 1.964
+      },
+      "new_reachable": {
+        "at_utc": "2026-11-07T08:38:41.061+00:00",
+        "seconds_after_action": 24.397
+      }
+    },
+    {
+      "name": "operator_restore",
+      "action_at_utc": "2026-11-07T08:39:50.371966+00:00",
+      "old_segment": "quarantine",
+      "new_segment": "corp",
+      "old_denied": {
+        "at_utc": "2026-11-07T08:39:51.758+00:00",
+        "seconds_after_action": 1.386
+      },
+      "new_reachable": {
+        "at_utc": "2026-11-07T08:41:41.305+00:00",
+        "seconds_after_action": 110.933
+      }
+    },
+    {
+      "name": "rule_only_quarantine",
+      "action_at_utc": "2026-11-07T08:42:30.539500+00:00",
+      "old_segment": "corp",
+      "new_segment": "quarantine",
+      "old_denied": {
+        "at_utc": "2026-11-07T08:42:31.604+00:00",
+        "seconds_after_action": 1.065
+      },
+      "new_reachable": {
+        "at_utc": "2026-11-07T08:43:42.653+00:00",
+        "seconds_after_action": 72.114
+      }
+    },
+    {
+      "name": "rule_only_restore",
+      "action_at_utc": "2026-11-07T08:44:21.667832+00:00",
+      "old_segment": "quarantine",
+      "new_segment": "corp",
+      "old_denied": {
+        "at_utc": "2026-11-07T08:44:23.269+00:00",
+        "seconds_after_action": 1.601
+      },
+      "new_reachable": {
+        "at_utc": "2026-11-07T08:45:41.132+00:00",
+        "seconds_after_action": 79.464
+      }
+    }
+  ],
+  "network_states": [
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T08:37:08.805+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.20.80/24"
+      ],
+      "at_utc": "2026-11-07T08:38:40.253+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.20.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.20.0/24 via on-link",
+        "10.70.20.10 via on-link",
+        "default via 10.70.20.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T08:41:41.256+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.20.80/24"
+      ],
+      "at_utc": "2026-11-07T08:43:41.832+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.20.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.20.0/24 via on-link",
+        "10.70.20.10 via on-link",
+        "default via 10.70.20.10"
+      ]
+    },
+    {
+      "addresses": [
+        "10.70.10.80/24"
+      ],
+      "at_utc": "2026-11-07T08:45:41.093+00:00",
+      "carrier": "1",
+      "dns": "Link 2 (ens3): 10.70.10.10",
+      "domains": "Link 2 (ens3): nac-lab.test",
+      "event": "network_state",
+      "routes": [
+        "10.70.10.0/24 via on-link",
+        "10.70.10.10 via on-link",
+        "default via 10.70.10.10"
+      ]
+    }
+  ]
+}

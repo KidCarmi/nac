@@ -1,0 +1,719 @@
+{
+  "files": [
+    {
+      "path": "configs.sanitized.md",
+      "bytes": 3370,
+      "sha256": "24ff3510afb9fc29aff688ca32926d59e4b12344f2027e763f9e01b2f11d6f18"
+    },
+    {
+      "path": "eve_guest.py",
+      "bytes": 3515,
+      "sha256": "9ca3d0dc9daa8f97def6db9532b78b4e8fde4cdfdea643563d99a8a38fef2276"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "bytes": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "qualification/analyze_pcap.py",
+      "bytes": 4972,
+      "sha256": "5104749f25708e5c836ff915a06b89bde47a7ae4afdac2a4075bd7e63ef07f6d"
+    },
+    {
+      "path": "qualification/candidate_console_tunnel.py",
+      "bytes": 3409,
+      "sha256": "03de2237be55ca51a149733e9795f4c24f6abadcd9bbbab9cd2cf1df54afe778"
+    },
+    {
+      "path": "qualification/clean_rc9_vm.py",
+      "bytes": 6334,
+      "sha256": "2560baa95dd023aeeb66be56e192679950e097b7ff60385d00fa1a6917858ce4"
+    },
+    {
+      "path": "qualification/dhcp_capture_guest.py",
+      "bytes": 2314,
+      "sha256": "24e57c12a1f774502e90d4a337670e206c451e0b91ba741f89690bf2be951ab0"
+    },
+    {
+      "path": "qualification/dhcp_control_status_guest.py",
+      "bytes": 663,
+      "sha256": "f5c2a87662acf212fa6c86677fd539f78222c3a2d72848d0ea0d320683791c67"
+    },
+    {
+      "path": "qualification/dhcp_endpoint_guest.py",
+      "bytes": 4099,
+      "sha256": "80a4c6b8992695dc91510424fec4f2a06967f27046446d91ba60c99c6ff87359"
+    },
+    {
+      "path": "qualification/dhcp_probe_control_guest.py",
+      "bytes": 4645,
+      "sha256": "b6bab24424c46fe540912b379273fe8400ab7944250ea0e7c829da50efde0bf5"
+    },
+    {
+      "path": "qualification/dhcp_probe_endpoint.py",
+      "bytes": 5509,
+      "sha256": "554b30eac3dc5fae0de008fc5b5c1df5f7a5bf2d7c25d8516488b1cd0b0b29fe"
+    },
+    {
+      "path": "qualification/dhcp_service_health_guest.py",
+      "bytes": 2548,
+      "sha256": "9773cda18f1d79a55cc44e2aeac978196e5d9400d368f8b27cc232b631ec7ff7"
+    },
+    {
+      "path": "qualification/dhcp_switch_guest.py",
+      "bytes": 8247,
+      "sha256": "87614e0f530e39fb6f2a17a638c2d4faf8fdd563b2cc59ce66d2d51c98ea7af2"
+    },
+    {
+      "path": "qualification/dhcp_transition_guest.py",
+      "bytes": 6697,
+      "sha256": "99d3685b037c0d77befefec80bcb0a30a68b4a3bf75a4d5cafe5f0bb941e9a4b"
+    },
+    {
+      "path": "qualification/eapi_tls_switch_guest.py",
+      "bytes": 5510,
+      "sha256": "ed60ace2a832ff225f5091b658c0c657fb3a8b1788b556d0a377d7a5c7313ab1"
+    },
+    {
+      "path": "qualification/launch_clean_rc10_guest.py",
+      "bytes": 3632,
+      "sha256": "41b9c6a9cfca9c43ceab107171b1a476f5062272a62f6fd55a9457d0d85a7303"
+    },
+    {
+      "path": "qualification/launch_windows_endpoint_guest.py",
+      "bytes": 3294,
+      "sha256": "083e18f8d5c6865532a5ce5398e7acfa9493e773b311b39245d299e33a5ef1e2"
+    },
+    {
+      "path": "qualification/powerdown_clean_rc10_guest.py",
+      "bytes": 842,
+      "sha256": "9380a872beed821bb6f6786674424672eb7f994546a78967710f7258e30d2886"
+    },
+    {
+      "path": "qualification/ppm_to_png.py",
+      "bytes": 861,
+      "sha256": "210e8df2febbd45d4b3bf620a56dbe23352c2e5319949148e664619deb8b8db0"
+    },
+    {
+      "path": "qualification/prepare_windows_endpoint_guest.py",
+      "bytes": 4609,
+      "sha256": "af716ae13882b25f301d97300c8b965002aea14f5624d271f3033ebbb3afe8c3"
+    },
+    {
+      "path": "qualification/rc10_bind_guest.py",
+      "bytes": 1284,
+      "sha256": "8bd0e5f9bbeaeae9437507f2199bdb7112fb7629730b8b10ae6f4023cae3d7a6"
+    },
+    {
+      "path": "qualification/rc10_eapi_guest.py",
+      "bytes": 1803,
+      "sha256": "9a88fcae36fb340552f66229f0b7fca79c7cda92b7fbfc74ac571010a07ea882"
+    },
+    {
+      "path": "qualification/rc10_eapi_probe_guest.py",
+      "bytes": 1418,
+      "sha256": "ed4216b9c7aef88f2a45f08be17be3c1548092a732d1b7a4a2fc194627e8dfe4"
+    },
+    {
+      "path": "qualification/rc10_onboard_guest.py",
+      "bytes": 3006,
+      "sha256": "d06019d8a16f55cca29159fd354d2a93d92189fee66aec88bc82ce000469a739"
+    },
+    {
+      "path": "qualification/rc10_product_action_guest.py",
+      "bytes": 3749,
+      "sha256": "c7309d053911fbd468e1b742b719f670479ad67c7b928c43d4bb64a7962c3072"
+    },
+    {
+      "path": "qualification/run_dhcp_candidate.py",
+      "bytes": 5518,
+      "sha256": "9571da66574f16ef32d8e6308176ed5abeea34a966950790c979686caf143b61"
+    },
+    {
+      "path": "qualification/summarize_rc10_probe.py",
+      "bytes": 2305,
+      "sha256": "ec0674eb4f35a96443d3932e96b62e5546666bd44989915c2bb8f99a45b21ca9"
+    },
+    {
+      "path": "qualification/summarize_windows_probe.py",
+      "bytes": 2349,
+      "sha256": "df8e1a28c97b6f80442e15287eae77999a97bfafac0d803adc845c649d5dec2b"
+    },
+    {
+      "path": "qualification/switch_console_diagnostic_guest.py",
+      "bytes": 874,
+      "sha256": "1e37b7755755a5434f3cf71a305b49f4876084e3cc17094c0e5090efa9fa3dc4"
+    },
+    {
+      "path": "qualification/verify_rc10_old_login_guest.py",
+      "bytes": 907,
+      "sha256": "27a445c0fca4f80b2ccec3a39e2210cd6e864e0f276700df54ad50c4332ca40e"
+    },
+    {
+      "path": "qualification/windows_data_vm.py",
+      "bytes": 3450,
+      "sha256": "7678d61311f0d6555156b0128eb1a6f3b783736496ce3db81e6924c8b2b0a47d"
+    },
+    {
+      "path": "qualification/windows_desktop_reinstall_guest.py",
+      "bytes": 896,
+      "sha256": "e017a9f4f3215ff42d6b6b35fbf5f095f16879b1481e1a3a9e74310e8d602ecd"
+    },
+    {
+      "path": "qualification/windows_dhcp_probe.ps1",
+      "bytes": 3570,
+      "sha256": "cfb23a744324ad63dbda3374f0d2e0130674b6cacf1c5c3138bb615284639c0b"
+    },
+    {
+      "path": "qualification/windows_monitor_guest.py",
+      "bytes": 557,
+      "sha256": "b9959786e62ae956c341aa36062eb1d21d3bdefdba3282dc663e5c981d713391"
+    },
+    {
+      "path": "qualification/windows_pfx_guest.py",
+      "bytes": 760,
+      "sha256": "6a3fa13bd66f59c01232f2eb94d37ef951b91643832d8f1caec34c5fdd14a4c9"
+    },
+    {
+      "path": "qualification/windows_powerdown_guest.py",
+      "bytes": 843,
+      "sha256": "d20cac23ece958f53e60e6a6701e176b274deffdb91d4fa6a6b6060a85b7201e"
+    },
+    {
+      "path": "qualification/windows_profile_fix.ps1",
+      "bytes": 2492,
+      "sha256": "61ac2f71d985eb575dc0fb6cfcde9afec5f8063d0554ce34f330ab6fa9f3933c"
+    },
+    {
+      "path": "qualification/windows_profile_floppy_guest.py",
+      "bytes": 765,
+      "sha256": "0e491abe473db14ef65dd9fdfa1aa425a0f602fc8997ba032edde7c2a0ba05fe"
+    },
+    {
+      "path": "qualification/windows_provision_wired.ps1",
+      "bytes": 3081,
+      "sha256": "50bdb6ffe3fcc7ee613b8e4b613c4b727836b42dc900703954d9b0be34891ffc"
+    },
+    {
+      "path": "qualification/windows_qemu_keys_guest.py",
+      "bytes": 1892,
+      "sha256": "5399d0f2d8942db05214f7190234ac89593b862168d61d314ab110dd0e7e85a4"
+    },
+    {
+      "path": "qualification/windows_reset_core_disk_guest.py",
+      "bytes": 855,
+      "sha256": "c1899daf3d4defa800f4b491a7eb8c6c42827f96a6fe789ae73f1163cf739264"
+    },
+    {
+      "path": "qualification/windows_schedule_probe.ps1",
+      "bytes": 563,
+      "sha256": "db5468c5f376017fe345bbffdc2f77cd68c8de49d9777894995add9c114c947d"
+    },
+    {
+      "path": "qualification/windows_vm.py",
+      "bytes": 3736,
+      "sha256": "5bfa7b0f1f6ecbc204d0e4ac2a4861c9b125ddf93b54f1b450b56bf30300e60d"
+    },
+    {
+      "path": "report.md",
+      "bytes": 12660,
+      "sha256": "a7d7df1ba98abe52f558c5509746bf07a0b4547d908009930bb5605f80773537"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 7511,
+      "sha256": "7ead79ebbb244498c289ae408b4d9b890ead98ec543db67d54947f802555590a"
+    },
+    {
+      "path": "runs/rc10-core/corp-dhcp.pcap0",
+      "bytes": 5040,
+      "sha256": "e487e7c97ef89d4d16cef73c301eff02a222a1347813ce85c5c346d7d5dc7250"
+    },
+    {
+      "path": "runs/rc10-core/eapi-mismatch-probe.txt",
+      "bytes": 393,
+      "sha256": "13add8d6d3ca497abb8ecaf781aa0a630e09652befd380f6cff37d8c3f99c703"
+    },
+    {
+      "path": "runs/rc10-core/eapi-mismatch-switch.txt",
+      "bytes": 972,
+      "sha256": "263594424ece7c40902b449a0d379a4cdbef57b2b4c28a89b8f2ba736010133b"
+    },
+    {
+      "path": "runs/rc10-core/eapi-restored-probe.txt",
+      "bytes": 101,
+      "sha256": "03b49e053ce7469b264c5a4367317101eda9bff14691ec7c08bbdc145021472b"
+    },
+    {
+      "path": "runs/rc10-core/eapi-restored-switch.txt",
+      "bytes": 968,
+      "sha256": "ec1d07f5175847268994417577a01d710fb03d64d942a0e25990b8b25379a526"
+    },
+    {
+      "path": "runs/rc10-core/endpoint-probe.jsonl",
+      "bytes": 139508,
+      "sha256": "4229926bd1d47520a60dcb32049c41d0fe1e5ab4da124f3fe9f4a9b9d4284624"
+    },
+    {
+      "path": "runs/rc10-core/endpoint.pcap0",
+      "bytes": 40996,
+      "sha256": "e77461734969b86e14081c8077862cdfc4b19ae6052c6db701258b9ea3fa901c"
+    },
+    {
+      "path": "runs/rc10-core/findings.md",
+      "bytes": 3826,
+      "sha256": "43d162747dc37d9bf5e92c6ad9d4dc63fd43ecd8a65ba4e1ab96d4da4c367bda"
+    },
+    {
+      "path": "runs/rc10-core/packet-timeline.json",
+      "bytes": 34606,
+      "sha256": "33c10a7c6361d767e98580140778b937395e9f85469d8e8125fe5511e909ad4f"
+    },
+    {
+      "path": "runs/rc10-core/preview.txt",
+      "bytes": 1804,
+      "sha256": "c15f9e333345399d9c323fb70a5c779bdb17f3e067833dd189593ca90ed085fc"
+    },
+    {
+      "path": "runs/rc10-core/probe-summary.json",
+      "bytes": 3991,
+      "sha256": "02fec4398a6873d7554648d3812c81f1e9c92f6662e96b031c94810fa36eba81"
+    },
+    {
+      "path": "runs/rc10-core/publish.txt",
+      "bytes": 82,
+      "sha256": "61d9c62d74d41729b4487a619db7147694ea8c3f56eed06fc781cb8ee38f2398"
+    },
+    {
+      "path": "runs/rc10-core/quarantine-action.txt",
+      "bytes": 1355,
+      "sha256": "f02daf2735c481d07a89424bfb6ab56bffdbb3aa278690cbc69b83053f3794ed"
+    },
+    {
+      "path": "runs/rc10-core/quarantine-dhcp.pcap0",
+      "bytes": 3974,
+      "sha256": "1b510149327cdad52312eec34b763bb6ca7e746279f601d055fe9b534d2d9141"
+    },
+    {
+      "path": "runs/rc10-core/radius.pcap0",
+      "bytes": 42397,
+      "sha256": "7c2a0172db9dc7a08ac6ec679c4e8018dbc5ae8a6bca0dda71b2f851f4d1a1a8"
+    },
+    {
+      "path": "runs/rc10-core/reauth.txt",
+      "bytes": 1500,
+      "sha256": "ceeecce3b885e346fe10e1dc99b37414d342c0c6c174fdf74e42377b99ff04e0"
+    },
+    {
+      "path": "runs/rc10-core/restore-action.txt",
+      "bytes": 1488,
+      "sha256": "ad6ddedcb9160917ff746708f6ab8a60b932bbcba97b0e0519e3e5b9df70a4e4"
+    },
+    {
+      "path": "runs/rc10-core/restore-preview.txt",
+      "bytes": 2322,
+      "sha256": "15322906cf6b18302fa97f6bd1766b0e0c4411a6c78c405ec09647c6300560ce"
+    },
+    {
+      "path": "runs/rc10-core/restore-publish.txt",
+      "bytes": 82,
+      "sha256": "b00aa078bbee7e4215297d42f2f86e5b7b640c2345b2383957cf7dc422f9537e"
+    },
+    {
+      "path": "runs/rc10-core/restore-reauth.txt",
+      "bytes": 1512,
+      "sha256": "36b4aa38575d91c03d9425f15f925036af6c6e96441f9854bfe6fa0602be8710"
+    },
+    {
+      "path": "runs/rc10-core/restore-rule-corp.txt",
+      "bytes": 37,
+      "sha256": "2e4622a99af0e92177c2a0c30938afa32766f69f01248f17ce2a7b32f273320a"
+    },
+    {
+      "path": "runs/rc10-core/rule-quarantine.txt",
+      "bytes": 43,
+      "sha256": "60bf7084b09b380657e851e185d3d02688877a052629d0fcdf37ff45d114ba79"
+    },
+    {
+      "path": "runs/rc10-core/runner.log",
+      "bytes": 15068,
+      "sha256": "d959fd9bf612d22404b5709e89436fed516164f6e13ba2e7194352c42ab7b8d9"
+    },
+    {
+      "path": "runs/rc10-invalid/corp-dhcp.pcap0",
+      "bytes": 2178,
+      "sha256": "5f2055a080511e272057876a8b1a84141dd75619ab6e5dc7cc1c36a921f6bc33"
+    },
+    {
+      "path": "runs/rc10-invalid/endpoint-probe.jsonl",
+      "bytes": 40611,
+      "sha256": "27286c78fea9a8bbca44894636d0afc6b6952939f689a7a1fdf3d4fd8055001e"
+    },
+    {
+      "path": "runs/rc10-invalid/endpoint.pcap0",
+      "bytes": 24650,
+      "sha256": "7613f7282ba48873d151f98ffca1f4bdf3ec7331c1ece511111afaf067f82b24"
+    },
+    {
+      "path": "runs/rc10-invalid/findings.md",
+      "bytes": 1081,
+      "sha256": "a14cddaa56b6c275011329cd3b7fc83a58d7a18e8d03b975719734e3edb7ab6f"
+    },
+    {
+      "path": "runs/rc10-invalid/packet-timeline.json",
+      "bytes": 14602,
+      "sha256": "6cc205028f80d79e0fc1afc15d3d5acb78b94c59c15a14df421ffb949708590d"
+    },
+    {
+      "path": "runs/rc10-invalid/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/rc10-invalid/radius.pcap0",
+      "bytes": 28021,
+      "sha256": "432b7a02a867cf54ac7b7230f677bbbb9c53d442760a8ea816a48b60b632ab09"
+    },
+    {
+      "path": "runs/rc10-invalid/runner.log",
+      "bytes": 9397,
+      "sha256": "dac14040740592a0b26f4ecad928fa5ee908ed5530b5be209eccd4a1c5e76f59"
+    },
+    {
+      "path": "runs/rc10-outage/after-session.txt",
+      "bytes": 1500,
+      "sha256": "d3113e9da207176b5074e5d7eda7bbebd119ffb97fb2ba60aaa675989c561fb3"
+    },
+    {
+      "path": "runs/rc10-outage/before-session.txt",
+      "bytes": 1306,
+      "sha256": "dcaeb2e7211535f5d09ffb4b5b71d62ad6748f9c97df754a81fbd81a4ba844c0"
+    },
+    {
+      "path": "runs/rc10-outage/corp-dhcp.pcap0",
+      "bytes": 736,
+      "sha256": "82d98fd9cad7a88d82b1aa178c83194ab4e88518f11ac75754a36371d463507e"
+    },
+    {
+      "path": "runs/rc10-outage/endpoint-probe.jsonl",
+      "bytes": 41111,
+      "sha256": "380fbae124aa3ed481bb3835372a0d2146ac3d975fbf75e52332dfebe35bcce8"
+    },
+    {
+      "path": "runs/rc10-outage/endpoint.pcap0",
+      "bytes": 12950,
+      "sha256": "3b58cd149869bd3a58d01ae210b5c70a2a6956ca30fe78cae9cf5d78776da240"
+    },
+    {
+      "path": "runs/rc10-outage/findings.md",
+      "bytes": 1707,
+      "sha256": "07d2d688e5d822a41d1a3af8f226958364dab517fd73347f36713189f40463e2"
+    },
+    {
+      "path": "runs/rc10-outage/nacd-restart.txt",
+      "bytes": 125,
+      "sha256": "e18a656ecb69e5bb6481dc51bfb48f4f1e8162ac3f018aa669f7bef36c81cf5d"
+    },
+    {
+      "path": "runs/rc10-outage/nacd-stop.txt",
+      "bytes": 36,
+      "sha256": "faa9fc45147f663cb64fcee9f0c304bd499ed7a7eaedc1aaa608786da7546cb2"
+    },
+    {
+      "path": "runs/rc10-outage/packet-timeline.json",
+      "bytes": 6721,
+      "sha256": "dea0c6e851d6d2c1d898a14c263416582479e5bbd8794c15196951cc89786754"
+    },
+    {
+      "path": "runs/rc10-outage/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/rc10-outage/radius.pcap0",
+      "bytes": 15805,
+      "sha256": "058e407f048f8c4bbfb53e2190157682ca54b8a100600c8ceb9c524e70f3ec40"
+    },
+    {
+      "path": "runs/rc10-outage/recovery-health.txt",
+      "bytes": 157,
+      "sha256": "58b58b71d10570fa2df0296b82a583a9760bd3c25f8ce3067ae1641bd1b99776"
+    },
+    {
+      "path": "runs/rc10-outage/runner.log",
+      "bytes": 7156,
+      "sha256": "7b0d55c739c6a62c01d322eb6a5171d3d78198c22e4bbf75b5cb6da4ff293ca8"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/corp-dhcp.pcap0",
+      "bytes": 4410,
+      "sha256": "40e46cd2c6f8079e0b77a52b32caae2f8c4fc01d7e77f953b3932dfcde6feb8e"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/eapi-tls-verify.txt",
+      "bytes": 375,
+      "sha256": "f797afb9bba3f2a376eec56cc74b5c591863fd83fc904c784cad8138cc719a92"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/endpoint.pcap0",
+      "bytes": 31701,
+      "sha256": "944935c979186bbe0597c0983ed8c1d940c5b2070b94aa0e4d90ac2339591059"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/findings.md",
+      "bytes": 3953,
+      "sha256": "71eefa02b1af6213465cfcd360a1375a5b8aa56ac1b0ee0d4cea113ee876f5cf"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/packet-timeline.json",
+      "bytes": 26423,
+      "sha256": "1eeae4d480a948498eb52df024ea1f6902f0b17abc0ade0d4409d527d3720a57"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/probe-summary.txt",
+      "bytes": 1950,
+      "sha256": "a924769cb6576367f729c7b161504865ef7554283df246701b565700331b21e5"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/quarantine-dhcp.pcap0",
+      "bytes": 1486,
+      "sha256": "b52e46d2c993b2d1353a951417f1bff0d04ff6017cc91fc1ddb8d695c299558c"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/radius.pcap0",
+      "bytes": 24469,
+      "sha256": "ad7b76c83976e8586ed02bf993658d16a6a749c92a25524d4e3659486240e7f8"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/runner.log",
+      "bytes": 5826,
+      "sha256": "ee58d280df1575ecb424b00092f566dc7f36d03ef12ddfd5afe2403f725faf8f"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/windows-probe-corp.jsonl",
+      "bytes": 337682,
+      "sha256": "6377499a0c68310da4432e190880dd2045736be855211f9327f0395d57e768dc"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/windows-probe-final.jsonl",
+      "bytes": 395367,
+      "sha256": "368b6a2955a1400bb9cf73413e0f0a41a38df9441f4e6aab9ca27c4bd8df0e92"
+    },
+    {
+      "path": "runs/rc10-windows-after-restart/windows-start.txt",
+      "bytes": 112,
+      "sha256": "999825b87b1accd6f6169b5cbea9c5eb9f6956fafde0d5940833a16d0b4c4681"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/account-old-login-check.txt",
+      "bytes": 41,
+      "sha256": "5c70680ca08ceac5aac7f30a7257cf1c3f46b107eba9194110182d4a97e4334f"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/corp-dhcp.pcap0",
+      "bytes": 6604,
+      "sha256": "ed670cfc9a964e1bc72ed728dddd4a983ccb4ff10f051d9f54669758a6df6bfe"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/endpoint.pcap0",
+      "bytes": 57364,
+      "sha256": "161c13ca8d2c06e49b3a9518c008b6029e4bcc39c783a830e9edbdebea6ad436"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/findings.md",
+      "bytes": 4548,
+      "sha256": "933aa792c94b01a19c616145182de453543bfe048fa5259c9cbba051dc428a33"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/packet-timeline-prelim.json",
+      "bytes": 16828,
+      "sha256": "e42a4b0b92988d4c15d406737ed1cff396d1ed7c15d4fc8fb70806a81c9431da"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/packet-timeline.json",
+      "bytes": 48942,
+      "sha256": "63cec853e9fa7112b708cec4cb8e06ad78f94ec515163ad8e876536a37f966e5"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/probe-summary.txt",
+      "bytes": 4121,
+      "sha256": "b32b8d4b7fee5a377e2e69730193a41bab9916c5e4cb3faccaa43fa16a158831"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/quarantine-action.txt",
+      "bytes": 1500,
+      "sha256": "89a04e6a986dfffd432c1c475e404a352fab3417416f4b4cd6404c4412b17a7b"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/quarantine-dhcp.pcap0",
+      "bytes": 4412,
+      "sha256": "8adce3002fd6c2b1e8822d9d56375e3df8c8ba365ad1f928ec9b3e565cad4a4b"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/quarantine2-action.txt",
+      "bytes": 1500,
+      "sha256": "3eed8d1f8d2732cde7f07175687509a1af5810433a6c1d41c61737dd6fc31a1a"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/radius.pcap0",
+      "bytes": 42170,
+      "sha256": "c17adea17e066edc93b532fee6d3829cab3870485ccb8f2a6204c7b108a1d9df"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-eapi-good.txt",
+      "bytes": 969,
+      "sha256": "c57a6860e2c0fd017b429ec87cb97b4e368db2731c31d4dc5e2cf7b61c539edc"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-eapi-harden.txt",
+      "bytes": 987,
+      "sha256": "2bffbf73c6355728a3d3a199c892386a4e685a1a7269604640a82e109aaef64b"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-start.txt",
+      "bytes": 1304,
+      "sha256": "673e58a88438e7fb61e23d26a0044547c651dcda9d39f9a0e643902b25859fb6"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-stop.txt",
+      "bytes": 1304,
+      "sha256": "16866e352f05059c5dec2d8d38732dfa8a043e4e459c6142c0f0da85c65a7ff6"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-switch-radius.txt",
+      "bytes": 75,
+      "sha256": "c56dd73ed751c77bf8dbb146acb5ba8f062179576fd51ef0c1b031a3d04eb2dd"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restart-tls-inventory.txt",
+      "bytes": 1377,
+      "sha256": "7f1709e47df84c5cd453886e0d80f1bd19f31e68df12c6d8ace216567d2061e9"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/restore-action.txt",
+      "bytes": 1630,
+      "sha256": "a4f35d2ff30b521c7d280adddc9e2c33d2f13ad31d2fea4c681a187d2a22005e"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/runner.log",
+      "bytes": 8326,
+      "sha256": "0a8e87b02acbb9b5025a718205a08732bdc4994f74772a948f3d63758b8f23ce"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/windows-probe-after-restore.jsonl",
+      "bytes": 162428,
+      "sha256": "743ca346d25e257d9f78aad7ab3f9690cc7a850e7a93b5057a603d4a516a4790"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/windows-probe-before.jsonl",
+      "bytes": 69585,
+      "sha256": "24209635d1e24dcfd281ad356486054884a3c0a1cc10224f160aa2a463a7990e"
+    },
+    {
+      "path": "runs/rc10-windows-one-nic/windows-probe-final.jsonl",
+      "bytes": 217288,
+      "sha256": "2f61f06506729d80bc80e1a14c7301ec5d2b293a34120083576de7959c9be590"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/corp-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/endpoint.pcap0",
+      "bytes": 11414,
+      "sha256": "f5597f6f2095370c97b08eac1f3cce010a01db81992226ebde5232920481f315"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/findings.md",
+      "bytes": 2122,
+      "sha256": "c9c0cea282ff853674aeacd39c8a6a8e8807cb9612c8959a9afa43306ea4ca0f"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/packet-timeline.json",
+      "bytes": 4971,
+      "sha256": "2506f189781ad20b202117e9f00246e996c17da0c61b03606620a7449ff0c052"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/radius.pcap0",
+      "bytes": 13486,
+      "sha256": "6dd0dd3337013b8764a9c621735fdd1b9e96b280ded3e8e958c259670b63f4c1"
+    },
+    {
+      "path": "runs/rc10-windows-profile-diagnostic/runner.log",
+      "bytes": 5965,
+      "sha256": "84445eff5b67b2058544cd79b6c04ea803f36ddce979889a551bf258739351ea"
+    },
+    {
+      "path": "runs/rc9-clean-ui/corp-dhcp.pcap0",
+      "bytes": 3956,
+      "sha256": "9ad73559a85dcd4365962c461505dc24eb325b752ce66a8daa70f5f9e0df1514"
+    },
+    {
+      "path": "runs/rc9-clean-ui/endpoint-probe.jsonl",
+      "bytes": 106717,
+      "sha256": "2bf2c249f5675a627d813a8b20d9576aabe27455eee4e5c07551b7998476419b"
+    },
+    {
+      "path": "runs/rc9-clean-ui/endpoint.pcap0",
+      "bytes": 37364,
+      "sha256": "48d7c1eb290d57f2c5ed088047761b06f9cfbd09f280876179f9fa728fc5930e"
+    },
+    {
+      "path": "runs/rc9-clean-ui/probe-summary.json",
+      "bytes": 2140,
+      "sha256": "5d5685bfe8e5c1d8f5024988b519b6b77a98bd66b1bf1cd885d6de422e1155c9"
+    },
+    {
+      "path": "runs/rc9-clean-ui/quarantine-dhcp.pcap0",
+      "bytes": 2532,
+      "sha256": "ec8f493ae14dba71668ee19c650fa4020264810a0d4b7e6f32c5182f78987d88"
+    },
+    {
+      "path": "runs/rc9-clean-ui/radius.pcap0",
+      "bytes": 40437,
+      "sha256": "cc14eb29560120c04526f282192d67581d1f8ff39977a04a4d77a3b41b7e129a"
+    },
+    {
+      "path": "runs/rc9-clean-ui/runner.log",
+      "bytes": 5386,
+      "sha256": "8bc9c586a82060345f9136f92978f5b99e9f25b8656bbd531fa68062e21d7f04"
+    },
+    {
+      "path": "runs/storage-smoke/corp-dhcp.pcap0",
+      "bytes": 736,
+      "sha256": "dc2705062b1f57b6099a0e2070634d4099136a262b9bcaf88eeaa09a50d55991"
+    },
+    {
+      "path": "runs/storage-smoke/endpoint-probe.jsonl",
+      "bytes": 4075,
+      "sha256": "91b265aec60c7234d53be904e798c95c5a00605105a05bc6bdd5c89b6bccb98e"
+    },
+    {
+      "path": "runs/storage-smoke/endpoint.pcap0",
+      "bytes": 736,
+      "sha256": "5322d5efffe7881cbf4e6791a6bac520b62427a99adf9c5a91af2f29a0f725d0"
+    },
+    {
+      "path": "runs/storage-smoke/quarantine-dhcp.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "runs/storage-smoke/radius.pcap0",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "verify_package.py",
+      "bytes": 2154,
+      "sha256": "cde8d7770009bfe7958987139973b65b8bb9e3253e96947ff7562ff378c938b3"
+    }
+  ]
+}

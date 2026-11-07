@@ -1,0 +1,156 @@
+[2026-11-07T08:55:28.611428+00:00] capture-start
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T08:55:43.990112+00:00] probe-start
+PROBE_STARTED rc10-outage-20261107 240 fresh
+
+[2026-11-07T08:55:53.551376+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-b39649f-dhcp-rc10-outage-20261107", "state": "started"}
+
+[2026-11-07T08:56:15.142415+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:56:04.876Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:56:43.145243+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:56:32.852Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:56:56.884034+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#Nov  7 08:56:53 nac-veos-rc1 Dot1x: %DOT1X-3-SUPPLICANT_FAILED_AUTHENTICATION: Supplicant with identity wired-endpoint-01, MAC 0050.0000.0200 and dynamic VLAN None failed authentication on port Ethernet1.
+
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL FAILED                  NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T08:57:15.879344+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:57:05.607Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:58:01.259341+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:57:50.980Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:58:21.040223+00:00] probe-stop
+PROBE_STOP_REQUESTED rc10-outage-20261107
+
+[2026-11-07T08:58:26.733719+00:00] capture-stop
+{"sizes": {"corp-dhcp": {"corp-dhcp.pcap0": 736}, "endpoint": {"endpoint.pcap0": 12950}, "quarantine-dhcp": {"quarantine-dhcp.pcap0": 24}, "radius": {"radius.pcap0": 15805}}, "state": "stopped"}
+
+[2026-11-07T08:58:33.386035+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc10-outage-20261107.jsonl sha256 380fbae124aa3ed481bb3835372a0d2146ac3d975fbf75e52332dfebe35bcce8 bytes 41111
+
+[2026-11-07T08:58:34.114072+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-outage-20261107\endpoint-probe.jsonl
+
+[2026-11-07T08:58:38.367139+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-outage-20261107\corp-dhcp.pcap0
+
+[2026-11-07T08:58:39.087015+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-outage-20261107\endpoint.pcap0
+
+[2026-11-07T08:58:39.824980+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-outage-20261107\quarantine-dhcp.pcap0
+
+[2026-11-07T08:58:40.510558+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-outage-20261107\radius.pcap0
+

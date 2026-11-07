@@ -1,0 +1,32 @@
+PROBE_ROWS 1626 FIRST 2026-11-07T09:43:56.132Z LAST 2026-11-07T09:58:09.550Z
+ACTION quarantine1 2026-11-07T09:49:46.232612566Z
+TCP corp False 2026-11-07T09:49:48.260Z delay_seconds 2.027 source None
+TCP corp True 2026-11-07T09:49:46.754Z delay_seconds 0.521 source 10.70.10.80:49852
+TCP quarantine False 2026-11-07T09:49:46.289Z delay_seconds 0.056 source None
+TCP quarantine True 2026-11-07T09:50:19.651Z delay_seconds 33.418 source 10.70.20.80:54281
+NETWORK 2026-11-07T09:50:13.586Z delay_seconds 27.353 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794045062000)/', 'obtained': '/Date(1794044942000)/'}]
+NETWORK 2026-11-07T09:50:22.967Z delay_seconds 36.734 addresses ['169.254.124.62/16', '10.70.20.80/24'] dns ['10.70.20.10'] routes ['10.70.20.10'] lease [{'dhcp_server': '10.70.20.10', 'expires': '/Date(1794045138000)/', 'obtained': '/Date(1794045018000)/'}]
+NETWORK 2026-11-07T09:50:26.698Z delay_seconds 40.465 addresses ['10.70.20.80/24'] dns ['10.70.20.10'] routes ['10.70.20.10'] lease [{'dhcp_server': '10.70.20.10', 'expires': '/Date(1794045138000)/', 'obtained': '/Date(1794045018000)/'}]
+ACTION restore1 2026-11-07T09:52:58.807694725Z
+TCP corp False 2026-11-07T09:52:59.084Z delay_seconds 0.276 source None
+TCP corp True 2026-11-07T09:54:00.231Z delay_seconds 61.423 source 10.70.10.80:52383
+TCP quarantine False 2026-11-07T09:53:00.584Z delay_seconds 1.776 source None
+TCP quarantine True 2026-11-07T09:52:59.094Z delay_seconds 0.286 source 10.70.20.80:52268
+NETWORK 2026-11-07T09:53:54.555Z delay_seconds 55.747 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794045260000)/', 'obtained': '/Date(1794045140000)/'}]
+NETWORK 2026-11-07T09:54:01.314Z delay_seconds 62.506 addresses ['169.254.124.62/16', '10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794045360000)/', 'obtained': '/Date(1794045240000)/'}]
+NETWORK 2026-11-07T09:54:04.955Z delay_seconds 66.147 addresses ['10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794045360000)/', 'obtained': '/Date(1794045240000)/'}]
+ACTION quarantine2 2026-11-07T09:55:14.806948031Z
+TCP corp False 2026-11-07T09:55:16.535Z delay_seconds 1.728 source None
+TCP corp True 2026-11-07T09:55:15.070Z delay_seconds 0.263 source 10.70.10.80:52884
+TCP quarantine False 2026-11-07T09:55:15.676Z delay_seconds 0.869 source None
+TCP quarantine True 2026-11-07T09:56:18.663Z delay_seconds 63.856 source 10.70.20.80:56121
+NETWORK 2026-11-07T09:56:12.954Z delay_seconds 58.147 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794045421000)/', 'obtained': '/Date(1794045301000)/'}]
+NETWORK 2026-11-07T09:56:18.025Z delay_seconds 63.218 addresses ['10.70.20.80/24'] dns ['10.70.20.10'] routes ['10.70.20.10'] lease [{'dhcp_server': '10.70.20.10', 'expires': '/Date(1794045494000)/', 'obtained': '/Date(1794045374000)/'}]
+ACTION restore2 2026-11-07T09:56:53Z
+TCP corp False 2026-11-07T09:56:53.798Z delay_seconds 0.798 source None
+TCP corp True 2026-11-07T09:57:27.433Z delay_seconds 34.433 source 10.70.10.80:56268
+TCP quarantine False 2026-11-07T09:56:55.290Z delay_seconds 2.29 source None
+TCP quarantine True 2026-11-07T09:56:53.809Z delay_seconds 0.809 source 10.70.20.80:56189
+NETWORK 2026-11-07T09:57:23.348Z delay_seconds 30.348 addresses [] dns [] routes [] lease [{'dhcp_server': '255.255.255.255', 'expires': '/Date(1794045494000)/', 'obtained': '/Date(1794045374000)/'}]
+NETWORK 2026-11-07T09:57:30.241Z delay_seconds 37.241 addresses ['169.254.124.62/16', '10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794045567000)/', 'obtained': '/Date(1794045447000)/'}]
+NETWORK 2026-11-07T09:57:33.923Z delay_seconds 40.923 addresses ['10.70.10.80/24'] dns ['10.70.10.10'] routes ['10.70.10.10'] lease [{'dhcp_server': '10.70.10.10', 'expires': '/Date(1794045567000)/', 'obtained': '/Date(1794045447000)/'}]

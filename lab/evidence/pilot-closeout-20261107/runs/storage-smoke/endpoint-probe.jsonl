@@ -1,0 +1,27 @@
+{"at_utc": "2026-11-07T07:37:07.414+00:00", "duration_s": 12, "event": "start", "interfaces": ["ens3", "lo"]}
+{"addresses": ["10.70.10.80/24"], "at_utc": "2026-11-07T07:37:07.436+00:00", "carrier": "1", "dns": "Link 2 (ens3): 10.70.10.10", "domains": "Link 2 (ens3): nac-lab.test", "event": "network_state", "routes": ["10.70.10.0/24 via on-link", "10.70.10.10 via on-link", "default via 10.70.10.10"]}
+{"at_utc": "2026-11-07T07:37:07.441+00:00", "connected": true, "elapsed_ms": 5, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:08.242+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:08.512+00:00", "connected": true, "elapsed_ms": 5, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:09.313+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:09.583+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:10.385+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:10.655+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:11.456+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:11.728+00:00", "connected": true, "elapsed_ms": 7, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:12.530+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:12.799+00:00", "connected": true, "elapsed_ms": 5, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:13.600+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:13.871+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:14.672+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:14.945+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:15.746+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:16.019+00:00", "connected": true, "elapsed_ms": 7, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:16.820+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:17.090+00:00", "connected": true, "elapsed_ms": 5, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:17.891+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:18.162+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:18.963+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:19.233+00:00", "connected": true, "elapsed_ms": 6, "event": "tcp_probe", "segment": "corp", "source": "10.70.10.80"}
+{"at_utc": "2026-11-07T07:37:20.034+00:00", "connected": false, "elapsed_ms": 801, "error": "TimeoutError", "event": "tcp_probe", "segment": "quarantine"}
+{"at_utc": "2026-11-07T07:37:20.285+00:00", "event": "end"}

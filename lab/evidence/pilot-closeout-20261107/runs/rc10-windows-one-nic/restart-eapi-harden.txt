@@ -1,0 +1,33 @@
+APPLIED_ECDHE_ONLY_CIPHER_LIST
+PROFILE show management security ssl profile nac-eapi
+   Profile        State    
+-------------- ----------- 
+   nac-eapi       valid    
+
+nac-veos-rc1#
+nac-veos-rc1#
+EAPI ion
+VRFs:               default
+Hits:               7
+Last hit:           14 seconds ago
+Bytes in:           798
+Bytes out:          728
+Requests:           7
+Commands:           7
+Duration:           0.431 seconds
+SSL Profile:        nac-eapi, valid
+FIPS Mode:          No
+QoS DSCP:           0
+Log Level:          none
+CSP Frame Ancestor: None
+TLS Protocols:      1.2
+   User               Requests       Bytes in       Bytes out    Last hit      
+------------------ -------------- -------------- --------------- --------------
+   nac-observer       7              798            728          14 seconds ago
+
+URLs                                
+------------------------------------
+Ethernet4   : https://10.70.99.1:443
+
+nac-veos-rc1#
+nac-veos-rc1#

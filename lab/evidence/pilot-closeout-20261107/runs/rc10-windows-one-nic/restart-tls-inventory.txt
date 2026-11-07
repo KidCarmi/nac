@@ -1,0 +1,41 @@
+API show management api http-commands
+Enabled:            Yes
+HTTPS server:       running, set to use port 443
+HTTP server:        shutdown, set to use port 80
+Local HTTP server:  shutdown, no authentication, set to use port 8080
+Unix Socket server: shutdown, no authentication
+VRFs:               default
+Hits:               3
+Last hit:           7 seconds ago
+Bytes in:           342
+Bytes out:          312
+Requests:           3
+Commands:           3
+Duration:           0.305 seconds
+SSL Profile:        none
+FIPS Mode:          No
+QoS DSCP:           0
+Log Level:          none
+CSP Frame Ancestor: None
+TLS Protocols:      1.0 1.1 1.2
+   User               Requests       Bytes in       Bytes out    Last hit     
+------------------ -------------- -------------- --------------- -------------
+   nac-observer       3              342            312          7 seconds ago
+
+URLs                                
+------------------------------------
+Ethernet4   : https://10.70.99.1:443
+
+nac-veos-rc1#
+nac-veos-rc1#
+SSL_PROFILE show management security ssl profile
+   Profile                      State    
+---------------------------- ----------- 
+   ARISTA_DEFAULT_PROFILE       valid    
+
+nac-veos-rc1#
+nac-veos-rc1#
+VERSION show version | include Software image version
+Software image version: 4.29.2F
+nac-veos-rc1#
+nac-veos-rc1#

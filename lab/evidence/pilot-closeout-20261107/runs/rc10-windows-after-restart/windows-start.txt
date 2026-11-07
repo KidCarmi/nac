@@ -1,0 +1,1 @@
+WINDOWS_VM_STARTED test_start pidfile /root/nac-qualification/windows-2025-endpoint/qemu.pid one_data_nic_only

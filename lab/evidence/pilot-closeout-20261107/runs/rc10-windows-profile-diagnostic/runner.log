@@ -1,0 +1,153 @@
+[2026-11-07T09:31:15.766445+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-b39649f-dhcp-win2025-01", "state": "started"}
+
+[2026-11-07T09:31:25.031113+00:00] switch-clear
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 59, in main
+    guest.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T09:31:53.617055+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:33:21.045313+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL WAIT-FOR-SUPPLICANT     NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:34:10.046353+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL FAILED                  NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T09:34:25.179818+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\corp-dhcp.pcap0
+
+[2026-11-07T09:34:25.891288+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\endpoint.pcap0
+
+[2026-11-07T09:34:26.637308+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\quarantine-dhcp.pcap0
+
+[2026-11-07T09:34:27.353194+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\radius.pcap0
+
+[2026-11-07T09:36:01.187472+00:00] capture-stop
+{"sizes": {"corp-dhcp": {"corp-dhcp.pcap0": 24}, "endpoint": {"endpoint.pcap0": 11414}, "quarantine-dhcp": {"quarantine-dhcp.pcap0": 24}, "radius": {"radius.pcap0": 13486}}, "state": "stopped"}
+
+[2026-11-07T09:36:08.472690+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\corp-dhcp.pcap0
+
+[2026-11-07T09:36:09.242961+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\endpoint.pcap0
+
+[2026-11-07T09:36:09.568802+00:00] download quarantine-dhcp.pcap0
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T09:36:31.289696+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\corp-dhcp.pcap0
+
+[2026-11-07T09:36:31.954169+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\endpoint.pcap0
+
+[2026-11-07T09:36:32.596529+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\quarantine-dhcp.pcap0
+
+[2026-11-07T09:36:33.253585+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-win2025-01\radius.pcap0
+

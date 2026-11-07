@@ -1,0 +1,256 @@
+[2026-11-07T08:50:31.772997+00:00] capture-start
+{"interfaces": {"corp-dhcp": "vnet0_32", "endpoint": "vnet0_31", "quarantine-dhcp": "vnet0_33", "radius": "vnet0_34"}, "root": "/root/nac-qualification/candidate-b39649f-dhcp-rc10-invalid-20261107", "state": "started"}
+
+[2026-11-07T08:50:46.746427+00:00] probe-start
+PROBE_STARTED rc10-invalid-20261107 180 fresh
+
+[2026-11-07T08:51:00.163417+00:00] endpoint-invalid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:50:52.871Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-invalid.conf -B -f /root/wpa-rc2-invalid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:51:10.741795+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+
+VLAN
+----
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T08:51:30.328486+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:51:20.032Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.10.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:51:44.162203+00:00] switch-status
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL FAILED                  NONE                  
+
+VLAN
+----
+    
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T08:51:59.281515+00:00] endpoint-stop
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:51:56.075Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+STOP wpa_cli -i ens3 terminate 2>&1 || true
+OK
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:52:10.310588+00:00] endpoint-valid
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:52:05.046Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+START wpa_supplicant -i ens3 -D wired -c /root/wired-valid.conf -B -f /root/wpa-rc2-valid.log
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+SUPPLICANT wpa_cli -i ens3 status
+bssid=01:80:c2:00:00:03
+freq=0
+ssid=
+id=0
+mode=station
+pairwise_cipher=NONE
+group_cipher=NONE
+key_mgmt=IEEE 802.1X (no WPA)
+wpa_state=ASSOCIATED
+ip_address=10.70.10.80
+address=00:50:00:00:02:00
+Supplicant PAE state=AUTHENTICATING
+suppPortStatus=Unauthorized
+EAP state=IDLE
+selectedMethod=13 (EAP-TLS)
+eap_tls_version=TLSv1.2
+EAP TLS cipher=(NONE)
+tls_session_reused=0
+uuid=fb18b0c0-1d64-5a24-ba1e-2f9f7e014f33
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:52:21.343829+00:00] switch-clear
+CLEAR clear dot1x host all
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#
+
+[2026-11-07T08:52:55.063293+00:00] endpoint-probe
+CLOCK date -u +%FT%T.%3NZ
+2026-11-07T08:52:44.778Z
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+NETWORK ip -br addr show ens3; ip -4 route; resolvectl dns ens3
+ens3             UP             10.70.10.80/24 metric 100 fe80::250:ff:fe00:200/64 
+default via 10.70.10.10 dev ens3 proto dhcp src 10.70.10.80 metric 100 
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.80 metric 100 
+10.70.10.10 dev ens3 proto dhcp scope link src 10.70.10.80 metric 100 
+Link 2 (ens3): 10.70.10.10
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+CORP if nc -vz -w2 10.70.10.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+Connection to 10.70.10.10 8080 port [tcp/http-alt] succeeded!
+TCP_OPEN
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+QUARANTINE if nc -vz -w2 10.70.20.10 8080; then echo TCP_OPEN; else echo TCP_BLOCKED; fi
+nc: connect to 10.70.20.10 port 8080 (tcp) timed out: Operation now in progress
+TCP_BLOCKED
+root@nac-endpoint:~# 
+root@nac-endpoint:~# 
+
+[2026-11-07T08:52:58.488200+00:00] switch-status
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T08:53:09.236013+00:00] capture-stop
+{"sizes": {"corp-dhcp": {"corp-dhcp.pcap0": 2178}, "endpoint": {"endpoint.pcap0": 24650}, "quarantine-dhcp": {"quarantine-dhcp.pcap0": 24}, "radius": {"radius.pcap0": 28021}}, "state": "stopped"}
+
+[2026-11-07T08:53:12.497887+00:00] probe-fetch
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T08:53:16.353718+00:00] download corp-dhcp.pcap0
+Traceback (most recent call last):
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 106, in <module>
+    main()
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 44, in main
+    pve = connect_pve()
+          ^^^^^^^^^^^^^
+  File "D:\AI\nac-wired-lab\eve_guest.py", line 22, in connect_pve
+    client.connect(
+  File "D:\AI\.venv-culvcenter\Lib\site-packages\paramiko\client.py", line 364, in connect
+    sock.connect(addr)
+OSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted
+
+[2026-11-07T08:53:38.094926+00:00] probe-fetch
+PROBE_FETCHED /root/nac-qualification/dhcp-probe-rc10-invalid-20261107.jsonl sha256 27286c78fea9a8bbca44894636d0afc6b6952939f689a7a1fdf3d4fd8055001e bytes 40611
+
+[2026-11-07T08:53:38.862639+00:00] download probe
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-invalid-20261107\endpoint-probe.jsonl
+
+[2026-11-07T08:53:44.352768+00:00] download corp-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-invalid-20261107\corp-dhcp.pcap0
+
+[2026-11-07T08:53:45.077665+00:00] download endpoint.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-invalid-20261107\endpoint.pcap0
+
+[2026-11-07T08:53:46.014048+00:00] download quarantine-dhcp.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-invalid-20261107\quarantine-dhcp.pcap0
+
+[2026-11-07T08:53:46.842857+00:00] download radius.pcap0
+downloaded D:\AI\nac-wired-lab\qualification\runs\candidate-b39649f-dhcp-rc10-invalid-20261107\radius.pcap0
+

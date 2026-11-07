@@ -1,0 +1,212 @@
+[
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:31:50.923+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:32:50.922+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:17.992+00:00",
+    "protocol": "eapol",
+    "packet_type": 1
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:17.996+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:19.718+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:19.724+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.861+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.869+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.946+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.950+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.993+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:21.997+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:22.333+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:22.340+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:22.773+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T09:33:23.789+00:00",
+    "protocol": "radius",
+    "message": "Access-Reject",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 5
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:23.801+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:23.801+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:37.700+00:00",
+    "protocol": "eapol",
+    "packet_type": 1
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:37.702+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:37.909+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:37.921+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.197+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.203+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.376+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.381+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.388+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.393+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.568+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.573+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:38.579+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "radius.pcap0",
+    "at_utc": "2026-11-07T09:33:39.588+00:00",
+    "protocol": "radius",
+    "message": "Access-Reject",
+    "source": "10.70.99.4",
+    "destination": "10.70.99.1",
+    "id": 5
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:39.591+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  },
+  {
+    "capture": "endpoint.pcap0",
+    "at_utc": "2026-11-07T09:33:39.592+00:00",
+    "protocol": "eapol",
+    "packet_type": 0
+  }
+]
