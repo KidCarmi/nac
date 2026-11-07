@@ -43,6 +43,18 @@ func TestVerifiedIsMarkedAsHistoricalRecord(t *testing.T) {
 	}
 
 	auth("acct-1")
+	// Switch authorization, the switch's view and endpoint reachability stay
+	// separate facts: NAC never claims the endpoint is reachable.
+	var sessions struct {
+		Sessions []map[string]any `json:"sessions"`
+	}
+	h.do("GET", "/api/v1/sessions?state=active", nil, 200, &sessions, true)
+	var detail map[string]any
+	h.do("GET", "/api/v1/sessions/"+sessions.Sessions[0]["id"].(string), nil, 200, &detail, true)
+	er, _ := detail["endpoint_reachability"].(map[string]any)
+	if er["state"] != "not_observed" || !strings.Contains(er["note"].(string), "does not test the endpoint") {
+		t.Fatalf("endpoint_reachability: %v", detail["endpoint_reachability"])
+	}
 	h.do("POST", "/api/v1/switches/"+swID+"/verify", nil, 200, nil, true)
 	v := verified()
 	if v["state"] != "yes" || v["historical"] != true || !strings.Contains(v["note"].(string), "still active") {

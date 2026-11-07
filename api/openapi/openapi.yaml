@@ -2311,12 +2311,25 @@ components:
       allOf:
         - $ref: "#/components/schemas/Session"
         - type: object
-          required: [requested, observed, liveness]
+          required: [requested, observed, liveness, endpoint_reachability]
           properties:
             requested: { $ref: "#/components/schemas/Requested" }
             observed: { $ref: "#/components/schemas/Observed" }
             last_coa: { $ref: "#/components/schemas/CoARequest" }
             liveness: { $ref: "#/components/schemas/Liveness" }
+            endpoint_reachability:
+              type: object
+              description: |
+                The third, separate fact. `requested` is switch authorization
+                (what NAC asked the switch for); `observed` is the switch's own
+                view (VLAN, liveness). Neither proves the endpoint can use the
+                VLAN: after a VLAN change the endpoint keeps its old DHCP lease
+                until its next renewal. NAC never measures reachability, so
+                `state` is always `not_observed`.
+              required: [state, note]
+              properties:
+                state: { type: string, enum: [not_observed] }
+                note: { type: string }
     SessionList:
       type: object
       required: [sessions]

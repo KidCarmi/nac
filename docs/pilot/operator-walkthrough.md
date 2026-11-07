@@ -52,8 +52,15 @@ page to use.
 The session page answers "why":
 - **Why**: identity, binding, decision, policy version, matched rule,
   override, and whether NAC can tell the endpoint is still connected.
-- **Requested by NAC** vs **Observed on the switch**. Observation is
-  `fresh`, `stale` or `unavailable`; it is never guessed.
+- Three separate facts, in three panels:
+  1. **Switch authorization**: what NAC told the switch (segment, VLAN,
+     override, decision).
+  2. **Observed on the switch**: the switch's own report through eAPI
+     (status, VLAN, freshness `fresh` / `stale` / `unavailable`) and whether
+     the endpoint is still connected. Observation is never guessed.
+  3. **Endpoint reachability**: always `not_observed`. NAC does not test the
+     endpoint. A matching switch VLAN does not mean the endpoint has a usable
+     address there yet (see section 6).
 - **Decision inputs**: each input's value, evidence status
   (present/missing/stale), source, and when it was observed.
 - **Rule evaluation**: every rule's outcome, including rules skipped for

@@ -39,7 +39,7 @@ function stateChip(s) {
     accept: "ok", reject: "bad", info: "", error: "bad", present: "ok", missing: "warn", stale: "warn",
     observed: "ok", acked: "ok", nak: "bad", timeout: "bad", failed: "bad", sent: "warn", requested: "warn",
     fresh: "ok", unavailable: "warn", connected: "ok", absent: "bad", matched: "ok", not_matched: "", insufficient_evidence: "warn",
-    disabled: "", not_reached: "" };
+    disabled: "", not_reached: "", not_observed: "warn" };
   return chip(s, map[s] ?? "");
 }
 // ask shows an in-page confirmation and resolves true/false. It replaces the
@@ -343,11 +343,13 @@ async function sessionDetail(id) {
     h("h1", {}, "Session ", h("code", {}, d.mac), " on ", d.switch_name, " ", d.nas_port_id, " ", stateChip(d.state)),
     panel("Why", h("ul", {}, d.explanation.map((l) => h("li", {}, l)))),
     h("div", { class: "grid" },
-      panel("Requested by NAC", kv([["Action", d.requested.action], ["Segment", d.requested.segment], ["VLAN", d.requested.vlan],
+      panel("1. Switch authorization (requested by NAC)", kv([["Action", d.requested.action], ["Segment", d.requested.segment], ["VLAN", d.requested.vlan],
         ["Override", d.override ? d.override + " by " + d.override_by : "none"], ["Decision", d.requested.decision_id], ["At", when(d.requested.at)]])),
-      panel("Observed on the switch", kv([["Still connected?", h("span", {}, stateChip(d.liveness.state), " ", d.liveness.note)],
+      panel("2. Observed on the switch", kv([["Still connected?", h("span", {}, stateChip(d.liveness.state), " ", d.liveness.note)],
         ["Freshness", stateChip(d.observed.freshness)], ["Status", d.observed.status], ["VLAN", d.observed.vlan],
         ["Source", d.observed.source], ["At", when(d.observed.at)], ["Note", d.observed.note]])),
+      panel("3. Endpoint reachability", kv([["State", stateChip(d.endpoint_reachability.state)],
+        ["Note", d.endpoint_reachability.note]])),
       panel("Identity and device", kv([["Certificate CN", d.cert_cn], ["Serial", d.cert_serial ? h("code", {}, d.cert_serial) : "—"],
         ["Issuer", d.cert_issuer], ["Outer identity (untrusted)", d.user_name], ["Binding", d.binding ? d.binding.id + " rev " + d.binding.revision : "none"],
         ["Device", d.endpoint ? d.endpoint.mac + " " + (d.endpoint.hostname || "") : "none"], ["Session started", when(d.started_at)], ["Last auth", when(d.last_auth_at)]]))),

@@ -44,6 +44,19 @@ type SessionView struct {
 	Observed  Observed           `json:"observed"`
 	LastCoA   *domain.CoARequest `json:"last_coa,omitempty"`
 	Liveness  Liveness           `json:"liveness"`
+	// EndpointReachability keeps the third fact apart from switch
+	// authorization (Requested) and the switch's view (Observed): whether
+	// the endpoint can actually use its VLAN. NAC never measures it.
+	EndpointReachability EndpointReachability `json:"endpoint_reachability"`
+}
+
+// EndpointReachability is always "not_observed": NAC knows what it asked the
+// switch for and what the switch reports, not whether the endpoint has a
+// usable address in that VLAN (ASTRA measured the gap: after a VLAN change
+// the endpoint keeps its old DHCP lease until its next renewal).
+type EndpointReachability struct {
+	State string `json:"state"` // not_observed
+	Note  string `json:"note"`
 }
 
 func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Switch) SessionView {
@@ -76,7 +89,17 @@ func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Swit
 		v.LastCoA = &coas[len(coas)-1]
 	}
 	v.Liveness = liveness(sess, v.Observed, now)
+	v.EndpointReachability = EndpointReachability{State: "not_observed", Note: reachabilityNote(v)}
 	return v
+}
+
+func reachabilityNote(v SessionView) string {
+	const base = "NAC does not test the endpoint. Switch authorization and the switch's VLAN do not prove a usable address: " +
+		"after a VLAN change the endpoint keeps its old DHCP lease until its next renewal. Check the endpoint itself."
+	if v.Observed.Matches != nil && *v.Observed.Matches && v.Observed.VLAN != "" {
+		return "The switch reports this endpoint on VLAN " + v.Observed.VLAN + ", as requested. " + base
+	}
+	return base
 }
 
 // Liveness says whether NAC knows the endpoint is still connected. A session

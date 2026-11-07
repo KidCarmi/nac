@@ -76,6 +76,18 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
   nacd → PostgreSQL. Runs in the build environment, not in CI.
 - `internal/server/openapi_coverage_test.go`: every registered route is in
   the API specification and vice versa.
+- `scripts/ui-walkthrough.js` (Playwright, run before each candidate on a
+  fresh nacd) drives the operator walkthrough in the console:
+  - Account password change
+  - switch onboarding
+  - unbound deny, device record and identity binding
+  - policy preview and publish (in-page confirmation), then corp admission
+  - the three-fact session view
+  - quarantine CoA, then quarantine at the next authentication
+  - policy restore
+
+  It also checks that no native dialog appears. The switch's RADIUS traffic
+  is simulated through the adapter API.
 
 ## Manual interventions recorded during lab runs
 
