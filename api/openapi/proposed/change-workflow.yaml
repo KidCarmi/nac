@@ -1,0 +1,769 @@
+openapi: 3.1.0
+info:
+  title: NAC Platform API — proposed change workflow (ADR-0008)
+  version: "2.0.0-proposed"
+  description: |
+    **Proposed contract, not implemented.** It is kept outside
+    `api/openapi/openapi.yaml`, so the route-coverage test does not apply
+    yet. When an operation is implemented, it moves into `openapi.yaml` in
+    the same change, as `internal/server/openapi_coverage_test.go` requires.
+
+    It covers ADR-0008:
+    - change requests (CRs)
+    - recorded validations and simulations
+    - digest-bound human approvals
+    - staged executions
+    - delegated (AI) identities
+    - minimal human operator management
+    - capability discovery
+
+    Shared types (`Problem`, `Condition`, `PolicyAction`, `Policy`,
+    `PreviewRow`) come from `../openapi.yaml`.
+
+    ## Principal kinds
+    - `operator`: a human, with a role (`admin`, `approver`, `operator`, `viewer`).
+    - `delegated`: an AI client, created by a human admin. It acts
+      `on_behalf_of` one human and holds a fixed scope set. It can never
+      hold `policy:approve`, whatever its scopes.
+
+    `x-required-permission` lists the human permission.
+    `x-delegated-scope` lists the scope a delegated identity needs; `none`
+    means a delegated identity can never call the operation.
+
+    ## Concurrency and retries
+    - CR content writes require `If-Match: <revision>`. A stale revision
+      returns `409`.
+    - Execution creation requires an `Idempotency-Key` header. A repeated
+      key returns the existing execution.
+
+    ## What this contract changes in v1 (ADR-0008 decision 8, open decision O3)
+    `POST /api/v1/policy-draft/publish` and
+    `POST /api/v1/policy-versions/{number}/restore` would require an
+    `approval_id`. Without a valid one they return `409` with `type`
+    `/problems/approval-required`.
+
+servers:
+  - url: /api/v1
+
+security:
+  - operatorJWT: []
+  - delegatedJWT: []
+
+paths:
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      summary: What this installation can do, in one read
+      description: |
+        Returns the decision inputs, operators and segments; each switch's
+        platform and its demonstrated capabilities (from lab qualification
+        records); and the workflow settings (approval expiry,
+        self-approval policy). Read-only.
+      x-required-permission: policy:read
+      x-delegated-scope: inventory:read
+      responses:
+        "200":
+          description: Capabilities
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Capabilities" }
+        "401": { $ref: "../openapi.yaml#/components/responses/Unauthorized" }
+        "403": { $ref: "../openapi.yaml#/components/responses/Forbidden" }
+
+  /change-requests:
+    post:
+      operationId: createChangeRequest
+      summary: Create a change request from the active version (or given content)
+      x-required-permission: policy:write
+      x-delegated-scope: change:draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeRequestCreate" }
+      responses:
+        "201":
+          description: Created in state `draft`, revision 1
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequest" }
+        "401": { $ref: "../openapi.yaml#/components/responses/Unauthorized" }
+        "403": { $ref: "../openapi.yaml#/components/responses/Forbidden" }
+        "422": { $ref: "../openapi.yaml#/components/responses/ValidationFailed" }
+    get:
+      operationId: listChangeRequests
+      summary: List change requests
+      x-required-permission: policy:read
+      x-delegated-scope: change:draft
+      parameters:
+        - { name: state, in: query, schema: { $ref: "#/components/schemas/ChangeRequestState" } }
+        - { $ref: "../openapi.yaml#/components/parameters/Limit" }
+        - { $ref: "../openapi.yaml#/components/parameters/Offset" }
+      responses:
+        "200":
+          description: Change requests, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChangeRequest" }
+
+  /change-requests/{id}:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    get:
+      operationId: getChangeRequest
+      summary: A change request with its validations, simulations, approvals and executions
+      x-required-permission: policy:read
+      x-delegated-scope: change:draft
+      responses:
+        "200":
+          description: Change request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestDetail" }
+        "404": { $ref: "../openapi.yaml#/components/responses/NotFound" }
+
+  /change-requests/{id}/content:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    put:
+      operationId: putChangeRequestContent
+      summary: Replace the proposed rule set
+      description: |
+        Increments `revision`, recomputes `content_digest`, returns the CR to
+        `draft`, marks prior validations and simulations `stale`, and
+        invalidates every approval. A delegated identity may only edit CRs it
+        created.
+      x-required-permission: policy:write
+      x-delegated-scope: change:draft
+      parameters:
+        - { name: If-Match, in: header, required: true, description: "Current `revision`.", schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeContent" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequest" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+        "422": { $ref: "../openapi.yaml#/components/responses/ValidationFailed" }
+
+  /change-requests/{id}/validations:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: validateChangeRequest
+      summary: Record a static validation of the current content
+      x-required-permission: policy:read
+      x-delegated-scope: change:simulate
+      responses:
+        "201":
+          description: Validation recorded. The CR moves to `validated` only when `valid` is true
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationResult" }
+
+  /change-requests/{id}/simulations:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: simulateChangeRequest
+      summary: Record a historical replay (prediction) of the current content
+      description: |
+        Requires a current, valid validation. Replays recorded inputs under
+        `base_version` and under the CR, applying operator-override
+        precedence, as the rc10 preview does. Labelled `historical_replay`.
+        It is never a measured outcome.
+      x-required-permission: policy:read
+      x-delegated-scope: change:simulate
+      responses:
+        "201":
+          description: Simulation recorded; CR moves to `simulated`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimulationResult" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+
+  /change-requests/{id}/approval-requests:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: requestApproval
+      summary: Ask a human to approve one exact plan
+      description: |
+        Creates a pending approval request. It does not approve anything.
+        Requires a current validation and simulation. The CR moves to
+        `approval_pending`.
+      x-required-permission: policy:write
+      x-delegated-scope: change:request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExecutionPlan" }
+      responses:
+        "201":
+          description: Pending
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApprovalRequest" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+
+  /change-requests/{id}/approvals:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: approveChangeRequest
+      summary: Approve (human only, step-up, bound to what was reviewed)
+      description: |
+        Only a principal of kind `operator` holding `policy:approve` may call
+        this. Delegated identities get `403` before roles or scopes are
+        considered. Every bound field must equal the current state, or the
+        call returns `409`. The approver must not be the CR's `requested_by`.
+        `on_behalf_of` self-approval follows the installation setting (O1).
+        Audited as `change.approval.create`.
+      x-required-permission: policy:approve
+      x-delegated-scope: none
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApprovalCreate" }
+      responses:
+        "201":
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Approval" }
+        "401": { $ref: "../openapi.yaml#/components/responses/Unauthorized" }
+        "403": { $ref: "../openapi.yaml#/components/responses/Forbidden" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+
+  /change-requests/{id}/approvals/{approval_id}/revoke:
+    parameters:
+      - { $ref: "../openapi.yaml#/components/parameters/IdPath" }
+      - { name: approval_id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: revokeApproval
+      summary: Revoke an unused approval
+      x-required-permission: policy:approve
+      x-delegated-scope: none
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Approval" }
+
+  /change-requests/{id}/executions:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: executeChangeRequest
+      summary: Execute an approved plan (staged)
+      description: |
+        Re-checks the approval at start: the bindings, expiry, single use,
+        the approver's status, the active version and the environment
+        fingerprint. Runs the plan's stages in order. Never clears an
+        operator quarantine override.
+      x-required-permission: policy:write
+      x-delegated-scope: change:execute
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 128 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approval_id]
+              additionalProperties: false
+              properties:
+                approval_id: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Execution started (or the existing one for this key)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Execution" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+
+  /change-requests/{id}/cancel:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: cancelChangeRequest
+      summary: Cancel before execution; invalidates approvals
+      x-required-permission: policy:write
+      x-delegated-scope: change:draft
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequest" }
+
+  /executions/{id}:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    get:
+      operationId: getExecution
+      summary: Execution with per-stage and per-target outcomes
+      x-required-permission: policy:read
+      x-delegated-scope: execution:read
+      responses:
+        "200":
+          description: Execution
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Execution" }
+
+  /delegated-identities:
+    post:
+      operationId: createDelegatedIdentity
+      summary: Create an AI client identity acting on behalf of a human
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DelegatedIdentityCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DelegatedIdentity" }
+    get:
+      operationId: listDelegatedIdentities
+      summary: List delegated identities
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      responses:
+        "200":
+          description: Identities
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/DelegatedIdentity" } }
+
+  /delegated-identities/{id}/tokens:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: issueDelegatedToken
+      summary: Issue a short-lived token (shown once)
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      responses:
+        "201":
+          description: Token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expires_at]
+                properties:
+                  token: { type: string }
+                  expires_at: { type: string, format: date-time }
+
+  /delegated-identities/{id}/revoke:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: revokeDelegatedIdentity
+      summary: Disable the identity and revoke all its tokens at once
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DelegatedIdentity" }
+
+  /operators:
+    post:
+      operationId: createOperator
+      summary: Create a human operator (minimal operator management)
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role, initial_password]
+              additionalProperties: false
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [admin, approver, operator, viewer] }
+                initial_password: { type: string, minLength: 12 }
+      responses:
+        "201":
+          description: Created; must change password at first sign-in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Operator" }
+    get:
+      operationId: listOperators
+      summary: List human operators
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      responses:
+        "200":
+          description: Operators
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Operator" } }
+
+  /operators/{id}:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    patch:
+      operationId: updateOperator
+      summary: Change role or disable (revokes sessions)
+      x-required-permission: operator:manage
+      x-delegated-scope: none
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                role: { type: string, enum: [admin, approver, operator, viewer] }
+                disabled: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Operator" }
+
+components:
+  securitySchemes:
+    operatorJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Human operator session (`kind=operator`).
+    delegatedJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Delegated AI identity token (`kind=delegated`, scopes, `on_behalf_of`).
+
+  schemas:
+    Principal:
+      type: object
+      required: [id, kind]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [operator, delegated] }
+        email: { type: string, description: "Humans only." }
+        name: { type: string, description: "Delegated identities: client name." }
+        on_behalf_of: { type: string, format: uuid, description: "Delegated identities: the human." }
+
+    ChangeRequestState:
+      type: string
+      enum: [draft, validated, simulated, approval_pending, approved, executing, applied, observed, failed, cancelled]
+
+    ChangeContent:
+      type: object
+      required: [rules, default_action]
+      additionalProperties: false
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            required: [name, priority, enabled, conditions, action]
+            properties:
+              name: { type: string }
+              description: { type: string }
+              priority: { type: integer }
+              enabled: { type: boolean }
+              conditions: { type: array, items: { $ref: "../openapi.yaml#/components/schemas/Condition" } }
+              action: { $ref: "../openapi.yaml#/components/schemas/PolicyAction" }
+              segment: { type: string }
+        default_action: { $ref: "../openapi.yaml#/components/schemas/PolicyAction" }
+
+    ChangeRequestCreate:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title: { type: string, maxLength: 200 }
+        intent: { type: string, maxLength: 4000, description: "Requester's free text. Stored and shown as data; never interpreted." }
+        content: { $ref: "#/components/schemas/ChangeContent" }
+        restore_version: { type: integer, minimum: 1, description: "Instead of content: propose restoring this version." }
+
+    ChangeRequest:
+      type: object
+      required: [id, kind, title, state, revision, base_version, content_digest, requested_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [policy_change] }
+        title: { type: string }
+        intent: { type: string }
+        state: { $ref: "#/components/schemas/ChangeRequestState" }
+        revision: { type: integer }
+        base_version: { type: integer }
+        content: { $ref: "#/components/schemas/ChangeContent" }
+        content_digest: { type: string }
+        requested_by: { $ref: "#/components/schemas/Principal" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ChangeRequestDetail:
+      allOf:
+        - { $ref: "#/components/schemas/ChangeRequest" }
+        - type: object
+          properties:
+            validations: { type: array, items: { $ref: "#/components/schemas/ValidationResult" } }
+            simulations: { type: array, items: { $ref: "#/components/schemas/SimulationResult" } }
+            approval_requests: { type: array, items: { $ref: "#/components/schemas/ApprovalRequest" } }
+            approvals: { type: array, items: { $ref: "#/components/schemas/Approval" } }
+            executions: { type: array, items: { $ref: "#/components/schemas/Execution" } }
+
+    EvidenceStatus:
+      type: string
+      description: "`current` while content digest, base version and environment fingerprint all still match."
+      enum: [current, stale]
+
+    ValidationResult:
+      type: object
+      required: [id, kind, valid, content_digest, base_version, environment_fingerprint, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, const: static_validation }
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+        content_digest: { type: string }
+        base_version: { type: integer }
+        environment_fingerprint: { type: string }
+        status: { $ref: "#/components/schemas/EvidenceStatus" }
+        created_by: { $ref: "#/components/schemas/Principal" }
+        created_at: { type: string, format: date-time }
+
+    SimulationResult:
+      type: object
+      required: [id, kind, label, validation_id, content_digest, base_version, cases_examined, changed, insufficient_evidence, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, const: historical_replay }
+        label: { type: string, description: "Always states that this is a prediction over recorded inputs." }
+        validation_id: { type: string, format: uuid }
+        content_digest: { type: string }
+        base_version: { type: integer }
+        cases_examined: { type: integer }
+        changed: { type: integer }
+        insufficient_evidence: { type: integer }
+        rows: { type: array, items: { $ref: "../openapi.yaml#/components/schemas/PreviewRow" } }
+        status: { $ref: "#/components/schemas/EvidenceStatus" }
+        created_at: { type: string, format: date-time }
+
+    ExecutionPlan:
+      type: object
+      required: [validation_id, simulation_id, stages]
+      additionalProperties: false
+      properties:
+        validation_id: { type: string, format: uuid }
+        simulation_id: { type: string, format: uuid }
+        stages:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/PlanStage" }
+        stop_on_failure: { type: boolean, default: true }
+        observe_deadline_seconds: { type: integer, minimum: 0, maximum: 3600, default: 180 }
+
+    PlanStage:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [activate, apply, observe]
+          description: "`activate` publishes globally (applies at next authentication). `apply` re-authenticates the listed sessions now via CoA. `observe` waits for re-authentication and switch observation."
+        targets:
+          type: array
+          description: "`apply` only: explicit sessions. The plan view shows predicted VLAN, shared-port dependents and the documented vEOS interruption per target."
+          items:
+            type: object
+            required: [session_id]
+            properties:
+              session_id: { type: string, format: uuid }
+
+    ApprovalRequest:
+      type: object
+      required: [id, state, plan, plan_digest, content_digest, base_version, requested_by, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [pending, approved, invalid, cancelled] }
+        plan: { $ref: "#/components/schemas/ExecutionPlan" }
+        plan_digest: { type: string }
+        content_digest: { type: string }
+        base_version: { type: integer }
+        environment_fingerprint: { type: string }
+        requested_by: { $ref: "#/components/schemas/Principal" }
+        created_at: { type: string, format: date-time }
+
+    ApprovalCreate:
+      type: object
+      description: Echo of exactly what the human reviewed, plus step-up re-authentication.
+      required: [approval_request_id, content_digest, base_version, validation_id, simulation_id, plan_digest, current_password]
+      additionalProperties: false
+      properties:
+        approval_request_id: { type: string, format: uuid }
+        content_digest: { type: string }
+        base_version: { type: integer }
+        validation_id: { type: string, format: uuid }
+        simulation_id: { type: string, format: uuid }
+        plan_digest: { type: string }
+        current_password: { type: string, writeOnly: true }
+        comment: { type: string, maxLength: 2000 }
+
+    Approval:
+      type: object
+      required: [id, state, approved_by, bindings, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        state:
+          type: string
+          enum: [valid, consumed, invalid, revoked, expired]
+        invalid_reason:
+          type: string
+          description: "e.g. content_changed, base_version_moved, environment_drift, approver_disabled, approver_lost_permission"
+        approved_by: { $ref: "#/components/schemas/Principal" }
+        bindings:
+          type: object
+          required: [cr_id, content_digest, base_version, validation_id, simulation_id, environment_fingerprint, plan_digest]
+          properties:
+            cr_id: { type: string, format: uuid }
+            content_digest: { type: string }
+            base_version: { type: integer }
+            validation_id: { type: string, format: uuid }
+            simulation_id: { type: string, format: uuid }
+            environment_fingerprint: { type: string }
+            plan_digest: { type: string }
+            self_approval: { type: boolean, description: "True when the approver is the CR's on_behalf_of human (allowed only by installation setting, O1)." }
+        consumed_by_execution: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    TargetOutcome:
+      type: object
+      required: [session_id, requested]
+      properties:
+        session_id: { type: string, format: uuid }
+        requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer } } }
+        coa_request_id: { type: string, format: uuid }
+        acknowledged: { type: boolean, description: "CoA-ACK received. Not proof of access." }
+        observed: { type: boolean, description: "Re-authentication returned the requested VLAN and the switch reports it." }
+        verified:
+          type: string
+          const: not_observed
+          description: "NAC never measures endpoint reachability (ADR-0006)."
+        shared_port_dependents: { type: integer }
+
+    Execution:
+      type: object
+      required: [id, cr_id, approval_id, state, stages, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        cr_id: { type: string, format: uuid }
+        approval_id: { type: string, format: uuid }
+        idempotency_key: { type: string }
+        state: { type: string, enum: [running, applied, observed, failed, stopped] }
+        activated_version: { type: integer }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [type, state]
+            properties:
+              type: { type: string, enum: [activate, apply, observe] }
+              state: { type: string, enum: [pending, running, done, failed, skipped] }
+              detail: { type: string }
+              targets: { type: array, items: { $ref: "#/components/schemas/TargetOutcome" } }
+        executed_by: { $ref: "#/components/schemas/Principal" }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+
+    DelegatedIdentityCreate:
+      type: object
+      required: [name, on_behalf_of, scopes]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 100, description: "Shown in audit, e.g. the customer's AI client." }
+        on_behalf_of: { type: string, format: uuid }
+        scopes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [inventory:read, explain:read, change:draft, change:simulate, change:request, change:execute, execution:read]
+
+    DelegatedIdentity:
+      type: object
+      required: [id, name, on_behalf_of, scopes, disabled, created_by, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        on_behalf_of: { type: string, format: uuid }
+        scopes: { type: array, items: { type: string } }
+        disabled: { type: boolean }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+
+    Operator:
+      type: object
+      required: [id, email, role, disabled, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { type: string, enum: [admin, approver, operator, viewer] }
+        disabled: { type: boolean }
+        password_changed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    Capabilities:
+      type: object
+      required: [inputs, segments, switches, workflow]
+      properties:
+        inputs: { type: array, items: { type: object }, description: "Same as GET /policy-inputs." }
+        segments: { type: array, items: { type: string } }
+        switches:
+          type: array
+          items:
+            type: object
+            required: [id, name, platform, capabilities]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              platform: { type: string, examples: ["arista-eos-4.29.2F (vEOS-lab)"] }
+              capabilities:
+                type: array
+                description: "Each states what is demonstrated, and by which evidence record. Unknown or unproven capabilities are absent or marked unverified."
+                items:
+                  type: object
+                  required: [name, status]
+                  properties:
+                    name: { type: string, examples: ["eap-tls", "coa-vlan", "eapi-observation", "mab"] }
+                    status: { type: string, enum: [demonstrated, unverified, unsupported] }
+                    evidence: { type: string }
+                    caveat: { type: string, examples: ["accepted VLAN-bearing CoA interrupts traffic up to ~58 s on vEOS-lab"] }
+        workflow:
+          type: object
+          properties:
+            approval_expiry_seconds: { type: integer }
+            self_approval_via_delegate: { type: boolean }
