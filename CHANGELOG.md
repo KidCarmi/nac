@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc9 (after pilot-rc8 `62f3b08`, which passed everything ASTRA could run)
+- **Console confirmations are in-page.** Native `window.confirm()` blocked
+  the browser: a stale dialog from an rc7 tab blocked UI qualification of
+  rc8. It can also be silently suppressed by the browser. All seven
+  confirmations now use an in-page `<dialog>` with stable ids for automation
+  (`#confirm-dialog`, `#confirm-ok`, `#confirm-cancel`), and Escape cancels.
+- The CoA confirmation warns that a re-authentication can pause traffic
+  briefly, also without a VLAN change, and that a VLAN change reaches the
+  endpoint at its next DHCP renewal.
+- Docs: rc8 results, and the unattributed same-VLAN re-authentication pause
+  (about 20 s on vEOS).
+
 ### pilot-rc8 (after pilot-rc7 `e7d4162`, which passed the API workflows in the lab)
 - **Switch Verified status read as current** (ASTRA, rc7). After a newer
   session replaced the verified one, the badge still said verified=yes,

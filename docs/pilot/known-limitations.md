@@ -123,6 +123,18 @@ endpoint, ASTRA):
 - **Windows endpoints are untested.** Other DHCP clients may renew sooner
   or later.
 
+**Re-authentication can briefly interrupt traffic, even without a VLAN
+change.** On `pilot-rc8`, a same-VLAN re-authentication (CoA on a session
+already in quarantine) twice interrupted fresh quarantine TCP for about 20 s.
+Carrier, address and the switch state (Et1 SUCCESS, VLAN 20) stayed
+unchanged.
+- The cause is **not attributed**: NAC sends a single CoA-Request (the
+  lab-validated attribute set, including the VLAN) and the switch runs a full
+  EAP re-authentication. A comparable 20–30 s forwarding convergence was seen
+  on vEOS after VLAN moves.
+- Physical Arista hardware is untested. Avoid unnecessary Re-authenticate
+  actions on production sessions. The console's confirmation says so.
+
 NAC has no automatic re-addressing action, by design. A port bounce has no
 documented support on vEOS 4.29.2F, would disconnect every device on the
 port, and the lab shows endpoints recover without one.
@@ -153,9 +165,13 @@ port, and the lab shows endpoints recover without one.
   management (more accounts, roles, disabling) in the console or API, no
   per-account lockout after failed attempts (Argon2id cost and per-client
   rate limiting only), and no single sign-on.
-- **Confirmation dialogs.** Publish, restore, quarantine/restore/
-  re-authenticate, binding removal and switch deletion ask for confirmation
-  in a native browser dialog. Browser automation must accept it explicitly.
+- **Confirmation dialogs.**
+  - Publish, restore, quarantine/restore/re-authenticate, binding removal,
+    secret reveal and switch deletion ask for confirmation in an in-page
+    dialog (from `pilot-rc9`), with stable ids for automation:
+    `#confirm-dialog`, `#confirm-ok`, `#confirm-cancel`. Escape cancels.
+  - Earlier candidates used the native `window.confirm()`. It blocks the
+    browser and blocked ASTRA's UI qualification on rc7/rc8.
 - **eAPI TLS settings are global.** `NAC_EAPI_INSECURE_SKIP_VERIFY=true`
   (needed for self-signed eAPI certificates) disables certificate checking
   for every switch's eAPI. `NAC_EAPI_TLS_ALLOW_RSA_KEX=true` (needed for stock

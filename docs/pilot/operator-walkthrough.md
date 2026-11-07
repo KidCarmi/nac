@@ -85,7 +85,7 @@ Click the row to open the session on that port.
    operator quarantine is marked **override applies**. It stays quarantined
    whatever the draft says, but the row still shows what the draft alone
    would decide.
-3. **Publish this draft** asks for confirmation in a browser dialog, then activates exactly the previewed draft, as a new
+3. **Publish this draft** asks for confirmation in an in-page dialog, then activates exactly the previewed draft, as a new
    immutable version. If someone changed the draft after your preview, it
    refuses.
 4. Publishing applies at the **next authentication**. To apply it to a

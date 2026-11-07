@@ -15,11 +15,13 @@ tests. A row stays **pending** until a lab result names the commit it ran on.
 | `pilot-rc5` | `23349b7d871c9db323d09309b428b9c80046164f` | `8821f28f0df89efef135c8d38465ea1b9b10ed21f973d3de4b6f152388a0457a` | **Superseded before qualification**: Codex found that concurrent exchanges could bypass quarantine on an insert conflict |
 | `pilot-rc6` | `cf8920656b44dd628334cf2934c4ba12c22a28d4` | `fa39d5be994661385a369067f56b61f529a8b446e406e6d71763b2bcccd6b4bd` | **Lab run completed** by ASTRA (results in ASTRA's local handoff). Succeeded by rc7, which adds only the installer restart fix; nacd source is identical |
 | `pilot-rc7` | `e7d41626c88eef8c708b9e0dd15fa295d455193c` | `16740a48aa8a869fa50e667eaadd6ee2df3a8ef45df48ef05c4557818fba8270` | **PASS** on the API workflows below (2026-11-06), plus **one defect**: the switch Verified badge read as current after its session ended. Console UI actions not yet qualified |
-| `pilot-rc8` | the commit that adds this row (commit and nacd hash in the PR; a commit cannot contain its own hash) | — | rc7 plus the Verified badge fix (marked historical, with the state of its session) and these docs. To retest: the Verified badge, console UI actions |
+| `pilot-rc8` | `62f3b08f5ee302b7a7a7de7fb0a4fce75cf52491` | `fab898e64423c32230bd49a7164be07c8c0308464e27eced218b189e29746fe2` | **PASS** on everything ASTRA could run (2026-11-07), including the Verified fix and a full isolated restart. Console UI actions **BLOCKED** by a stale native `window.confirm()` from an rc7 tab. One unattributed operational finding (same-VLAN re-authentication pause) |
+| `pilot-rc9` | the commit that adds this row (commit and nacd hash in the PR; a commit cannot contain its own hash) | — | rc8 plus in-page confirmation dialogs (no native `window.confirm()`), a re-authentication warning in the CoA confirmation, and these docs. To run: console UI actions and the Verified label |
 
 Evidence lives on branch `astra/lab-evidence`:
 - `fe7c981` run: commit `1e0d2a3`, `lab/runs/candidate-fe7c981-20261106/`
 - MikroTik MAB run: commit `43980c6`, `lab/runs/mikrotik-mab-20261106/`
+- `pilot-rc8` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc8-20261107/report.md`, 103 files verified)
 - `pilot-rc7` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc7-20261106/report.md`, observer outage under `runs/candidate-e7d4162-dhcp-rc7-observer-outage-20261106/`). Packet captures remain local; not on the evidence branch.
 
 ## Lab results by capability
@@ -47,9 +49,15 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
 | Accounting Stop replay for an older session | PASS | `e7d4162` | Ignored for the newer session |
 | eAPI observation through an eAPI outage | PASS | `e7d4162` | Unreachable, then stale/unknown after 5 min 20 s, then fresh/connected on recovery. Session freshness and liveness were correct |
 | Switch **Verified** status during an eAPI outage | **defect** → fixed in `pilot-rc8` | `e7d4162` | Verified=yes still named an ended session while a newer one was active and reachability was "no". rc8 marks Verified as a historical record and states whether its session is still active (`TestVerifiedIsMarkedAsHistoricalRecord`) |
-| Console UI: onboarding, policy and CoA actions | **pending** | `e7d4162` | The API passes above are not claimed as UI passes |
+| `pilot-rc8`: clean source build and Linux tests, documented install, EAP-TLS corp admission, invalid-certificate reject | PASS | `62f3b08` | |
+| `pilot-rc8`: natural one-NIC DHCP transitions with API CoA | PASS | `62f3b08` | After a full isolated restart: old segment denied in 0.703 / 0.685 s; new segment open 112.665 / 84.216 s after the CoA, at natural DHCP renewal. No manual renewal or reconnect |
+| `pilot-rc8`: rule-only publish (v7, v8 after restart) and v2 restore; override precedence | PASS | `62f3b08` | |
+| `pilot-rc8`: Verified as a historical record under an eAPI outage (API) | PASS | `62f3b08` | The console label was not checked (UI blocked) |
+| `pilot-rc8`: decision-service outage and recovery; full isolated restart | PASS | `62f3b08` | |
+| Same-VLAN re-authentication | **operational finding** (unattributed) | `62f3b08` | Two sampled ~20 s interruptions of fresh quarantine TCP while carrier, address and Et1 SUCCESS VLAN 20 remained. See known limitations |
+| Console UI: onboarding, policy and CoA actions | **BLOCKED** → `pilot-rc9` | `62f3b08` | A stale native `window.confirm()` from an rc7 tab blocked browser input. rc9 replaces native dialogs with an in-page dialog. The API passes are not claimed as UI passes |
 | Password change and host reset | **not reported** | — | Unit and integration tested |
-| Windows endpoint | untested | — | |
+| Windows endpoint | BLOCKED (untested) | — | |
 | MAB / fallback | BLOCKED on Arista | — | vEOS rejects MAB. Separate MikroTik run: a spoofed allowlisted MAC can pass switch fallback after an EAP-TLS reject (non-product rule). The product rejects non-EAP requests; see known limitations |
 
 ## Automated tests (every commit)

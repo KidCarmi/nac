@@ -42,6 +42,29 @@ function stateChip(s) {
     disabled: "", not_reached: "" };
   return chip(s, map[s] ?? "");
 }
+// ask shows an in-page confirmation and resolves true/false. It replaces the
+// native window.confirm(), which blocks the whole browser (and automation)
+// and can be silently suppressed by the browser. Stable ids for automation:
+// #confirm-dialog, #confirm-ok, #confirm-cancel.
+function ask(message, okLabel = "Confirm") {
+  return new Promise((resolve) => {
+    document.getElementById("confirm-dialog")?.remove();
+    const msg = h("p", { class: "dialog-msg" }, message);
+    const cancel = h("button", { id: "confirm-cancel", type: "button" }, "Cancel");
+    const ok = h("button", { id: "confirm-ok", type: "button", class: "primary" }, okLabel);
+    const dlg = h("dialog", { id: "confirm-dialog", "aria-labelledby": "confirm-title" },
+      h("h2", { id: "confirm-title" }, "Please confirm"), msg, h("div", { class: "row" }, cancel, ok));
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; if (dlg.open) dlg.close(); dlg.remove(); resolve(v); };
+    cancel.addEventListener("click", () => finish(false));
+    ok.addEventListener("click", () => finish(true));
+    dlg.addEventListener("cancel", (e) => { e.preventDefault(); finish(false); }); // Escape
+    document.body.append(dlg);
+    dlg.showModal();
+    ok.focus();
+  });
+}
+
 function flash(msg, kind) {
   const box = document.getElementById("flash");
   const d = h("div", { class: kind || "info" }, msg);
@@ -236,7 +259,7 @@ async function switchDetail(id) {
       h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/observe"), "Switch state refreshed.")) render(); } }, "Refresh session observation"),
       h("button", { class: "primary", onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/verify"), "Verification recorded.")) render(); } }, "Verify (after a test login)"),
       h("button", { class: "danger", onclick: async () => {
-        if (!confirm("Delete switch " + sw.name + "? Its sessions are removed and FreeRADIUS stops accepting it.")) return;
+        if (!await ask("Delete switch " + sw.name + "? Its sessions are removed and FreeRADIUS stops accepting it.")) return;
         if (await act(() => api("DELETE", "/switches/" + id), "Switch deleted.") !== null) go("#/switches");
       } }, "Delete")),
       h("p", { class: "muted" }, "FreeRADIUS client file: ", txt(st.radius_client_file.detail))),
@@ -245,7 +268,7 @@ async function switchDetail(id) {
       h("div", { class: "row" },
         h("button", { onclick: () => navigator.clipboard.writeText(cfg).then(() => flash("Copied.")) }, "Copy"),
         h("button", { onclick: async () => {
-          if (!confirm("Show the configuration including the RADIUS secret? This is recorded in the audit log.")) return;
+          if (!await ask("Show the configuration including the RADIUS secret? This is recorded in the audit log.")) return;
           const full = await act(() => api("GET", "/switches/" + id + "/config?include_secret=true"));
           if (full) pre.textContent = full;
         } }, "Show with secret")),
@@ -292,7 +315,9 @@ async function sessionDetail(id) {
   const coaBusy = d.last_coa && ["requested", "sent"].includes(d.last_coa.state);
   const coaBtn = (kind, label, cls) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
     const live = d.liveness.state === "connected" ? "" : "\n\nNote: " + d.liveness.note;
-    if (!confirm(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live)) return;
+    const pause = "\n\nThe switch re-authenticates the session. Traffic can pause briefly, also without a VLAN change " +
+      "(about 20 s in the virtual lab), and a VLAN change takes effect on the endpoint at its next DHCP renewal.";
+    if (!await ask(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live + pause, label)) return;
     if (await act(() => api("POST", "/sessions/" + id + "/" + kind), "Requested. Following the CoA…")) render();
   } }, label);
 
@@ -358,7 +383,7 @@ async function endpoints() {
         e.posture_observed_at ? ago(e.posture_observed_at) + " (" + e.posture_source + ")" : "—",
         h("div", {}, (byEp[e.id] || []).map((b) => h("div", {}, h("code", {}, b.serial), " ", b.subject_cn || "", " ",
           h("button", { class: "danger", onclick: async () => {
-            if (!confirm("Remove this binding? The device loses identity-based access at its next authentication.")) return;
+            if (!await ask("Remove this binding? The device loses identity-based access at its next authentication.")) return;
             if (await act(() => api("DELETE", "/identity-bindings/" + b.id), "Binding removed.") !== null) render();
           } }, "unbind"))))] })))),
     panel("Add a device record",
@@ -406,7 +431,7 @@ function ruleEditor(rule, inputs, onSaved) {
     h("p", { class: "row" }, h("button", { type: "button", onclick: () => addCond() }, "+ condition"),
       h("button", { class: "primary", type: "submit" }, rule ? "Save rule" : "Add rule"),
       rule ? h("button", { type: "button", class: "danger", onclick: async () => {
-        if (!confirm("Delete rule " + rule.name + " from the draft?")) return;
+        if (!await ask("Delete rule " + rule.name + " from the draft?")) return;
         if (await act(() => api("DELETE", "/policies/" + rule.id), "Rule removed from draft.") !== null) onSaved();
       } }, "Delete rule") : null));
 }
@@ -434,7 +459,7 @@ async function policy() {
       h("p", { class: "muted" }, "Publishing applies to authentications from now on. Existing sessions keep their access until they re-authenticate; use Re-authenticate on a session to apply it now."),
       !draft.differs_from_active ? h("p", { class: "warn" }, "The draft is identical to the active version: edit a rule before publishing.") : null,
       h("div", { class: "row" }, note, h("button", { class: "primary", disabled: !p.validation.valid || !draft.differs_from_active, onclick: async () => {
-        if (!confirm("Publish the previewed draft as a new active version?")) return;
+        if (!await ask("Publish the previewed draft as a new active version?")) return;
         const r = await act(() => api("POST", "/policy-draft/publish", { expected_digest: p.draft_digest, note: note.value }), "Published.");
         if (r) render();
       } }, "Publish this draft"))));
@@ -453,7 +478,7 @@ async function policy() {
     panel("Versions", table(["Version", "Active", "Rules", "Default", "Created", "By", "Note", ""], versions.versions.map((ver) => ({ cells: [ver.number,
       ver.active ? chip("active", "ok") : "", ver.rules.length, ver.default_action, when(ver.created_at), ver.created_by, txt(ver.note),
       ver.active ? "" : h("button", { onclick: async () => {
-        if (!confirm("Restore version " + ver.number + "? It becomes active for new authentications and the draft is reset to it. Sessions under an operator quarantine stay quarantined.")) return;
+        if (!await ask("Restore version " + ver.number + "? It becomes active for new authentications and the draft is reset to it. Sessions under an operator quarantine stay quarantined.")) return;
         if (await act(() => api("POST", "/policy-versions/" + ver.number + "/restore", { note: "restored from console" }), "Version " + ver.number + " restored.")) render();
       } }, "Restore")] })))),
     panel("Activation history", table(["When", "Kind", "Version", "Previous", "By", "Note"], acts.activations.map((a) => ({ cells: [when(a.activated_at), a.kind,

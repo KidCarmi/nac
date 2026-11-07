@@ -48,3 +48,6 @@ label { display: block; margin: 8px 0 2px; color: var(--muted); font-size: 12px;
 .note { border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--chip); border-radius: 4px; margin: 8px 0; }
 .login { max-width: 360px; margin: 60px auto; }
 @media (max-width: 640px) { main { padding: 10px; } .kv { grid-template-columns: 1fr; } }
+dialog#confirm-dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); max-width: 520px; padding: 14px 16px; }
+dialog#confirm-dialog::backdrop { background: rgb(0 0 0 / 0.35); }
+.dialog-msg { white-space: pre-line; }
