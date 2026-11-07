@@ -33,7 +33,7 @@ DHCP ACKs did not carry explicit T1/T2 options. The Linux client attempted
 unicast renewal around 60 s and broadcast rebinding around 105 s.
 The Windows client also renewed each 120 s lease around 60 s; it automatically
 obtained the other subnet after each CoA without a manual renewal or link bounce.
-T2=105 s is the RFC 2131 default for this lease and was not measured in the
+T2=105 s is the [RFC 2131](https://datatracker.ietf.org/doc/html/rfc2131/) default for this lease and was not measured in the
 Windows run.
 
 Trusted EOS eAPI TLS used a disposable lab CA and a switch certificate with

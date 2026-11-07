@@ -1,6 +1,6 @@
 # Standalone NAC pilot closeout — independent lab qualification
 
-Status: in progress. This package extends, and does not replace, the frozen [rc9 baseline](../dhcp-qualification-rc9-20261107/README.md).
+Status: virtual-platform qualification complete for rc10; physical-switch behavior and an independent old-token revocation check remain open. This package extends, and does not replace, the frozen [rc9 baseline](../dhcp-qualification-rc9-20261107/README.md).
 
 ## Answers so far
 
@@ -54,6 +54,12 @@ management api http-commands
 ```
 
 The disposable NAC guest used `SSL_CERT_FILE=/etc/nac/eapi-ca.pem` and `NAC_EAPI_INSECURE_SKIP_VERIFY=false`. Its trusted CA file SHA-256 was `38b2fa8012bd757fba31785038b9697e3ed585143d3eb96ab4ac71f1435718c4`. The switch's startup configuration was not changed by this TLS qualification.
+
+## Operator workflow and pilot readiness
+
+An agent following the product guide completed clean rc10 installation, switch onboarding, certificate binding, policy preview and publication, Quarantine/Restore through the console, and an interactive Account password change. The first Windows run needed manual endpoint profile correction: the Desktop Experience wired service and a pinned trusted CA were prerequisites, and the initial profile failed with a clear FreeRADIUS certificate error. Trusted eAPI required manual EOS certificate import and a NAC CA file. After a full isolated lab restart, EOS reverted to the prior lab's saved RADIUS target and default TLS profile; reapplying the rc10 running configuration was required before admission. A network administrator must save the intended switch configuration in a real deployment. No endpoint address renewal or reconnect was required in the primary or restart Windows runs.
+
+**Agent-operated lab measurements:** documented clean installation **44.9 s**; post-restart UI Restore to fresh corp TCP **35.478 s** (application recovery, including DHCP). The rejected-endpoint diagnosis time was **not instrumented**; the RADIUS reject, switch failure and endpoint block are preserved, but no elapsed operator diagnosis claim is made. A separate human usability trial remains necessary. An external administrator can complete the tested product UI actions after switch and endpoint prerequisites are configured; the one-NIC Windows certificate/profile setup, EOS trusted TLS import and persistence, and disposable lab host operations are documented manual steps rather than console actions.
 
 ## Reproduction
 
