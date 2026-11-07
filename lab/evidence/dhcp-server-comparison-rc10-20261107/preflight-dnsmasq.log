@@ -1,0 +1,18 @@
+Nov  7 14:53:09 dnsmasq[6088]: started, version 2.91 DNS disabled
+Nov  7 14:53:09 dnsmasq[6088]: compile time options: IPv6 GNU-getopt DBus no-UBus i18n IDN2 DHCP DHCPv6 no-Lua TFTP conntrack ipset no-nftset auth DNSSEC loop-detect inotify dumpfile
+Nov  7 14:53:09 dnsmasq-dhcp[6088]: DHCP, IP range 10.70.110.50 -- 10.70.110.99, lease time 1h
+Nov  7 14:53:09 dnsmasq-dhcp[6088]: DHCP, sockets bound exclusively to interface nacveths
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 available DHCP range: 10.70.110.50 -- 10.70.110.99
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 DHCPREQUEST(nacveths) 10.70.110.80 02:00:00:00:aa:01 
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 tags: nacveths
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 DHCPACK(nacveths) 10.70.110.80 02:00:00:00:aa:01 
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 next server: 10.70.110.10
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  1 option: 53 message-type  5
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option: 54 server-identifier  10.70.110.10
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option: 51 lease-time  1h
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option: 58 T1  27m53s
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option: 59 T2  50m23s
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option:  1 netmask  255.255.255.0
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option: 28 broadcast  10.70.110.255
+Nov  7 14:53:14 dnsmasq-dhcp[6088]: 296401868 sent size:  4 option:  3 router  10.70.110.10
+Nov  7 14:53:15 dnsmasq[6088]: exiting on receipt of SIGTERM

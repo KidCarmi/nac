@@ -1,0 +1,20 @@
+2026-11-07T15:06:19Z
+nac-corp
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       2.0G  2.0G   31M  99% /
+inactive
+start 10.70.10.50
+end 10.70.10.99
+interface ens3
+max_leases 50
+remaining yes
+auto_time 30
+lease_file /var/lib/nac-udhcpd.leases
+pidfile /run/nac-udhcpd.pid
+option subnet 255.255.255.0
+option router 10.70.10.10
+option dns 10.70.10.10
+option domain nac-lab.test
+option lease 120
+dnsmasq-base	2.91-0ubuntu0.22.04.2
+UNCONN 0      0       0.0.0.0%ens3:67         0.0.0.0:*    users:(("dnsmasq",pid=6110,fd=4))

@@ -1,0 +1,38 @@
+PORT_CONFIG show running-config | section interface Ethernet
+interface Ethernet1
+   switchport access vlan 10
+   dot1x pae authenticator
+   dot1x port-control auto
+interface Ethernet2
+   switchport access vlan 10
+interface Ethernet3
+   switchport access vlan 20
+interface Ethernet4
+   no switchport
+   ip address 10.70.99.1/24
+interface Ethernet5
+interface Ethernet6
+interface Ethernet7
+interface Ethernet8
+nac-veos-rc1#
+nac-veos-rc1#
+VLANS show vlan brief
+VLAN  Name                             Status    Ports
+----- -------------------------------- --------- -------------------------------
+1     default                          active    Et5, Et6, Et7, Et8
+10    corp                             active    Et1, Et2
+20    quarantine                       active    Et3
+
+nac-veos-rc1#
+nac-veos-rc1#
+HOSTS show dot1x hosts
+Port      Supplicant MAC Auth  State                   Fallback              
+--------- -------------- ----- ----------------------- ----------------------
+Et1       0050.0000.0200 EAPOL SUCCESS                 NONE                  
+
+VLAN
+----
+10  
+
+nac-veos-rc1#
+nac-veos-rc1#

@@ -1,0 +1,20 @@
+2026-11-07T15:06:25Z
+nac-quarantine
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       2.0G  1.9G   63M  97% /
+inactive
+start 10.70.20.50
+end 10.70.20.99
+interface ens3
+max_leases 50
+remaining yes
+auto_time 30
+lease_file /var/lib/nac-udhcpd.leases
+pidfile /run/nac-udhcpd.pid
+option subnet 255.255.255.0
+option router 10.70.20.10
+option dns 10.70.20.10
+option domain nac-lab.test
+option lease 120
+dnsmasq-base	2.91-0ubuntu0.22.04.2
+UNCONN 0      0       0.0.0.0%ens3:67         0.0.0.0:*    users:(("dnsmasq",pid=3285,fd=4))
