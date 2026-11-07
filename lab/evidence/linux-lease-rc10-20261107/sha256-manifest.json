@@ -112,8 +112,8 @@
     },
     {
       "path": "findings.md",
-      "bytes": 4245,
-      "sha256": "bc09f876e185cfd51ef213df055608be6ee20e65ee089da9ead6d5343f464694"
+      "bytes": 4332,
+      "sha256": "53f12193dfcd87773602459f00eab35a5db5ba559ce648dde2a98d9f8de2a863"
     },
     {
       "path": "lease-events-early.txt",
