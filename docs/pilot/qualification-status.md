@@ -16,11 +16,12 @@ tests. A row stays **pending** until a lab result names the commit it ran on.
 | `pilot-rc6` | `cf8920656b44dd628334cf2934c4ba12c22a28d4` | `fa39d5be994661385a369067f56b61f529a8b446e406e6d71763b2bcccd6b4bd` | **Lab run completed** by ASTRA (results in ASTRA's local handoff). Succeeded by rc7, which adds only the installer restart fix; nacd source is identical |
 | `pilot-rc7` | `e7d41626c88eef8c708b9e0dd15fa295d455193c` | `16740a48aa8a869fa50e667eaadd6ee2df3a8ef45df48ef05c4557818fba8270` | **PASS** on the API workflows below (2026-11-06), plus **one defect**: the switch Verified badge read as current after its session ended. Console UI actions not yet qualified |
 | `pilot-rc8` | `62f3b08f5ee302b7a7a7de7fb0a4fce75cf52491` | `fab898e64423c32230bd49a7164be07c8c0308464e27eced218b189e29746fe2` | **PASS** on everything ASTRA could run (2026-11-07), including the Verified fix and a full isolated restart. Console UI actions **BLOCKED** by a stale native `window.confirm()` from an rc7 tab. One unattributed operational finding (same-VLAN re-authentication pause) |
-| `pilot-rc9` | the commit that adds this row (commit and nacd hash in the PR; a commit cannot contain its own hash) | — | rc8 plus in-page confirmation dialogs (no native `window.confirm()`), a re-authentication warning in the CoA confirmation, and these docs. To run: console UI actions and the Verified label |
+| `pilot-rc9` | `3e92642110f97d3f42a43652d33479e82cfbcc35` | `d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749` | **PASS** on the console UI retest (2026-11-07), plus the core, restart and override runs. Server code is identical to rc8. Not run on rc9: a clean-instance install (it passed on rc8) |
 
 Evidence lives on branch `astra/lab-evidence`:
 - `fe7c981` run: commit `1e0d2a3`, `lab/runs/candidate-fe7c981-20261106/`
 - MikroTik MAB run: commit `43980c6`, `lab/runs/mikrotik-mab-20261106/`
+- `pilot-rc9` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc9-20261107/`)
 - `pilot-rc8` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc8-20261107/report.md`, 103 files verified)
 - `pilot-rc7` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc7-20261106/report.md`, observer outage under `runs/candidate-e7d4162-dhcp-rc7-observer-outage-20261106/`). Packet captures remain local; not on the evidence branch.
 
@@ -55,7 +56,8 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
 | `pilot-rc8`: Verified as a historical record under an eAPI outage (API) | PASS | `62f3b08` | The console label was not checked (UI blocked) |
 | `pilot-rc8`: decision-service outage and recovery; full isolated restart | PASS | `62f3b08` | |
 | Same-VLAN re-authentication | **operational finding** (unattributed) | `62f3b08` | Two sampled ~20 s interruptions of fresh quarantine TCP while carrier, address and Et1 SUCCESS VLAN 20 remained. See known limitations |
-| Console UI: onboarding, policy and CoA actions | **BLOCKED** → `pilot-rc9` | `62f3b08` | A stale native `window.confirm()` from an rc7 tab blocked browser input. rc9 replaces native dialogs with an in-page dialog. The API passes are not claimed as UI passes |
+| Console UI: sign-in, switch and session status, policy and CoA actions | PASS | `3e92642` | In-page confirmation for Restore, Publish and Re-authenticate. Quarantine and Restore CoA on the active EAP-TLS session. Draft edit of only `bound-eap-corp.segment`, preview predicted quarantine, publish v12, re-authenticate, then restore v2 and re-authenticate. Pcaps show CoA-ACK, switch-initiated EAP-TLS and Access-Accept VLAN 20 / 10. NAC decisions v12 quarantine and v2 corp; eAPI fresh with matching VLANs |
+| DHCP across UI-driven transitions | PASS | `3e92642` | The same one-NIC endpoint naturally leased 10.70.20.80 (quarantine open, corp blocked), then 10.70.10.80 after the UI restore (corp open, quarantine blocked). No manual renewal, reconnect or port bounce. DHCP ACKs 06:44:55 q, 06:47:56 corp, 06:50:56 q, 06:56:55 corp UTC. The continuous UI-run probe file is empty because the endpoint disk filled (a lab issue); one-shot TCP and pcaps cover these transitions, and the earlier rc9 core runs have continuous probe timing |
 | Password change and host reset | **not reported** | — | Unit and integration tested |
 | Windows endpoint | BLOCKED (untested) | — | |
 | MAB / fallback | BLOCKED on Arista | — | vEOS rejects MAB. Separate MikroTik run: a spoofed allowlisted MAC can pass switch fallback after an EAP-TLS reject (non-product rule). The product rejects non-EAP requests; see known limitations |
@@ -75,6 +77,7 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
 
 ## Manual interventions recorded during lab runs
 
+- `3e92642`: an rc8 native browser prompt left open in the lab was cancelled before the UI run. No product intervention was needed.
 - `e7d4162`: none reported. The DHCP transitions needed no manual renewal or
   port bounce.
 - `fe7c981`: after the full restart, the final policy restore was completed

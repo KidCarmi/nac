@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### pilot-rc9 (after pilot-rc8 `62f3b08`, which passed everything ASTRA could run)
+### pilot-rc9 (`3e92642`; console UI passed in the lab on 2026-11-07)
 - **Console confirmations are in-page.** Native `window.confirm()` blocked
   the browser: a stale dialog from an rc7 tab blocked UI qualification of
   rc8. It can also be silently suppressed by the browser. All seven

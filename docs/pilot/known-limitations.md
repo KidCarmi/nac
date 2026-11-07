@@ -155,10 +155,15 @@ port, and the lab shows endpoints recover without one.
 - **Validation:** see [qualification status](qualification-status.md).
   - The documented install (clean and in-place upgrade), CoA, accounting,
     eAPI observation, DHCP transitions, outage and full-restart recovery
-    passed on vEOS-lab 4.29.2F (`pilot-rc7`). Those runs used the API.
-  - The console's onboarding and policy/CoA actions on `pilot-rc7` are not
-    yet lab-validated.
-  - Physical Arista hardware and Windows endpoints are untested.
+    passed on vEOS-lab 4.29.2F (`pilot-rc7`, `pilot-rc8`, through the API).
+  - The console workflows (sign-in, status, policy edit, preview, publish
+    and restore, quarantine and restore CoA) passed on `pilot-rc9`.
+  - Not lab-run:
+    - password change and host reset (unit and integration tested only)
+    - a clean-instance install of exact `pilot-rc9` (passed on `pilot-rc8`;
+      rc9 changes only the embedded console)
+  - Untested: physical Arista hardware (including MAB and unplug) and
+    Windows endpoints.
 - **One operator account.** The bootstrapped administrator can change its own
   password (console **Account**, or `POST /api/v1/auth/password`), and root on
   the control node can reset it (`nac-reset-password`). There is no operator
