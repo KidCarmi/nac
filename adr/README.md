@@ -16,3 +16,4 @@ Consequences). Use [`0000-template.md`](0000-template.md) for new records.
 | [0005](0005-stdlib-router-no-orm.md) | Standard-library router and no ORM | Accepted |
 | [0006](0006-wired-pilot-architecture.md) | Wired pilot: FreeRADIUS front end, nacd decisions, versioned policy, identity-scoped override | Accepted |
 | [0007](0007-operator-session-revocation.md) | Operator sessions revocable through a per-operator token version | Accepted |
+| [0008](0008-ai-operated-change-workflow.md) | AI-operated change workflow: change requests, digest-bound human approval, delegated identities, MCP | Proposed |
