@@ -574,9 +574,10 @@ components:
 
     ExecutionPlan:
       type: object
-      required: [validation_id, simulation_id, stages]
+      required: [validation_id, simulation_id, scope, stages]
       additionalProperties: false
       properties:
+        scope: { $ref: "#/components/schemas/ActivationScope" }
         validation_id: { type: string, format: uuid }
         simulation_id: { type: string, format: uuid }
         stages:
@@ -593,10 +594,10 @@ components:
         type:
           type: string
           enum: [activate, apply, observe]
-          description: "`activate` publishes globally (applies at next authentication). `apply` re-authenticates the listed sessions now via CoA. `observe` waits for re-authentication and switch observation."
+          description: "`activate` records a new version activated for the plan's `scope`. Only endpoints in that scope get it at their next authentication; others keep the previously resolved version. `apply` re-authenticates listed sessions inside the scope now via CoA. `observe` waits for re-authentication and switch observation. Promotion to a wider scope is a separate plan with its own approval."
         targets:
           type: array
-          description: "`apply` only: explicit sessions. The plan view shows predicted VLAN, shared-port dependents and the documented vEOS interruption per target."
+          description: "`apply` only: explicit sessions, all inside `scope` (others are rejected at plan validation). The plan view shows predicted VLAN, shared-port dependents and the documented vEOS-lab interruption per target."
           items:
             type: object
             required: [session_id]
@@ -646,8 +647,9 @@ components:
         approved_by: { $ref: "#/components/schemas/Principal" }
         bindings:
           type: object
-          required: [cr_id, content_digest, base_version, validation_id, simulation_id, environment_fingerprint, plan_digest]
+          required: [cr_id, content_digest, base_version, validation_id, simulation_id, environment_fingerprint, plan_digest, scope]
           properties:
+            scope: { $ref: "#/components/schemas/ActivationScope" }
             cr_id: { type: string, format: uuid }
             content_digest: { type: string }
             base_version: { type: integer }
@@ -659,6 +661,31 @@ components:
         consumed_by_execution: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
+
+    ActivationScope:
+      type: object
+      description: |
+        Where an activation applies. On each authentication the decision path
+        uses the most specific current activation that matches the request's
+        switch and NAS-Port-Id: port, then switch, then `all`. Operator
+        quarantine overrides take precedence over every scope. The existing
+        `GET /policy-activations` gains this as an additive `scope` field.
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [all, cohort] }
+        switches:
+          type: array
+          description: "`cohort`: whole switches."
+          items: { type: string, format: uuid }
+        ports:
+          type: array
+          description: "`cohort`: individual switch ports."
+          items:
+            type: object
+            required: [switch_id, nas_port_id]
+            properties:
+              switch_id: { type: string, format: uuid }
+              nas_port_id: { type: string, examples: ["Ethernet1"] }
 
     TargetOutcome:
       type: object
@@ -685,6 +712,7 @@ components:
         idempotency_key: { type: string }
         state: { type: string, enum: [running, applied, observed, failed, stopped] }
         activated_version: { type: integer }
+        activated_scope: { $ref: "#/components/schemas/ActivationScope" }
         stages:
           type: array
           items:

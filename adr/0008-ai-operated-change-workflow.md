@@ -1,8 +1,8 @@
 # 0008. AI-operated change workflow: change requests, digest-bound human approval, delegated identities, MCP
 
-- **Status:** Proposed (contract for CODEX review; no code yet)
+- **Status:** Proposed (contract for the owner-side architecture/security review; no code yet)
 - **Date:** 2026-11-07
-- **Deciders:** OPUS (backend), CODEX (architecture/security review), repository owner
+- **Deciders:** OPUS (backend), owner-side assistant (architecture/security review), repository owner. The GitHub `@codex review` bot is an additional automated reviewer.
 
 ## Context
 
@@ -28,7 +28,7 @@ capability in the console and act as approvers and fallback.
 | Identities | One bootstrap admin; roles admin/operator/viewer; per-operator token revocation (ADR-0007) | No operator management, no delegated (AI) identities, no scopes |
 
 This ADR fixes the contract that the backend, the console, the MCP server
-and CODEX's review work against. It is deliberately the safety core: approval
+and the owner-side review work against. It is deliberately the safety core: approval
 and identity rules must exist before an AI can drive changes.
 
 Out of scope for this increment:
@@ -138,26 +138,63 @@ An approval is a stored record. It is never a boolean that a client sends.
 - **Audit.** `change.approval.create|revoke|invalidate`, with actor and
   bindings.
 
-### 5. Execution: a staged plan with recorded outcomes
+### 5. Scoped activation and staged execution
 
-`POST /change-requests/{id}/executions` with `{approval_id}` and an
-`Idempotency-Key` header returns `202` and an execution record. The plan
-reviewed at approval time, identified by `plan_digest`, has ordered stages:
+**A true canary needs cohort-aware policy selection, not just a targeted
+CoA.** If a version were activated globally and only some sessions were
+re-authenticated, every other endpoint would get the new policy at its next
+authentication anyway. So staged publication is defined on the decision
+path.
 
-1. **activate**: publish the CR content as a new immutable policy version,
-   reusing `PublishWorkspace`, with base-version and digest checks under the
-   activation lock. It applies at the next authentication, as today.
-2. **apply** (optional): re-authenticate an explicit cohort of sessions
-   through the existing CoA state machine. The cohort is listed in the plan
-   by session id, switch and port. Before execution the plan shows, per
-   target:
+**Scoped activation.**
+- An activation has a `scope`:
+  - `all`, which is today's behavior
+  - a **cohort**: an explicit set of `(switch_id, port)` pairs, or whole
+    switches
+- Activations stay append-only (ADR-0006).
+- For each authentication, `radiusauth` resolves the version to evaluate
+  by taking the most specific current activation that matches the
+  request's switch and `NAS-Port-Id`:
+  1. a port-level cohort
+  2. a switch-level cohort
+  3. `all`
+- The decision record stores the resolved version and the activation that
+  supplied it. The console and API can then show, per session, which
+  version applied and why.
+- An endpoint outside the cohort keeps the previous version, including when
+  it re-authenticates. This is the out-of-cohort property the acceptance
+  tests check.
+- Operator quarantine overrides keep precedence over every version and
+  every scope, as today.
+
+**Scope is part of what is approved.** The approval's `scope` binding is the
+exact cohort or `all`. To widen a canary, a new CR or plan stage targets the
+wider scope, and that needs its own approval. To roll back a cohort, a new
+scoped activation restores the previous version for that cohort only.
+
+**Execution.** `POST /change-requests/{id}/executions` takes `{approval_id}`
+and an `Idempotency-Key` header. It returns `202` and an execution record.
+The plan reviewed at approval time, identified by `plan_digest`, has ordered
+stages:
+
+1. **activate(scope)**: write the CR content as a new immutable version.
+   This reuses `PublishWorkspace`, with base-version and digest checks under
+   the activation lock. It records an activation for the approved scope,
+   which takes effect at the next authentication *of endpoints in that
+   scope*.
+2. **apply** (optional): re-authenticate sessions *inside the scope* now,
+   through the existing CoA state machine. Targets outside the scope are
+   rejected when the plan is validated. Before execution the plan shows,
+   per target:
    - the predicted segment and VLAN, from the simulation
    - shared-port dependents: other active sessions on the same port
-   - the documented vEOS interruption (any accepted VLAN-bearing CoA)
+   - the documented vEOS-lab interruption (an ACKed, VLAN-bearing CoA)
 
    Stop-on-failure is the default.
 3. **observe**: wait for re-authentication and eAPI observation, up to a
    deadline set in the plan.
+4. **promote** (a separate, later plan with its own approval): activate the
+   same version for a wider scope or for `all`.
 
 Each target records four outcomes separately:
 - `requested`
@@ -279,13 +316,14 @@ access automatically. Nothing in a skill is a security control.
   installs, depending on O1.
 - Changing the meaning of publish and restore is a v1 compatibility break
   (O3).
-- Global activation stays global. The "apply" stage only chooses which
-  sessions re-authenticate now. Per-cohort policy versions are deferred
-  (O4).
+- Scoped activation changes the decision path: the active version is
+  resolved per switch and port. That needs careful tests for resolution
+  order, rollback per scope, and the interaction with overrides and outage
+  imports.
 - More state: CRs, validations, simulations, approvals, executions,
   delegated identities. Each table is append-mostly and audited.
 
-### Open decisions (owner / CODEX)
+### Open decisions (owner / owner-side review)
 - **O1. Self-approval through a delegate.** May the human named in a CR's
   `on_behalf_of` approve it? Proposed: **no by default**, with an explicit
   per-installation setting for single-admin pilots, shown in the approval
@@ -296,9 +334,12 @@ access automatically. Nothing in a skill is a security control.
   publish and restore as a documented security exception inside `/api/v1`,
   with `info.version` 2.0.0. Today the only client of those operations is
   our own console. The alternative is `/api/v2` for the policy write paths.
-- **O4. Staged publication.** Proposed for this increment: global
-  activation plus a cohort apply stage. Per-cohort policy needs its own ADR,
-  because the decision path would have to resolve a version per scope.
+- **O4. Cohort granularity.** Decided: scoped activation is in this
+  increment (section 5). Still open: whether a cohort may also be defined by
+  identity attributes, such as a device group. Proposed: no. Location
+  scopes (switch, port) are deterministic and can be checked against
+  observation; attribute scopes can change between approval and
+  authentication.
 - **O5. Approval expiry and step-up.** Proposed: 24 h expiry and password
   step-up. Is something stronger, such as WebAuthn, required before
   external pilots?
@@ -319,7 +360,7 @@ access automatically. Nothing in a skill is a security control.
   - freshness
   - shared-port dependencies, with no automatic port bounce for a PC's DHCP problem
   - platform capabilities per switch
-- **0010. Restricted MAB path.** Needs CODEX's threat model:
+- **0010. Restricted MAB path.** Needs the owner-side reviewer's threat model:
   - an explicit lower-assurance path on named ports
   - never the segment an EAP-TLS identity gets
   - a failed certificate never falls back to MAC access
