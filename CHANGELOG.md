@@ -20,6 +20,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No API, decision, CoA packet or installer change.
 
 ### Open after pilot-rc10
+- **DHCP server comparison (ASTRA, `8db6fe8`):** an authoritative dnsmasq
+  moves Linux recovery from lease expiry to T2. That is 23–52 min on a
+  1-hour lease: improved, not prompt. ASTRA proposed an acceptance target
+  of 60 s, not yet agreed. The smallest remedy to test is short T1/T2 with
+  a long lease, which needs no product change. See "Recovery boundary" in
+  the known limitations.
 - **Single fresh-instance all-console workflow: PASS** (ASTRA, `af46f02`).
   This closes the coverage gap. It also lab-tested pre-change token
   revocation (401).

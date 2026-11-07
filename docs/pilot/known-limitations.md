@@ -18,11 +18,17 @@
   | vEOS-lab 4.29.2F | Windows Server 2025 Standard Evaluation, Desktop Experience, build 26100 | BusyBox udhcpd; 120 s and 3600 s, at the lease ages tested | about 30–65 s |
   | vEOS-lab 4.29.2F | Linux, systemd-networkd | BusyBox udhcpd; 120 s | 24–117 s |
   | vEOS-lab 4.29.2F | Linux, systemd-networkd | BusyBox udhcpd; 3600 s | 1,811.9 s for one Restore about 30 min before expiry |
+  | vEOS-lab 4.29.2F | Linux, systemd-networkd (Ubuntu 22.04.5) | dnsmasq 2.91, authoritative; 3600 s; default T1/T2 | at T2, by NAK then Discover: early Quarantine 3,112.6 s, near-T1 Restore 1,369.6 s ([`8db6fe8`](https://github.com/KidCarmi/nac/tree/8db6fe899809c2a20db741d08f72e8e3711680e1/lab/evidence/dhcp-server-comparison-rc10-20261107)) |
 
-- **Unresolved: long leases with Linux clients.** In the tested setup, a
-  Linux endpoint reached its new VLAN only when its old lease expired. With
-  ordinary long leases, that is a material usability limitation. No
-  mitigation has been measured yet.
+- **Unresolved: long leases with Linux clients.** Measured:
+  - With BusyBox udhcpd, a Linux endpoint reached its new VLAN only when its
+    old lease expired.
+  - With an authoritative dnsmasq it recovered at T2 (87.5 % of the lease),
+    which is still 23–52 min on a 1-hour lease.
+
+  With ordinary long leases, that is a material usability limitation. No
+  remedy has met a recovery target yet. The remedy evaluation is under
+  "Recovery boundary" below.
 - **Untested:** physical Arista hardware, Windows 10/11, other DHCP clients
   and servers, and other accepted CoA forms.
 
@@ -153,18 +159,85 @@ whatever the endpoint or lease. How long the endpoint takes to reach the
 - **Linux endpoints:** only where an outage of up to the remaining lease is
   acceptable after a quarantine change or a restore. In practice that means
   short leases, and 120 s is the only short lease measured.
-- **Long leases with Linux clients:** unresolved. ASTRA is comparing a
-  second DHCP server with the same client and lease.
+- **Long leases with Linux clients:** unresolved. An authoritative DHCP
+  server only moves recovery from lease expiry to T2.
 
-**Not yet measured:**
-- **Shorter leases.** They shorten the Linux worst case proportionally, at
-  the cost of more DHCP traffic and more dependence on the server.
-- **A DHCP server that NAKs a rebind for an address from another subnet.**
-  This should end the Linux wait at T2 (87.5 % of the lease). The lab udhcpd
-  stays silent instead.
-- **An endpoint hook that renews the address after 802.1X succeeds.**
+### Recovery boundary (dnsmasq comparison, `pilot-rc10`)
 
-None of these is recommended until it has been run in the lab.
+ASTRA's evidence: [`8db6fe8`](https://github.com/KidCarmi/nac/tree/8db6fe899809c2a20db741d08f72e8e3711680e1/lab/evidence/dhcp-server-comparison-rc10-20261107), 55 files, manifest verified here. The
+setup held the NAC binary, switch, Linux client, topology and 3600 s lease
+constant. Only the DHCP server changed: Ubuntu dnsmasq-base 2.91,
+`dhcp-authoritative`, on both segments.
+
+| Transition (Linux, systemd-networkd) | Old segment denied | New segment reachable | How |
+|---|---|---|---|
+| Early Quarantine (corp → quarantine) | +1.385 s | **+3,112.573 s** (51 m 53 s) | T1 unicast renewal unanswered; broadcast rebind at T2 → NAK in 5 ms → Discover → ACK |
+| Near-T1 Restore (quarantine → corp) | +1.687 s | **+1,369.615 s** (22 m 50 s) | same path at T2 |
+
+- **What changed against BusyBox udhcpd:** its near-T1 Restore took
+  +1,811.866 s, so dnsmasq was 442 s faster. The BusyBox early Quarantine
+  baseline stops at 148 s, because of intervention, so it is not a valid
+  comparator.
+- **Classification:** recovery **improved but not prompt**. It now ends at
+  T2 instead of at expiry, and still runs to many minutes on long leases.
+- **What decides it:** the ACKs advertised the default timers (lease 3600 s,
+  T1 1800 s, T2 3150 s). The first broadcast attempt, the rebind at T2, is
+  the earliest moment a server on the new VLAN can answer. The
+  T1 renewal is unicast to the old server, which is unreachable from the new
+  VLAN.
+
+**Proposed acceptance target (ASTRA; not yet agreed by the owner, not
+measured):**
+- fresh TCP to the new permitted segment within 60 s of the CoA
+- old segment denied within 5 s
+- no manual endpoint action
+- shown in both directions, at early and near-T1 lease ages, and after a
+  restart
+
+**The target interacts with the vEOS floor.** On vEOS-lab, an ACKed,
+VLAN-bearing CoA alone interrupted forwarding for up to about 58 s, even
+without a VLAN change. Windows VLAN moves measured 30–65 s, and three of them
+exceeded 60 s (61.4, 61.9, 63.9 s). On this virtual switch the 60 s target
+may be unreachable whatever DHCP does. The owner should decide whether it
+applies per platform.
+
+**Remedies, smallest first (none measured against the target yet):**
+1. **Short T1/T2 with a long lease, on an authoritative server (DHCP
+   configuration only).**
+   - What it does: the server advertises, for example, T1 = 30 s and
+     T2 = 45 s with a 3600 s lease (DHCP options 58/59). Recovery then
+     follows the measured NAK-at-T2 path. The expected worst case is about
+     T2 plus the Discover/Offer time: 3 s in this capture, which is
+     dnsmasq's ping check. The vEOS forwarding floor above still applies.
+   - Why it's first: the lease keeps its long validity, so endpoints keep
+     their addresses through a DHCP-server outage. It needs no NAC change,
+     no endpoint change and no port action.
+   - Cost: every client renews every T1, the same renewal load as a 30 s
+     lease.
+   - Needs a lab run: confirm the client honours server-sent T1/T2, measure
+     both directions at both lease ages, check Windows still behaves, and
+     record the DHCP load.
+2. **An endpoint hook for managed Linux.**
+   - What it does: on 802.1X success after a re-authentication, a
+     supplicant action restarts DHCP when the gateway is unreachable. In
+     the lab, a manual `networkctl down/up` recovered in 6.9 s;
+     `networkctl renew` did not help.
+   - Cost: it applies only to endpoints the customer manages. It needs a
+     guard so periodic re-authentication does not churn addresses.
+   - Needs its own compatibility test.
+3. **Shorter leases.** Same effect as remedy 1, but a DHCP outage then costs
+   addresses within minutes. Remedy 1 dominates it.
+4. **Not proposed:**
+   - **A switch port bounce.** vEOS has no documented support for it. It
+     disconnects every device on the port, which owner direction forbids for
+     a PC's DHCP problem. On a single-device port it would also turn eAPI
+     from observation into control, which is a design change.
+   - **A NAC product change for DHCP.** NAC already denies the old segment
+     within about 1.4–1.7 s. Recovery is a property of the DHCP
+     client/server pair, and NAC cannot observe or configure it.
+   - The product's part is to state the dependency. Later (ADR-0009), the
+     dry-run can show the expected recovery for each segment from declared
+     DHCP timers.
 
 **Linux 1-hour details (ASTRA, [`a6df762`](https://github.com/KidCarmi/nac/tree/a6df7627bcdf87d9e4b3c81d412dc91a949c4bd8/lab/evidence/linux-lease-rc10-20261107)):**
 - **Restore near T1:**
