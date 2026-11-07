@@ -104,7 +104,10 @@ told to put a session in, and (with eAPI) which VLAN the switch reports.
 - A fresh **Observed on the switch** with "matches requested" means the
   switch reports that VLAN.
 
-Neither means the endpoint has a usable address in that VLAN.
+Neither means the endpoint has a usable address in that VLAN. The session
+page and API show the three facts separately: switch authorization, the
+switch's observation, and endpoint reachability (`not_observed`, because NAC
+never tests the endpoint). The third one is new in `pilot-rc10`.
 
 Measured on `pilot-rc7` (EVE, vEOS-lab 4.29.2F, one-NIC Linux DHCP
 endpoint, ASTRA):

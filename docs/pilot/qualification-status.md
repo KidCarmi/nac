@@ -17,13 +17,14 @@ tests. A row stays **pending** until a lab result names the commit it ran on.
 | `pilot-rc7` | `e7d41626c88eef8c708b9e0dd15fa295d455193c` | `16740a48aa8a869fa50e667eaadd6ee2df3a8ef45df48ef05c4557818fba8270` | **PASS** on the API workflows below (2026-11-06), plus **one defect**: the switch Verified badge read as current after its session ended. Console UI actions not yet qualified |
 | `pilot-rc8` | `62f3b08f5ee302b7a7a7de7fb0a4fce75cf52491` | `fab898e64423c32230bd49a7164be07c8c0308464e27eced218b189e29746fe2` | **PASS** on everything ASTRA could run (2026-11-07; installed in place over rc7, clean-instance install BLOCKED), including the Verified fix and a full isolated restart. Console UI actions **BLOCKED** by a stale native `window.confirm()` from an rc7 tab. One unattributed operational finding (same-VLAN re-authentication pause) |
 | `pilot-rc9` | `3e92642110f97d3f42a43652d33479e82cfbcc35` | `d2d93e3ddc40a7eadcddfd3275f3d8a7aa5610ca07b43eb219bb9d59267a3749` | **PASS** on the console UI retest (2026-11-07), plus the core, restart and override runs. Server code is identical to rc8. Installed in place over rc8 for the UI run, and **clean-instance install PASS** (2026-11-07, separate guest). Not verified on the clean instance: switch onboarding in the UI. Password change and host reset passed through the API and the host command; the Account page in the console was not clicked |
+| `pilot-rc10` | the commit that adds this row (commit and nacd hash in the PR; a commit cannot contain its own hash) | — | rc9 plus `endpoint_reachability` in the API and the console's third session panel, the verified-eAPI-TLS docs, ADR-0006/0007 and the browser walkthrough check. To run: the clean-instance console walkthrough (onboarding, binding, policy, Account) and verified eAPI TLS on EOS |
 
 Evidence lives on branch `astra/lab-evidence`:
 - `fe7c981` run: commit `1e0d2a3`, `lab/runs/candidate-fe7c981-20261106/`
 - MikroTik MAB run: commit `43980c6`, `lab/runs/mikrotik-mab-20261106/`
-- `pilot-rc9` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc9-20261107/`; clean install and account workflow under `runs/candidate-3e92642-clean-rc9-20261107/` (`findings.md`, `account-workflow.txt`))
+- `pilot-rc9` run: **published**, sanitized: `astra/lab-evidence` @ `50633684`, `lab/evidence/dhcp-qualification-rc9-20261107/` (`report.md`; `sha256-manifest.json` verifies 214 files): https://github.com/KidCarmi/nac/tree/50633684b9f0452f2e549cf82f92eabc2afde9a2/lab/evidence/dhcp-qualification-rc9-20261107
 - `pilot-rc8` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc8-20261107/report.md`, 103 files verified)
-- `pilot-rc7` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc7-20261106/report.md`, observer outage under `runs/candidate-e7d4162-dhcp-rc7-observer-outage-20261106/`). Packet captures remain local; not on the evidence branch.
+- `pilot-rc7` run: ASTRA's local handoff (`deliverables/dhcp-qualification-rc7-20261106/report.md`, observer outage under `runs/candidate-e7d4162-dhcp-rc7-observer-outage-20261106/`). The rc7 and rc8 packages are in ASTRA's local handoff only.
 
 ## Lab results by capability
 
@@ -87,7 +88,8 @@ Platform: vEOS-lab 4.29.2F, FreeRADIUS `3.2.5+dfsg-3~ubuntu24.04.3`, Ubuntu
   - policy restore
 
   It also checks that no native dialog appears. The switch's RADIUS traffic
-  is simulated through the adapter API.
+  is simulated through the adapter API, so this is a build regression check.
+  It does not qualify real switch onboarding or endpoint access.
 
 ## Manual interventions recorded during lab runs
 

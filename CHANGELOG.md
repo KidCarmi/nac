@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc10 (after pilot-rc9 `3e92642`)
+- **Endpoint reachability is a separate, explicit fact.** Session views
+  (API `endpoint_reachability`, always `not_observed`) and the console's
+  third session panel keep it apart from switch authorization and the
+  switch's observed VLAN.
+- **Verified eAPI TLS documented** (installation §7a): `SSL_CERT_FILE` with
+  the switch CA, and a switch certificate whose SAN names the eAPI host.
+  No code change: rc9 already verifies when skip-verify is off.
+- `scripts/ui-walkthrough.js`: a browser check of the whole operator
+  walkthrough on a fresh nacd.
+- ADR-0006 (pilot architecture) and ADR-0007 (session revocation,
+  superseding ADR-0004's revocation trade-off).
+- Docs: the tested installation and recovery setups, and corrected
+  clean-install records (rc8 in-place only).
+
 ### pilot-rc9 (`3e92642`; console UI passed in the lab on 2026-11-07)
 - **Console confirmations are in-page.** Native `window.confirm()` blocked
   the browser: a stale dialog from an rc7 tab blocked UI qualification of
