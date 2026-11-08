@@ -234,7 +234,9 @@ both segments. The ACKs carried 3600 / 30 / 45.
   +6.163 s.
 
 **Remaining options (none measured against the target):**
-1. **An endpoint hook for managed Linux.**
+1. **An endpoint hook for managed Linux** (next to test; reference hook
+   and test plan in [`endpoint-dhcp-hook/`](endpoint-dhcp-hook/README.md),
+   unqualified).
    - What it does: after 802.1X success following a re-authentication, a
      supplicant action restarts DHCP (`down/up` or equivalent) when the
      gateway does not answer. It retries until the gateway does.

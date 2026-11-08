@@ -1,0 +1,15 @@
+# Reference unit for the UNQUALIFIED endpoint DHCP recovery hook (see README.md).
+# Install: /usr/local/sbin/nac-dhcp-recover (mode 0755) and this file in
+# /etc/systemd/system/, then: systemctl enable --now nac-dhcp-recover@<interface>
+[Unit]
+Description=NAC reference DHCP recovery hook on %i (unqualified)
+After=systemd-networkd.service
+Wants=systemd-networkd.service
+
+[Service]
+ExecStart=/usr/local/sbin/nac-dhcp-recover %i
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

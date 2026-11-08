@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# nac-dhcp-recover: reference endpoint hook for managed Linux (systemd-networkd).
+#
+# STATUS: UNQUALIFIED reference for the lab test described in README.md. It
+# is endpoint configuration, not part of NAC, and is not installed by NAC.
+#
+# Problem it addresses:
+#   After a CoA moves an 802.1X session to another VLAN, the link stays up,
+#   so the DHCP client keeps its old lease. Its T1 renewal is unicast to an
+#   unreachable server, and a broadcast rebind can be lost or ignored. The
+#   endpoint can stay on its old address for minutes.
+#
+# What it does:
+#   It runs once a second. When 802.1X reports the port authorized, the
+#   endpoint has a default route, and that gateway has not answered for
+#   UNREACHABLE_SECONDS in a row, it restarts DHCP on the interface. Then it
+#   backs off exponentially, from MIN_INTERVAL to MAX_INTERVAL, until the
+#   gateway answers again.
+#   It does nothing when there is no default route: no lease means the DHCP
+#   client is already discovering.
+#
+# Usage: nac-dhcp-recover <interface>      (run as root; see the systemd unit)
+set -u
+
+IF="${1:?usage: nac-dhcp-recover <interface>}"
+CTRL="${NAC_HOOK_WPA_CTRL:-/run/wpa_supplicant}"           # wpa_supplicant ctrl_interface
+UNREACHABLE_SECONDS="${NAC_HOOK_UNREACHABLE_SECONDS:-5}"   # consecutive failed 1 s probes
+MIN_INTERVAL="${NAC_HOOK_MIN_INTERVAL:-30}"                 # seconds between actions (start)
+MAX_INTERVAL="${NAC_HOOK_MAX_INTERVAL:-300}"                # backoff ceiling
+ACTION="${NAC_HOOK_ACTION:-linkcycle}"                      # linkcycle | reconfigure
+
+log() {
+	logger -t nac-dhcp-recover -- "$*" 2>/dev/null || true
+	printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$*"
+}
+
+authorized() {
+	wpa_cli -p "$CTRL" -i "$IF" status 2>/dev/null | grep -q '^suppPortStatus=Authorized'
+}
+
+gateway() {
+	ip -4 route show default dev "$IF" 2>/dev/null | awk '$1 == "default" { print $3; exit }'
+}
+
+recover() {
+	case "$ACTION" in
+	reconfigure)
+		networkctl reconfigure "$IF"
+		;;
+	linkcycle)
+		networkctl down "$IF"
+		sleep 1
+		networkctl up "$IF"
+		;;
+	*)
+		log "unknown NAC_HOOK_ACTION=$ACTION; doing nothing"
+		;;
+	esac
+}
+
+fails=0
+interval=$MIN_INTERVAL
+last=0
+log "started on $IF (ctrl=$CTRL unreachable=${UNREACHABLE_SECONDS}s interval=${MIN_INTERVAL}-${MAX_INTERVAL}s action=$ACTION)"
+
+while sleep 1; do
+	if ! authorized; then
+		fails=0
+		continue
+	fi
+	gw=$(gateway)
+	if [ -z "$gw" ]; then
+		# No lease: the DHCP client is already in INIT and discovering.
+		fails=0
+		continue
+	fi
+	if ping -n -c 1 -W 1 -I "$IF" "$gw" >/dev/null 2>&1; then
+		if [ "$fails" -gt 0 ] || [ "$interval" -ne "$MIN_INTERVAL" ]; then
+			log "gateway $gw reachable again"
+		fi
+		fails=0
+		interval=$MIN_INTERVAL
+		continue
+	fi
+	fails=$((fails + 1))
+	now=$(date +%s)
+	if [ "$fails" -ge "$UNREACHABLE_SECONDS" ] && [ $((now - last)) -ge "$interval" ]; then
+		addr=$(ip -4 -o addr show dev "$IF" 2>/dev/null | awk '{ print $4; exit }')
+		log "gateway $gw unreachable for ${fails}s while 802.1X authorized (addr=${addr:-none}); action=$ACTION"
+		recover
+		last=$now
+		fails=0
+		interval=$((interval * 2))
+		[ "$interval" -gt "$MAX_INTERVAL" ] && interval=$MAX_INTERVAL
+	fi
+done
