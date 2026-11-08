@@ -17,3 +17,4 @@ Consequences). Use [`0000-template.md`](0000-template.md) for new records.
 | [0006](0006-wired-pilot-architecture.md) | Wired pilot: FreeRADIUS front end, nacd decisions, versioned policy, identity-scoped override | Accepted |
 | [0007](0007-operator-session-revocation.md) | Operator sessions revocable through a per-operator token version | Accepted |
 | [0008](0008-ai-operated-change-workflow.md) | AI-operated change workflow: change requests, digest-bound human approval, delegated identities, MCP | Proposed |
+| [0009](0009-access-intent-and-enforcement-strategies.md) | Access intent is separate from the enforcement strategy (VLAN, per-session role/ACL) | Proposed |

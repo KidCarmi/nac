@@ -355,15 +355,18 @@ access automatically. Nothing in a skill is a security control.
   with no validation or approval.
 
 ### Follow-up ADRs (not decided here)
-- **0009. Device model.** Covers:
+- **0009. Access intent and enforcement strategies** (Proposed). Quarantine
+  becomes a set of required access restrictions. VLAN and per-session
+  role/ACL are adapter strategies with measured capability records.
+  Selection never weakens the intent silently.
+- **0010. Device model.** Covers:
   - identity strength: `certificate_bound`, `certificate_unbound`, `mac_profile` (spoofable), `none`
   - freshness
   - shared-port dependencies, with no automatic port bounce for a PC's DHCP problem
-  - platform capabilities per switch
-- **0010. Restricted MAB path.** Needs the owner-side reviewer's threat model:
+- **0011. Restricted MAB path.** Needs the owner-side reviewer's threat model:
   - an explicit lower-assurance path on named ports
-  - never the segment an EAP-TLS identity gets
+  - never the access an EAP-TLS identity gets
   - a failed certificate never falls back to MAC access
   - no-supplicant cases kept distinct from invalid credentials
-- **0011. Aruba AOS-CX integration.** Only against ASTRA's demonstrated
-  capability matrix.
+- **0012. Aruba AOS-CX integration.** Only against ASTRA's demonstrated
+  capability matrix, starting with the per-session role/ACL capability test.

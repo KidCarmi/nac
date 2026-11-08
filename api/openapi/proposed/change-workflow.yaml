@@ -569,6 +569,14 @@ components:
         changed: { type: integer }
         insufficient_evidence: { type: integer }
         rows: { type: array, items: { $ref: "../openapi.yaml#/components/schemas/PreviewRow" } }
+        selections:
+          type: array
+          description: "ADR-0009: per simulated session, the intent and the strategy that would enforce it, including unmet requirements."
+          items:
+            type: object
+            properties:
+              session_id: { type: string, format: uuid }
+              selection: { $ref: "#/components/schemas/StrategySelection" }
         status: { $ref: "#/components/schemas/EvidenceStatus" }
         created_at: { type: string, format: date-time }
 
@@ -687,12 +695,79 @@ components:
               switch_id: { type: string, format: uuid }
               nas_port_id: { type: string, examples: ["Ethernet1"] }
 
+    AccessProfileRef:
+      type: object
+      description: "ADR-0009: the decided access intent (profile and version), independent of the mechanism."
+      required: [name, version]
+      properties:
+        name: { type: string, examples: ["corp", "quarantine"] }
+        version: { type: integer }
+
+    AccessProfile:
+      type: object
+      description: "ADR-0009: required access restrictions. Each requirement must be covered by a demonstrated capability of the selected strategy."
+      required: [name, version, requirements]
+      properties:
+        name: { type: string }
+        version: { type: integer }
+        requirements:
+          type: object
+          properties:
+            deny_routed: { type: array, items: { type: string }, description: "Destination prefixes that must be unreachable." }
+            deny_same_subnet_peers: { type: boolean, description: "L2 containment: peers in the endpoint's own subnet must be unreachable." }
+            allow:
+              type: array
+              description: "Permitted services, for example remediation, DNS and DHCP."
+              items:
+                type: object
+                properties:
+                  destination: { type: string }
+                  protocol: { type: string, enum: [tcp, udp, icmp, any] }
+                  ports: { type: string }
+            cut_established_flows: { type: boolean }
+            address_families: { type: array, items: { type: string, enum: [ipv4, ipv6] } }
+
+    EnforcementCapability:
+      type: object
+      description: "ADR-0009: what one strategy demonstrably enforces on one platform/version/configuration. Nothing is inherited from vendor documentation."
+      required: [strategy, platform, requirements]
+      properties:
+        strategy: { type: string, enum: [vlan, role_acl] }
+        platform: { type: string, examples: ["arista-eos 4.29.2F (vEOS-lab)"] }
+        configuration: { type: string, description: "Identifies the switch configuration the evidence applies to." }
+        changes_address: { type: boolean }
+        requirements:
+          type: object
+          description: "Per requirement: demonstrated, unverified or unsupported, with an evidence reference."
+          additionalProperties:
+            type: object
+            required: [status]
+            properties:
+              status: { type: string, enum: [demonstrated, unverified, unsupported] }
+              evidence: { type: string }
+              caveat: { type: string }
+
+    StrategySelection:
+      type: object
+      description: "ADR-0009: the mechanism chosen for one session, with what it does not cover. Never silently weaker than the intent."
+      required: [intent, strategy, unmet_requirements]
+      properties:
+        intent: { $ref: "#/components/schemas/AccessProfileRef" }
+        strategy: { type: string, enum: [vlan, role_acl, deny] }
+        strategy_limitations: { type: array, items: { type: string } }
+        unmet_requirements:
+          type: array
+          description: "Requirements no selectable strategy covers. When non-empty, the configured fail-safe applied and the gap is reported."
+          items: { type: string }
+        fail_safe_applied: { type: boolean }
+
     TargetOutcome:
       type: object
       required: [session_id, requested]
       properties:
         session_id: { type: string, format: uuid }
-        requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer } } }
+        selection: { $ref: "#/components/schemas/StrategySelection" }
+        requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer }, role: { type: string } } }
         coa_request_id: { type: string, format: uuid }
         acknowledged: { type: boolean, description: "CoA-ACK received. Not proof of access." }
         observed: { type: boolean, description: "Re-authentication returned the requested VLAN and the switch reports it." }
@@ -768,6 +843,7 @@ components:
       type: object
       required: [inputs, segments, switches, workflow]
       properties:
+        access_profiles: { type: array, items: { $ref: "#/components/schemas/AccessProfile" } }
         inputs: { type: array, items: { type: object }, description: "Same as GET /policy-inputs." }
         segments: { type: array, items: { type: string } }
         switches:
@@ -779,6 +855,10 @@ components:
               id: { type: string, format: uuid }
               name: { type: string }
               platform: { type: string, examples: ["arista-eos-4.29.2F (vEOS-lab)"] }
+              enforcement:
+                type: array
+                description: "ADR-0009 capability records, one per strategy available on this switch."
+                items: { $ref: "#/components/schemas/EnforcementCapability" }
               capabilities:
                 type: array
                 description: "Each states what is demonstrated, and by which evidence record. Unknown or unproven capabilities are absent or marked unverified."
