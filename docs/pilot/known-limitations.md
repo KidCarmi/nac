@@ -233,7 +233,28 @@ both segments. The ACKs carried 3600 / 30 / 45.
   `networkctl down/up` got a corp NAK/Offer/ACK, and fresh corp TCP at
   +6.163 s.
 
-**Remaining options (none measured against the target):**
+**Owner direction (2026-11-08): test isolation without readdressing first.**
+- **Priority is not a DHCP fix.** It is a per-session **role/ACL quarantine
+  that keeps the endpoint's VLAN and IP**, so that no DHCP recovery is
+  needed at all.
+- **First platform under test:** the Aruba AOS-CX simulator, a capability
+  test owned by ASTRA. It is not yet shown to work on the selected image.
+- **What it must show:**
+  - permitted and denied traffic, measured with continuous probes, not a
+    CoA-ACK or a displayed role
+  - IPv4 and IPv6
+  - same-subnet peers as well as routed destinations
+  - a shared phone+PC port
+- **What it is checked against:** the same denial, permitted-service
+  continuity and recovery measurements as the VLAN path. The 60 s / 5 s
+  thresholds are not automatically inherited by role/ACL enforcement.
+- **Unmanaged endpoints do not necessarily need a port flap.** Per-session
+  policy may avoid the address change entirely.
+- **The VLAN-transition options below stay as a compatibility path.** They
+  apply where a platform cannot enforce the required restrictions per
+  session, or where L2 separation is required.
+
+**Remaining options for VLAN transitions (none measured against the target):**
 1. **An endpoint hook for managed Linux** (next to test; reference hook
    and test plan in [`endpoint-dhcp-hook/`](endpoint-dhcp-hook/README.md),
    unqualified).
@@ -247,7 +268,7 @@ both segments. The ACKs carried 3600 / 30 / 45.
 2. **Shorter leases.** They bound the wait by the lease itself. A lost
    rebind is followed by expiry within the lease, but the same CoA-gap
    timing applies, and a DHCP outage costs addresses within minutes.
-3. **A link-state change on single-endpoint ports.** A port flap would make
+3. **A link-state change on single-endpoint ports: explicit last resort.** A port flap would make
    the client restart DHCP on carrier, but it is a product and switch
    behavior change:
    - it needs a documented, supported switch mechanism; vEOS documents no
