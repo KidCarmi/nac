@@ -87,6 +87,14 @@ and an explicit last resort. It needs all of these:
 - the device model's single-endpoint check (ADR-0010)
 - its own approval in the change workflow (ADR-0008)
 
+The records live in
+[`docs/architecture/enforcement-capability-matrix.md`](../docs/architecture/enforcement-capability-matrix.md).
+As of 2026-11-08:
+- Arista vEOS-lab `vlan` is the only NAC-integrated strategy with
+  demonstrated entries.
+- Aruba AOS-CX simulator 10.07.0004 `role_acl` is **blocked**: per-session
+  classifier policy is nonfunctional on that image.
+
 ### 3. Selecting a strategy never weakens the intent
 
 For each session, the backend chooses a strategy whose demonstrated
