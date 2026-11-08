@@ -238,7 +238,20 @@ both segments. The ACKs carried 3600 / 30 / 45.
   that keeps the endpoint's VLAN and IP**, so that no DHCP recovery is
   needed at all.
 - **First platform under test:** the Aruba AOS-CX simulator, a capability
-  test owned by ASTRA. It is not yet shown to work on the selected image.
+  test owned by ASTRA.
+  - **Result on ArubaOS-CX Virtual.10.07.0004 (2026-11-08): per-session
+    role/ACL is BLOCKED.**
+    - The image came from a third-party mirror and is not vendor-verified.
+    - No port-access session formed.
+    - HPE's simulator release notes say classifier policy is configurable
+      but nonfunctional.
+    - A static port ACL worked, but it is port-wide, so it doesn't count as
+      per-session quarantine.
+    - The MAB trial was inconclusive: zero RADIUS requests.
+  - **Next valid gate:** physical AOS-CX hardware, with probes to peers in
+    the same subnet.
+  - The full record is in the ADR-0009 capability matrix on PR #2
+    (`docs/architecture/enforcement-capability-matrix.md`).
 - **What it must show:**
   - permitted and denied traffic, measured with continuous probes, not a
     CoA-ACK or a displayed role
