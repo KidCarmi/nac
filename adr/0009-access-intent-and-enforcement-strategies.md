@@ -92,9 +92,11 @@ The records live in
 As of 2026-11-08:
 - Arista vEOS-lab `vlan` is the only NAC-integrated strategy with
   demonstrated entries.
-- Aruba AOS-CX simulator 10.07.0004 `role_acl` is **qualification blocked;
-  root cause unresolved**. No client session formed, and the first missing
-  protocol step is not yet identified.
+- Aruba AOS-CX simulator 10.07.0004 `role_acl` is a **partly demonstrated
+  platform capability**, shown with a reference RADIUS server (`a8c8207`).
+  Per-session IPv4 quarantine kept the address, blocked corp and
+  endpoint-initiated same-subnet traffic, and kept remediation reachable.
+  It is **not NAC-integrated**, CoA is unverified, and it is not selectable.
 
 ### 3. Selecting a strategy never weakens the intent
 

@@ -51,54 +51,63 @@ Not modelled. No capability record, so not selectable.
 
 ## Aruba AOS-CX simulator ArubaOS-CX Virtual.10.07.0004, strategy `role_acl`
 
-**Status: qualification blocked; root cause unresolved.** Not selectable.
-
-This corrects an earlier version of this record, which said "BLOCKED on
-this image" and called per-session role/ACL unsupported. The evidence does
-not establish that.
+**Status: platform capability partly demonstrated, with a reference RADIUS
+server. Not NAC-integrated, so not selectable.**
 
 | | |
 |---|---|
 | Build SHA | `64b88cbfc38a48a03d7b8b6229137e37f59c9310` |
 | Image SHA-256 | `e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25` |
-| Provenance | Third-party mirror supplied by the owner, **not vendor-verified**. A compatibility experiment in a separate six-node EVE topology; the rc10 NAC baseline was untouched |
-| Evidence | ASTRA, 2026-11-08. The sanitized package is held locally and not yet published to `astra/lab-evidence`, so it has not been verified here |
+| Provenance | Third-party mirror supplied by the owner, **not vendor-verified** |
+| Topology | Separate EVE topology; the rc10 NAC baseline was untouched |
+| Reference diagnostic (2026-11-09) | [`a8c8207`](https://github.com/KidCarmi/nac/tree/a8c820741e475556095452869f682c0c56a89d2d/lab/evidence/aruba-1007-reference-20261109), 22 manifest entries, verified here |
+| Original experiment, corrected | [`a8c8207`](https://github.com/KidCarmi/nac/tree/a8c820741e475556095452869f682c0c56a89d2d/lab/evidence/aruba-1007-compat-20261108), 10 entries, verified here |
 
-There are two gates, recorded as separate facts:
+**Root cause of the earlier failure:** configuration, not the image.
+- The per-port 802.1X authenticator was enabled, but the global
+  `aaa authentication port-access dot1x authenticator` → `enable` was
+  absent.
+- EAPOL-Start reached the endpoint-side and switch-side taps, and the
+  switch sent no EAP response and no RADIUS request.
+- With the global authenticator enabled and an interface-specific wired
+  supplicant (`wpa_supplicant -i ens3 -D wired`), EAP-TLS completed:
+  - switch `dot1x Success`, endpoint `Authorized`
+  - switch-originated Access-Request, Challenge and Accept
+- The earlier MAB run had no interface-specific supplicant and only a
+  server-side capture, so it established nothing about the simulator.
 
-| # | Fact | Kind | What it does and does not show |
-|---|---|---|---|
-| 1 | No port-access client session formed. A local quarantine role/policy displayed "Applied" | **observed** | The **authentication / session-formation** gate failed in this configuration. The first missing protocol step (EAPOL → Access-Request → response → authenticated session) has not been identified. Configuration or integration error is not excluded |
-| 2 | MAC-auth trial: **zero RADIUS requests in the server-side capture**; corp stayed reachable | **observed** | No Access-Request reached the server capture. It does **not** show that the switch never sent one: there was no concurrent switch-side or uplink capture. MAB stays out of the product adapter |
-| 3 | HPE's 10.07.0004 simulator release notes say **classifier policy** is configurable but nonfunctional ([5200-8082](https://arubanetworking.hpe.com/techdocs/AOS-CX/10.07/OVA/5200-8082.pdf)) | **documented limitation** | It applies to classifier policies. HPE distinguishes these from port-access policies tied to roles. It does not, on its own, establish that role-based enforcement is unsupported |
-| 4 | Per-session data-plane enforcement: does an authenticated client's role restrict its traffic, and can it be changed by dynamic authorization while the client keeps its IP and VLAN? | **untested** | Never reached, because gate 1 failed |
-| 5 | A static ingress port ACL moved corp to timeout while remediation stayed HTTP 200; removing it restored both | **observed, not counted** | It is port-wide, not per-session, so it is not evidence for `role_acl` |
+**What was tested:** a reference FreeRADIUS server with **no nacd** returned
+`Aruba-User-Role` (VSA 14823/1). The setup was one endpoint on one port,
+with the same certificate, VLAN and static IPv4 address `10.70.10.50`
+throughout. Quarantine role: local policy `q-policy`, which permits the
+remediation server `10.70.20.10/32` and drops everything else. Each role
+change was done by editing the fixed RADIUS reply, then running
+switch-local `port-access reauthenticate`.
 
-**Requirement status:** every ADR-0009 requirement for this strategy is
-**unverified**. That covers per-session, `deny_routed`, `allow`,
-`deny_same_subnet_peers`, `cut_established_flows`, `ipv6` and phone+PC
-port. NAC-integrated has not started.
+| Requirement | Status | Evidence / scope |
+|---|---|---|
+| per-session (802.1X client role) | **demonstrated** | role `quarantine`, then `corp`, applied to the authenticated session; RADIUS VSA, switch role and endpoint probes correlate |
+| keeps address (no readdressing) | **demonstrated** | same IP and VLAN throughout |
+| `deny_routed` (corp from quarantine), IPv4 | **demonstrated**, fresh TCP | corp TCP timed out (3.0 s) under `quarantine`; HTTP 200 again under `corp` |
+| `allow` (remediation), IPv4 | **demonstrated** | remediation HTTP 200 under both roles |
+| `deny_same_subnet_peers`, IPv4 | **demonstrated, endpoint-initiated only** | fresh TCP from the endpoint to the healthy same-subnet peer `10.70.10.11` timed out (3.0 s). The policy is ingress at the endpoint's port, so **peer-initiated traffic toward the endpoint was not tested** |
+| `cut_established_flows` | unverified | fresh flows only |
+| `ipv6` | unverified | IPv4 only |
+| role change by **CoA** (dynamic authorization) | unverified | each change used switch-local `port-access reauthenticate`, not a RADIUS CoA |
+| DHCP behavior | unverified | static address |
+| phone+PC port | unverified | one endpoint |
+| NAC-integrated (nacd rules + CoA) | **not started** | the reference RADIUS server is a platform-capability harness, not a KidCarmi/nac pass |
+| MAB | unverified | out of scope for this diagnostic and the adapter |
+| documented limitation | — | the 10.07.0004 simulator release notes say *classifier* policy is configurable but nonfunctional ([5200-8082](https://arubanetworking.hpe.com/techdocs/AOS-CX/10.07/OVA/5200-8082.pdf)). The class-based port-access role policy above **did** enforce in this run, so that note does not describe this mechanism's behavior here |
+| environment note | — | in this EVE setup, the endpoint and service virtio NICs needed `ethtool -K ens3 tx off tso off gso off` |
 
-**Next step: ASTRA's bounded diagnostic run, set by the owner on PR #1.**
-- Reproduce HPE's reference 802.1X lab: one endpoint, one switch, reference
-  FreeRADIUS, no nacd.
-- Capture EAPOL and switch-to-RADIUS traffic at the same time.
-- Identify the first missing step.
-- Then test a minimal local port-access role: permit one service, deny
-  another.
-- Then test a role change through dynamic authorization while the client
-  keeps its IP and VLAN.
-- End with a verdict: configuration/integration defect, image/version
-  limitation, or unresolved, with the missing evidence named.
-- Physical hardware or another image comes in only if that verdict calls
-  for it. A newer image is not assumed to fix anything.
-
-**Downstream requirements still to qualify** once a session works:
-- shared phone + PC port
-- same-subnet peers
-- IPv4 and IPv6
-- established flows
-- remediation continuity
+**Next steps toward selectability:**
+1. A role change by RADIUS CoA, keeping the IP and VLAN.
+2. Established-flow cutting, IPv6, and peer-initiated same-subnet traffic.
+3. The NAC-integrated pass: a nacd decision returns the role, and a nacd
+   CoA changes it.
+4. Shared phone+PC port.
+5. A vendor-verified image or physical hardware, for provenance.
 
 ## Aruba AOS-CX, strategy `vlan`
 
