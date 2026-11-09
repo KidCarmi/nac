@@ -53,12 +53,19 @@
     same-second cases as loaded.
 - **Fixed in `pilot-rc13` / `pilot-aruba-rc3`**: the missed trailing
   reload, plus the hash-based runner. See "The fix" below.
-  - **Lab: in progress.** ASTRA reported an interim result on exact
-    `pilot-aruba-rc3` (`d96bb74`), which carries the rc13 reload path: the
-    chaos run on real systemd and FreeRADIUS passed **20/20**, including
-    bursts, secret rotations, process kill and recovery, and outage.
-  - The evidence package is not yet published. This supersedes the rc2 D1
-    failure for that candidate; rc2 stays **FAIL**.
+  - **Lab: PASS on exact `pilot-aruba-rc3`** (`d96bb74`), which carries the
+    rc13 reload path. ASTRA's chaos run on real systemd and FreeRADIUS
+    passed **20/20**: eight rapid registrations, eight secret rotations and
+    cleanup all converged to the exact current file hash, plus process kill
+    and recovery, and outage.
+  - Evidence:
+    [`1fa1ffd`](https://github.com/KidCarmi/nac/tree/1fa1ffde1c486156195300cb4e0642705b2d6738/lab/evidence/aruba-rc3-qualification-20261109),
+    60/60 manifest entries verified here.
+  - This supersedes the rc2 D1 failure for that code. **`pilot-aruba-rc2`
+    stays FAIL**
+    ([`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109)).
+  - `pilot-rc13` itself (the Arista line) has not been lab-run; it carries
+    the same reload code.
 
 **The defect.** A switch's "Configured: yes" means nacd **wrote**
 `/var/lib/nac/freeradius-clients.conf`. It does not mean FreeRADIUS loaded
