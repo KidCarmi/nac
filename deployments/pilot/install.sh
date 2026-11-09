@@ -82,6 +82,7 @@ install -d -m 0755 /opt/nac
 cp -r "$BUNDLE/deployments" "$BUNDLE/docs" /opt/nac/ 2>/dev/null || true
 install -m 0755 "$NACD_BIN" /usr/local/bin/nacd
 install -m 0755 "$BUNDLE/deployments/pilot/nac-reset-password" /usr/local/sbin/nac-reset-password
+install -m 0755 "$BUNDLE/deployments/pilot/nac-freeradius-reload" /usr/local/sbin/nac-freeradius-reload
 
 step "Secrets (generated once, kept on re-install)"
 ENVF=/etc/nac/nacd.env

@@ -59,6 +59,8 @@ type Auditor interface {
 type Config struct {
 	ClientsFile        string        // NAC_FREERADIUS_CLIENTS_FILE
 	OutageLog          string        // NAC_FREERADIUS_OUTAGE_LOG
+	ReloadStatusFile   string        // NAC_FREERADIUS_RELOAD_STATUS (default: freeradius-reload.status next to ClientsFile)
+	SkipProcessCheck   bool          // NAC_FREERADIUS_PROCESS_CHECK=off: FreeRADIUS runs on another host
 	ObservationMaxAge  time.Duration // observations older than this are stale
 	ObservationEvery   time.Duration // eAPI polling interval
 	CoATimeout         time.Duration // per attempt
@@ -81,6 +83,8 @@ type Service struct {
 	now     func() time.Time
 	sendCoA coaSender
 	eapi    eapiClient
+	// frRunning reports whether FreeRADIUS is running (procHasFreeRADIUS).
+	frRunning func() (bool, error)
 
 	mu sync.Mutex
 	// clientsMu serialises reading the switch list and replacing the
@@ -117,6 +121,7 @@ func New(store Store, rules *policyver.Service, eval *access.Service, auditor Au
 	}
 	s := &Service{store: store, rules: rules, eval: eval, auditor: auditor, logger: logger, cfg: cfg, now: time.Now}
 	s.sendCoA = s.exchangeCoA
+	s.frRunning = procHasFreeRADIUS
 	s.eapi = newEAPIClient(EAPITLS{InsecureSkipVerify: cfg.EAPIInsecureTLS, AllowRSAKeyExchange: cfg.EAPIAllowRSAKex})
 	return s
 }
@@ -146,6 +151,7 @@ func (s *Service) Start(ctx context.Context) {
 	} else if n > 0 {
 		s.logger.Warn("marked CoA requests interrupted by restart as failed", "count", n)
 	}
+	s.NormalizeStoredIPs(ctx)
 	s.WriteClientsFile(ctx)
 	go s.loop(ctx, s.cfg.ObservationEvery, func(ctx context.Context) { s.ObserveAll(ctx) })
 	go s.loop(ctx, s.cfg.OutageImportPeriod, func(ctx context.Context) { s.ImportOutageLog(ctx) })

@@ -35,7 +35,7 @@ const ago = (t) => {
 };
 function chip(text, kind) { return h("span", { class: "chip " + (kind || "") }, text); }
 function stateChip(s) {
-  const map = { yes: "ok", no: "bad", unknown: "warn", active: "ok", rejected: "bad", ended: "",
+  const map = { yes: "ok", no: "bad", unknown: "warn", pending: "warn", active: "ok", rejected: "bad", ended: "",
     accept: "ok", reject: "bad", info: "", error: "bad", present: "ok", missing: "warn", stale: "warn",
     observed: "ok", acked: "ok", nak: "bad", timeout: "bad", failed: "bad", sent: "warn", requested: "warn",
     fresh: "ok", unavailable: "warn", connected: "ok", absent: "bad", matched: "ok", not_matched: "", insufficient_evidence: "warn",
@@ -183,6 +183,7 @@ async function overview() {
       ["Last outage reject", ev(health.last_outage_reject)],
       ["Outage log import", h("span", {}, stateChip(health.outage_log_import.state || "unknown"), " ", txt(health.outage_log_import.detail))],
       ["FreeRADIUS client file", h("span", {}, stateChip(health.radius_client_file.state || "unknown"), " ", txt(health.radius_client_file.detail))],
+      ["Loaded by FreeRADIUS", h("span", {}, stateChip(health.freeradius_load?.state || "unknown"), " ", txt(health.freeradius_load?.detail))],
     ]), h("p", { class: "note" }, health.outage_semantics)),
     panel("Switches", table(["Switch", "Configured", "Reachable", "Auth request seen", "Verified (record)"],
       sw.switches.map((s) => ({ id: s.id, cells: [s.name, stateChip(s.status.configured.state), stateChip(s.status.reachable.state),
@@ -295,7 +296,8 @@ async function switchDetail(id) {
         if (!await ask("Delete switch " + sw.name + "? Its sessions are removed and FreeRADIUS stops accepting it.")) return;
         if (await act(() => api("DELETE", "/switches/" + id), "Switch deleted.") !== null) go("#/switches");
       } }, "Delete")),
-      h("p", { class: "muted" }, "FreeRADIUS client file: ", txt(st.radius_client_file.detail))),
+      h("p", { class: "muted" }, "FreeRADIUS client file: ", txt(st.radius_client_file.detail)),
+      h("p", {}, "Loaded by FreeRADIUS: ", stateChip(st.freeradius_load.state), " ", txt(st.freeradius_load.detail))),
     panel(isRole(sw) ? "Generated AOS-CX reference configuration (lab: ArubaOS-CX Virtual 10.07)" : "Generated EOS configuration (validated on EOS 4.29.2F)",
       h("p", { class: "note" }, "The RADIUS key is a placeholder. Replace <RADIUS_SHARED_SECRET> with the secret you registered, or download the configuration with the key."),
       h("div", { class: "row" },
@@ -308,6 +310,12 @@ async function switchDetail(id) {
       pre),
     panel("Sessions on this switch", sessionsTable(sessions.sessions)),
     switchForm(sw));
+  // Until FreeRADIUS confirms the load, check the status only, and re-render
+  // once it settles, unless the operator is typing in the form below.
+  if (st.configured.state === "pending") pollTimer = setInterval(async () => {
+    const cur = await api("GET", "/switches/" + id);
+    if (cur.status.configured.state !== "pending" && !document.activeElement?.closest("form")) render();
+  }, 3000);
 }
 
 // ---------- Sessions ----------

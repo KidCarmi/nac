@@ -70,6 +70,7 @@ func startNoLogin(t *testing.T, dir string) *harness {
 	t.Setenv("NAC_FREERADIUS_OUTAGE_LOG", filepath.Join(dir, "nac-outage.log"))
 	t.Setenv("NAC_COA_TIMEOUT", "300ms")
 	t.Setenv("NAC_COA_RETRIES", "1")
+	t.Setenv("NAC_FREERADIUS_PROCESS_CHECK", "off") // no FreeRADIUS on the test host
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)

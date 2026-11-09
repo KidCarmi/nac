@@ -1,12 +1,13 @@
-# Aruba AOS-CX role path (`pilot-aruba-rc1`)
+# Aruba AOS-CX role path (`pilot-aruba-rc2`)
 
 **Status: owner-approved bounded integration, not lab-qualified.**
 - `pilot-rc10` (`b39649f`) stays the tested baseline. This candidate does
   not replace it.
+- `pilot-aruba-rc2` is `pilot-aruba-rc1` plus the known defect D1 fix from
+  `pilot-rc12`, and nothing else. A switch shows as Configured only after
+  FreeRADIUS has loaded it; see [known limitations](known-limitations.md).
+  Use rc2. rc1 carries D1.
 - The candidate also carries the rc11 console wording change.
-- Known defect D1 (FreeRADIUS reload path) is **not fixed** here; see
-  [known limitations](known-limitations.md). Its fix will be a separate
-  candidate.
 - Pins (commit, nacd and adapter hashes) are in
   [qualification status](qualification-status.md).
 
@@ -64,7 +65,9 @@ other IPv4" (evidence in the
     "radius_secret": "...", "segment_roles": {"corp": "nac-corp", "quarantine": "nac-quarantine"},
     "access_vlan": 10, "access_ports": ["1/1/1"], "radius_server_ip": "10.70.99.2"}
    ```
-   `radius_source_ip` must be dotted IPv4 (known defect D1).
+   `radius_source_ip` and `nas_ip` must be dotted IPv4 (`422` otherwise).
+   The switch shows **Configured: yes** only once FreeRADIUS has loaded it.
+   Wait for that before testing logins.
 2. **Apply** the generated reference configuration (**Switch** page). It
    includes the global `aaa authentication port-access dot1x authenticator`
    → `enable`. Without it the switch sends no RADIUS at all; that was the
@@ -156,7 +159,7 @@ evidence, and it was gathered without nacd.
 - `pilot-rc10` and its topology stay untouched
 
 **Install:**
-1. Build: `make pilot-bundle VERSION=pilot-aruba-rc1` at the pinned commit.
+1. Build: `make pilot-bundle VERSION=pilot-aruba-rc2` at the pinned commit.
    Check `BUNDLE-MANIFEST.txt` `nacd_sha256` against the pin.
 2. Install as in [installation](installation.md), on a clean control node.
 3. Compare the adapter files with the pinned hashes.

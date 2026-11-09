@@ -1,0 +1,64 @@
+#!/bin/sh
+# nac-freeradius-reload: run by nac-freeradius-reload.service whenever nacd
+# rewrites the FreeRADIUS client (switch) list.
+#
+# FreeRADIUS 3 reads clients only at start, so the list is "loaded" only after
+# a successful restart. This script validates the configuration, restarts a
+# running FreeRADIUS, and records the outcome for nacd in STATUS:
+#
+#   result=ok|fail|not_running
+#   clients_sha256=<SHA-256 of the client file this run validated>
+#   at=<UTC time>
+#   detail=<one line>
+#
+# nacd reports a switch as configured only when result=ok AND clients_sha256
+# matches the client list nacd would write now (known defect D1: before this,
+# "configured" meant only that nacd had written the file).
+#
+# A FreeRADIUS that was deliberately stopped is NOT started (as before:
+# try-restart semantics); that is recorded as not_running. One that FAILED
+# (for example on an earlier invalid list) is restarted once the list is valid.
+set -u
+CLIENTS=${NAC_CLIENTS_FILE:-/var/lib/nac/freeradius-clients.conf}
+STATUS=${NAC_RELOAD_STATUS:-/var/lib/nac/freeradius-reload.status}
+RADDB=${NAC_RADDB:-/etc/freeradius/3.0}
+
+# Hash first: if nacd rewrites the file during this run, the hash names the
+# older version, nacd shows "pending", and the path unit runs this again.
+sum=$(sha256sum "$CLIENTS" 2>/dev/null | cut -d' ' -f1)
+
+record() { # record <result> <detail>
+	tmp=$(mktemp "$(dirname "$STATUS")/.nac-reload-status.XXXXXX") || exit 1
+	printf 'result=%s\nclients_sha256=%s\nat=%s\ndetail=%s\n' \
+		"$1" "${sum:-none}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(printf '%s' "$2" | tr '\n' ' ' | cut -c1-400)" >"$tmp"
+	chmod 0644 "$tmp"
+	mv -f "$tmp" "$STATUS"
+}
+
+if [ -z "$sum" ]; then
+	record fail "client file $CLIENTS is missing or unreadable"
+	exit 1
+fi
+# -l stdout: without it, -C writes its errors to radius.log, not to us.
+if ! out=$(/usr/sbin/freeradius -C -l stdout -d "$RADDB" 2>&1); then
+	why=$(printf '%s\n' "$out" | grep -i -E 'error|invalid|failed' | head -n1 | sed 's/^.* : Error: //')
+	record fail "freeradius -C rejected the configuration, so FreeRADIUS was not restarted and still runs the previous client list (and will not start again until this is fixed): ${why:-see freeradius -C -l stdout}"
+	exit 1
+fi
+# active/activating/reloading: restart to load the list. failed: restart too,
+# so a FreeRADIUS that failed on an earlier invalid list recovers once the list
+# is valid again. inactive (deliberately stopped): leave it stopped.
+state=$(systemctl is-active freeradius.service 2>/dev/null)
+if [ "$state" = inactive ]; then
+	record not_running "FreeRADIUS is stopped, so the client list is not loaded (start it: systemctl start freeradius)"
+	exit 1
+fi
+if ! systemctl restart freeradius.service; then
+	record fail "systemctl restart freeradius failed: see journalctl -u freeradius"
+	exit 1
+fi
+if ! systemctl is-active --quiet freeradius.service; then
+	record fail "FreeRADIUS is not active after the restart: see journalctl -u freeradius"
+	exit 1
+fi
+record ok "FreeRADIUS restarted with this client list"
