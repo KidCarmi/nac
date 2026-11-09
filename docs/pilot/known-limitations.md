@@ -59,8 +59,8 @@
     cleanup all converged to the exact current file hash, plus process kill
     and recovery, and outage.
   - Evidence:
-    [`1fa1ffd`](https://github.com/KidCarmi/nac/tree/1fa1ffde1c486156195300cb4e0642705b2d6738/lab/evidence/aruba-rc3-qualification-20261109),
-    60/60 manifest entries verified here.
+    [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109),
+    77/77 manifest entries verified here.
   - This supersedes the rc2 D1 failure for that code. **`pilot-aruba-rc2`
     stays FAIL**
     ([`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109)).
