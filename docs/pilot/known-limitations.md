@@ -51,9 +51,14 @@
     inputs got `422`; C6 (stopped) said `no`.
   - **Runner flaw:** the runner's whole-second ground truth marked
     same-second cases as loaded.
-- **Fixed in `pilot-rc13` / `pilot-aruba-rc3`** (proposed, not lab-run):
-  the missed trailing reload, plus the hash-based runner. See "The fix"
-  below.
+- **Fixed in `pilot-rc13` / `pilot-aruba-rc3`**: the missed trailing
+  reload, plus the hash-based runner. See "The fix" below.
+  - **Lab: in progress.** ASTRA reported an interim result on exact
+    `pilot-aruba-rc3` (`d96bb74`), which carries the rc13 reload path: the
+    chaos run on real systemd and FreeRADIUS passed **20/20**, including
+    bursts, secret rotations, process kill and recovery, and outage.
+  - The evidence package is not yet published. This supersedes the rc2 D1
+    failure for that candidate; rc2 stays **FAIL**.
 
 **The defect.** A switch's "Configured: yes" means nacd **wrote**
 `/var/lib/nac/freeradius-clients.conf`. It does not mean FreeRADIUS loaded
