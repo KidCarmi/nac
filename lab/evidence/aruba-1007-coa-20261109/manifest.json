@@ -1,0 +1,130 @@
+{
+  "experiment": "Aruba-CX-10.07-direct-role-CoA",
+  "date_utc": "2026-11-09",
+  "switch_version": "ArubaOS-CX Virtual.10.07.0004",
+  "switch_build_sha": "64b88cbfc38a48a03d7b8b6229137e37f59c9310",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "archive_sha256": "1146a16eb6009c7128aaa20f41699e751f693c1871d8acfc4e021b59f9e3a4ab",
+  "files": [
+    {
+      "path": "aruba-coa-20261109-quarantine/endpoint-probes.jsonl",
+      "bytes": 11129,
+      "sha256": "bb5ec79c0265a9918679441d2eb552c409906c417daa52ec353318901df08a71"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/endpoint-tap.log",
+      "bytes": 174,
+      "sha256": "80ba884c3b6ca3122929d18822bef5286376b4aa28304c07c151e178d983168b"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/endpoint-tap.pcap",
+      "bytes": 247856,
+      "sha256": "0dbb80e87dcd6aa52b9691eef15e19eb473f5928d75a7cb14434b6c9a1d772a2"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/server-tap.log",
+      "bytes": 168,
+      "sha256": "157c70b89487587516feb0a1d2439caa8d70a2f179d3ca23ef6f3bed30f5a9f8"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/server-tap.pcap",
+      "bytes": 249,
+      "sha256": "758c510740eff444954a442fe303b4e557c933e63a60057adc2c7dc31d31ada2"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/switch-access-tap.log",
+      "bytes": 174,
+      "sha256": "36779dc634e2c7f158c11dd65b4e2656c3afbb44ee7f443373367a50c550091f"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/switch-access-tap.pcap",
+      "bytes": 247856,
+      "sha256": "993fbedb4fc168184d7e6477fc6fb807e92164843d0593f7f597c90dad6578c1"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/switch-control-tap.log",
+      "bytes": 168,
+      "sha256": "db91ded736cad69a974ceacbe010ef774e874182bbfcaa0e1278b82a97ae8c29"
+    },
+    {
+      "path": "aruba-coa-20261109-quarantine/switch-control-tap.pcap",
+      "bytes": 249,
+      "sha256": "56bbdd2675ecae54d7c3c7cc6b90f90fd3265e0218a7a6e16b7405ce1e6a94da"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/endpoint-probes.jsonl",
+      "bytes": 12623,
+      "sha256": "f1dcbb91e8fe855054ab45ac4df79ab025f984a3d1384c95d1c64a66336d648a"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/endpoint-tap.log",
+      "bytes": 174,
+      "sha256": "e2864157c8a95699c847ca80c5d53cf22ee86b9f627b14d25ae3f93e3a0e5b65"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/endpoint-tap.pcap",
+      "bytes": 247946,
+      "sha256": "881fdc72532d1593ddf2be6458418c42bc85cd396e3c21bd6a5e859f410a9b26"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/server-tap.log",
+      "bytes": 168,
+      "sha256": "157c70b89487587516feb0a1d2439caa8d70a2f179d3ca23ef6f3bed30f5a9f8"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/server-tap.pcap",
+      "bytes": 243,
+      "sha256": "ad8316e08b69bc27310805d121ac5d20fd9e7ec9ea938eec02becd62c11fc888"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/switch-access-tap.log",
+      "bytes": 174,
+      "sha256": "bec092794133db6fb4956c620db29ccf5336d8e2612532a3f8cb799e4a8a2d5f"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/switch-access-tap.pcap",
+      "bytes": 247946,
+      "sha256": "f1129033b123dfc274d3c5473a760302c1a642580399cdcf087119a552e7ff0d"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/switch-control-tap.log",
+      "bytes": 168,
+      "sha256": "db91ded736cad69a974ceacbe010ef774e874182bbfcaa0e1278b82a97ae8c29"
+    },
+    {
+      "path": "aruba-coa-20261109-restore/switch-control-tap.pcap",
+      "bytes": 243,
+      "sha256": "8d15e8c7c0724f61b4637f6bfc1502fde0b043e227f424da7f416b170a088d80"
+    },
+    {
+      "path": "aruba-coa-20261109.tar.gz",
+      "bytes": 135856,
+      "sha256": "1146a16eb6009c7128aaa20f41699e751f693c1871d8acfc4e021b59f9e3a4ab"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5661,
+      "sha256": "5ee5f1163a1b3f0b63e1e1eb672e10ee5c215f71e06df415dd26683fc959b21d"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 2219,
+      "sha256": "68932e1b9bda6396fb5372425a896f63db82a1ba2c3726accffc619fb23c70d5"
+    },
+    {
+      "path": "scripts/aruba_coa_capture_guest.py",
+      "bytes": 1355,
+      "sha256": "5f8bf83b4242f8a4d25770da54c4c2fcb06eca80a4757027ffaffdb6b245dbfa"
+    },
+    {
+      "path": "scripts/aruba_coa_send_control.py",
+      "bytes": 978,
+      "sha256": "f80efd5f976a482d2c4182ef929594965da474c189b2cd61932a67eee4f5e4cd"
+    },
+    {
+      "path": "scripts/aruba_probe_endpoint.py",
+      "bytes": 1164,
+      "sha256": "b7b38f01fa674010a894157a915d49eb6d59de41e35c0c68fecee08c747cd44e"
+    }
+  ]
+}

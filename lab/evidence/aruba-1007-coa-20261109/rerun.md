@@ -1,0 +1,11 @@
+# Bounded role CoA rerun
+
+Start from the [authenticated reference setup](../aruba-1007-reference-20261109/rerun.md). Supply your own authorized image, disposable CA and RADIUS secret. Confirm port `1/1/1` has a `dot1x Success` client in role `corp`, endpoint address `10.70.10.50/24`, and independent HTTP 200 from corp, peer and remediation. Keep EVE's isolated data and management bridges unchanged.
+
+1. On the switch, configure `radius dyn-authorization enable` and `radius dyn-authorization client 10.70.99.2 vrf mgmt secret-key plaintext <disposable-secret>`. Store the same secret in `/root/aruba-radius-v2.secret` on the isolated FreeRADIUS guest. Avoid command logs containing the secret. Use a new disposable secret in each clean rerun.
+2. Start [capture helper](scripts/aruba_coa_capture_guest.py) on EVE with `ARUBA_COA_PHASE=quarantine`; it captures both access taps and both management taps for at most 58 s or 1,200 packets per tap. Start [endpoint probe](scripts/aruba_probe_endpoint.py) in the endpoint guest and save its JSONL output.
+3. On the FreeRADIUS guest run `python3 aruba_coa_send_control.py quarantine`. The [sender](scripts/aruba_coa_send_control.py) includes `User-Name`, `NAS-IP-Address`, `NAS-Port-Id`, `Calling-Station-Id` and `Aruba-User-Role`; `radclient -S` reads the shared secret from file. Record Request and ACK/NAK, then inspect `show port-access clients`, endpoint address, and the fresh TCP probe log. Do not run manual reauthentication.
+4. Repeat captures and probes with `ARUBA_COA_PHASE=restore`, then run `python3 aruba_coa_send_control.py corp`. Confirm switch role and fresh TCP restoration. Inspect the access tap for EAPOL and control tap for UDP/1812 to distinguish direct role change from switch-initiated EAP-TLS reauthentication.
+5. Classify the outcome from endpoint TCP results. An ACK or role display alone is insufficient. If the CoA is NAKed, check the dynamic authorization client/VRF, secret, and exact session identifiers in the Access-Request capture before attributing failure to the simulator.
+
+This reference test uses static endpoint addressing. It does not test DHCP, KidCarmi/nac, established connections, IPv6 or peer-initiated same-subnet traffic.
