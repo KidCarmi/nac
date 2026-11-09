@@ -204,6 +204,19 @@ labelled separately from an integrated NAC pass.
 - **Q3. Mixed strategies** across switches inside one CR scope. Proposed:
   allowed, with the strategy shown per target in the plan.
 
+- **Q4. Same-subnet requirement granularity.** On Aruba 10.07, an
+  ingress-only role stopped peer TCP sessions from completing in both
+  directions. Inbound peer packets still reached the endpoint (`3ff53a9`).
+  Proposed: split `deny_same_subnet_peers` into:
+  - `deny_same_subnet_sessions`: no connection in either direction can
+    complete
+  - `isolate_same_subnet_packets`: inbound peer packets must not reach the
+    endpoint
+
+  The owner states which one quarantine requires. If it is packet
+  isolation, Aruba `role_acl` as tested cannot be selected for it, and the
+  `vlan` strategy (or an egress policy, once demonstrated) stays the fail-safe.
+
 ### Alternatives considered
 - **Keep quarantine = VLAN and tune DHCP.** Measured: authoritative DHCP
   only moves recovery to T2, short timers failed in reverse, and the
