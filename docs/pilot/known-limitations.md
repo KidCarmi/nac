@@ -32,6 +32,52 @@
 - **Untested:** physical Arista hardware, Windows 10/11, other DHCP clients
   and servers, and other accepted CoA forms.
 
+## Known defect D1: "Configured" does not prove FreeRADIUS loaded the switch (found after `pilot-rc10`)
+
+**Status: open. Present in `pilot-rc10`, the rc11 wording candidate and the
+Aruba role candidate. Not fixed in any of them.** The fix will ship as its own,
+separately identifiable replacement candidate, not mixed into another change.
+
+**The defect.** A switch's "Configured: yes" means nacd **wrote**
+`/var/lib/nac/freeradius-clients.conf`. It does not mean FreeRADIUS loaded
+that file. If the reload fails, the console still says "yes".
+
+**Reproduced here** (nacd, and FreeRADIUS 3.2.5 `-C` on the rendered file):
+1. **IPv4-mapped source IP breaks the reload.** `radius_source_ip` entered as
+   `::ffff:10.70.99.1` is accepted and stored as typed.
+   - `freeradius -C` rejects the file ("Invalid address"), so the reload
+     unit skips the restart.
+   - The running FreeRADIUS keeps the **old** client list, while nacd says
+     "configured".
+   - At the next FreeRADIUS restart (reboot, package update), the unit's own
+     configuration check fails. That is a **RADIUS outage for every switch**.
+2. **Hex mapped form silently breaks one switch.** `::ffff:a46:6301` passes
+   `-C`, but FreeRADIUS treats it as an IPv6 client. The switch's IPv4
+   packets then come from an unknown client, so all its authentications fail.
+3. **The mapped spelling bypasses the uniqueness check.** The same switch
+   can be registered twice.
+
+**Not reproduced here:** systemd coalescing of rapid writes, and the reload
+unit hitting its start limit. The build container has no systemd.
+`scripts/chaos-freeradius-reload.sh` covers these on a disposable control
+node (scenarios C1–C3).
+
+**Workaround until fixed:**
+- Enter `radius_source_ip` and `nas_ip` in dotted IPv4 only (`10.70.99.1`).
+- After every switch create, update or delete, confirm on the control node:
+  - `systemctl status nac-freeradius-reload.service` shows the last run
+    succeeded
+  - `freeradius -C` passes
+
+  Do not rely on the console's "Configured" alone.
+
+**Fix scope (proposed, separate candidate):**
+- Accept only dotted IPv4 for `radius_source_ip` and `nas_ip`, and reject
+  other spellings.
+- Report "configured" only after FreeRADIUS has loaded the current file,
+  from a result the reload unit records.
+- Decide the start-limit behavior from the chaos evidence.
+
 ## Scope
 
 - **One site, Arista EOS 4.29.2F only.** The generated configuration was

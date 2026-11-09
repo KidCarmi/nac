@@ -20,6 +20,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No API, decision, CoA packet or installer change.
 
 ### Open after pilot-rc10
+- **Known defect D1 (switch → FreeRADIUS reload path).** "Configured"
+  reflects nacd writing the clients file, not FreeRADIUS loading it. An
+  IPv4-mapped `radius_source_ip` (`::ffff:10.x`) is accepted, the reload is
+  skipped, and FreeRADIUS fails at its next restart. Workaround and fix
+  scope are in the known limitations. The fix will be a separate replacement
+  candidate. Its chaos test is `scripts/chaos-freeradius-reload.sh`
+  (non-production nodes only).
 - **DHCP server comparison (ASTRA, `8db6fe8`):** an authoritative dnsmasq
   moves Linux recovery from lease expiry to T2. That is 23–52 min on a
   1-hour lease: improved, not prompt. ASTRA proposed an acceptance target
