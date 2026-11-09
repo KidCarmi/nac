@@ -263,8 +263,16 @@ both segments. The ACKs carried 3600 / 30 / 45.
       - No re-authentication appeared in the captured window.
       - Compare the VLAN path on vEOS: denial in 1–2.5 s, then 25 s to
         30 min before the endpoint has a usable address.
+    - **Peer-initiated same-subnet traffic ([`3ff53a9`](https://github.com/KidCarmi/nac/tree/3ff53a9d7846998cdfe9827240be531bd84c417e/lab/evidence/aruba-1007-peer-20261109), verified
+      here): sessions blocked, packets not isolated.**
+      - Under quarantine, a peer's TCP connection to the endpoint could not
+        complete, and the `corp` role restored it.
+      - The peer's SYN still **reached** the endpoint. Only the endpoint's
+        reply was dropped at its ingress port.
+      - So this role blocks same-subnet sessions in both directions, but it
+        does **not** provide full bidirectional packet isolation.
+      - Inbound UDP and IPv6 were not tested.
     - **Still unverified:**
-      - peer-initiated same-subnet traffic
       - established-flow cutting
       - IPv6
       - DHCP
