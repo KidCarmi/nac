@@ -160,3 +160,33 @@ func TestErrorCauseText(t *testing.T) {
 		t.Fatalf("unexpected text")
 	}
 }
+
+func TestArubaUserRoleVSA(t *testing.T) {
+	p := &Packet{Code: CodeCoARequest, Identifier: 7}
+	if err := p.AddVSAString(VendorAruba, ArubaAttrUserRole, "quarantine"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := p.EncodeRequest([]byte("secret-0123456789"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Type 26, length 2+4+2+10, vendor 14823 (0x000039e7), sub-type 1, sub-length 12.
+	want := []byte{26, 18, 0x00, 0x00, 0x39, 0xe7, 1, 12}
+	want = append(want, "quarantine"...)
+	if got := raw[20:]; string(got) != string(want) {
+		t.Fatalf("VSA bytes = % x, want % x", got, want)
+	}
+	back, err := Decode(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if role, ok := back.VSAString(VendorAruba, ArubaAttrUserRole); !ok || role != "quarantine" {
+		t.Fatalf("VSAString = %q, %v", role, ok)
+	}
+	if _, ok := back.VSAString(9, ArubaAttrUserRole); ok {
+		t.Fatal("matched another vendor")
+	}
+	if err := p.AddVSAString(VendorAruba, ArubaAttrUserRole, string(make([]byte, 248))); err == nil {
+		t.Fatal("over-long VSA accepted")
+	}
+}
