@@ -174,12 +174,24 @@ func frVal(m map[string]any, k string) string {
 // fakeVEOS answers CoA-Requests like vEOS 4.29.2F in ASTRA's lab: NAK 402
 // unless NAS-IP-Address and NAS-Port-Id are present, else ACK 200; after an
 // ACK it triggers the switch-initiated re-authentication.
+//
+// Like a real RFC 5176 server it recognises a retransmission (same
+// Identifier and Request Authenticator) and does not act on it twice. Without
+// that, a CoA retried after a slow ACK (CI load, 300 ms timeout) started two
+// re-authentications; the later one, which had read the session before a
+// Restore, overwrote the Restore's decision (PR #3 CI, TestPilotWorkflow).
 type fakeVEOS struct {
 	conn   net.PacketConn
 	mu     sync.Mutex
 	got    []*radius.Packet
 	onACK  func(p *radius.Packet)
 	silent bool
+	acted  map[coaKey]bool
+}
+
+type coaKey struct {
+	id   byte
+	auth [16]byte
 }
 
 func newFakeVEOS(t *testing.T) *fakeVEOS {
@@ -187,7 +199,7 @@ func newFakeVEOS(t *testing.T) *fakeVEOS {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fakeVEOS{conn: pc}
+	f := &fakeVEOS{conn: pc, acted: map[coaKey]bool{}}
 	go func() {
 		buf := make([]byte, 4096)
 		for {
@@ -203,6 +215,11 @@ func newFakeVEOS(t *testing.T) *fakeVEOS {
 			f.mu.Lock()
 			f.got = append(f.got, req)
 			silent, onACK := f.silent, f.onACK
+			k := coaKey{req.Identifier, req.Authenticator}
+			duplicate := f.acted[k]
+			if !silent {
+				f.acted[k] = true
+			}
 			f.mu.Unlock()
 			if silent {
 				continue
@@ -217,7 +234,7 @@ func newFakeVEOS(t *testing.T) *fakeVEOS {
 			}
 			out, _ := resp.EncodeResponse([]byte(swSecret), req)
 			_, _ = pc.WriteTo(out, addr)
-			if resp.Code == radius.CodeCoAACK && onACK != nil {
+			if resp.Code == radius.CodeCoAACK && onACK != nil && !duplicate {
 				go onACK(req)
 			}
 		}
