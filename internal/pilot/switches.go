@@ -24,6 +24,8 @@ var (
 	nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
 	roleRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 	portRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9/.:-]{0,63}$`)
+	// AOS-CX names interfaces member/slot/port, e.g. 1/1/1.
+	arubaPortRe = regexp.MustCompile(`^[0-9]{1,2}/[0-9]{1,2}/[0-9]{1,3}$`)
 	segRe  = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
@@ -127,7 +129,10 @@ func (s *Service) validateSwitch(in *SwitchInput, creating bool) error {
 		add("eapi_url: switch observation (eAPI) is Arista-only; leave it empty for Aruba")
 	}
 	for _, p := range in.AccessPorts {
-		if !portRe.MatchString(p) {
+		switch {
+		case in.Platform == domain.PlatformArubaAOSCX && !arubaPortRe.MatchString(p):
+			add("access_ports: %q is not an AOS-CX interface name such as 1/1/1", p)
+		case in.Platform != domain.PlatformArubaAOSCX && !portRe.MatchString(p):
 			add("access_ports: %q is not an interface name such as Ethernet1", p)
 		}
 	}
