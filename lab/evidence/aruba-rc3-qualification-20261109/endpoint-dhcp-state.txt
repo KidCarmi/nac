@@ -1,0 +1,8 @@
+Captured after 2026-11-09T19:45:08Z EAP-TLS authentication:
+Data interface: ens3 only, 00:50:00:00:3e:00, UP
+DHCP address: 10.70.10.50/24, 88 seconds remaining when sampled
+Default route: 10.70.10.1 through ens3
+DNS: 10.70.10.10
+Lease lifetime: 120 seconds; T1: 60 seconds; T2: 105 seconds
+Fresh corp TCP: HTTP 200
+No management interface on endpoint. Aruba role CoA kept VLAN 10 and this address.

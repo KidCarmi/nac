@@ -1,0 +1,14 @@
+installed_at: 2026-11-09T19:14:47Z
+os: Ubuntu 24.04.5 LTS
+nacd: nacd pilot-aruba-rc3 commit d96bb74 built 2026-11-09T19:01:13Z
+nacd_sha256: 01e88d8b03bfbbe1b2c55388e6ef48b51d98b096df8b5a77822e3b0f5d97ae6a
+package: freeradius 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-common 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-rest 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-utils 3.2.5+dfsg-3~ubuntu24.04.3
+package: openssl 3.0.13-0ubuntu3.16
+package: postgresql 16+257build1.1
+package: postgresql-16 16.15-0ubuntu0.24.04.1
+freeradius_adapter_sha256: 3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32
+pki: disposable test PKI (lab only)
+running nacd: commit d96bb74

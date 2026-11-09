@@ -1,0 +1,307 @@
+{
+  "candidate_commit": "d96bb741e8f36019af4c6d5152491c2e0a874fe6",
+  "candidate_binary_sha256": "01e88d8b03bfbbe1b2c55388e6ef48b51d98b096df8b5a77822e3b0f5d97ae6a",
+  "file_count": 60,
+  "files": [
+    {
+      "path": "Aruba-Role-ACL-1007.unl",
+      "size": 5014,
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94"
+    },
+    {
+      "path": "aruba_probe_endpoint.py",
+      "size": 1164,
+      "sha256": "b7b38f01fa674010a894157a915d49eb6d59de41e35c0c68fecee08c747cd44e"
+    },
+    {
+      "path": "aruba_rc2_coa_analyze.py",
+      "size": 4960,
+      "sha256": "eaa30f657f7f8ec4e005bd534fdb24a5f12297c76abb6ad2ba9b9ba15f7be6c4"
+    },
+    {
+      "path": "aruba_rc3_auth_analyze.py",
+      "size": 2590,
+      "sha256": "b08b42592b729786c1009c2843d0e60a44244a15240ebaeebb8128de8f9a278b"
+    },
+    {
+      "path": "aruba_rc3_auth_capture_guest.py",
+      "size": 1131,
+      "sha256": "a9a2168ea443d405e72fd3302da15f2699110c2cb385d91e4ce39426bfe66aef"
+    },
+    {
+      "path": "aruba_rc3_coa_capture_guest.py",
+      "size": 1428,
+      "sha256": "3c4f1d0deb3adb5340852114bdaf8ef1bb874de4a0d0d483a74234a029f8c71a"
+    },
+    {
+      "path": "aruba_rc3_flow_analyze.py",
+      "size": 2542,
+      "sha256": "023cb35c90ef69e6ab49980af595fd8c3c6e79f2e9d37b9ca2e118371c0bc340"
+    },
+    {
+      "path": "aruba_rc3_sanitize_switch.py",
+      "size": 1202,
+      "sha256": "6b4ba26d25c4cf9c7d85d08ebfa017f0528e04e34f8f138c19de16427f16413c"
+    },
+    {
+      "path": "endpoint-dhcp-state.txt",
+      "size": 398,
+      "sha256": "82f83038d199983b06fa82f59a45d5981b4a16debaf805fd995b0e9da4d660ca"
+    },
+    {
+      "path": "evidence/A11-ui-quarantine-state.json",
+      "size": 59442,
+      "sha256": "c4f6c942e71f4ae542733f88f2601b4bce22e8cc24ad979f4098d59eecb02e14"
+    },
+    {
+      "path": "evidence/A11-ui-restore-state.json",
+      "size": 61620,
+      "sha256": "2c3af4c5d9cad0200d54e4b8ef14867ed96f6da9b8c8ee12e3477f2be5fd7844"
+    },
+    {
+      "path": "evidence/A5-accounting-reconnect-state.json",
+      "size": 33987,
+      "sha256": "39f0e0ef3e8cc9114d0a135a5bef319fd9f03450bfad0976d212a2f5f652c4f9"
+    },
+    {
+      "path": "evidence/A5-full-restart-state.json",
+      "size": 45051,
+      "sha256": "bf5d72a179bf12613e77fa5752cce502e2e4f8c381bbc0cf7ea7128280a259e7"
+    },
+    {
+      "path": "evidence/A5-nacd-restart-state.json",
+      "size": 33983,
+      "sha256": "a797b61f6d725305e74f3d87cd0e13434dc56fb2bbf8c07faa76637d28f4c83b"
+    },
+    {
+      "path": "evidence/A5-reauthed-state.json",
+      "size": 53077,
+      "sha256": "d6999a18ebe830da323e700e337a3dbac6e47d1ca5a483e8b94346854f7c30b0"
+    },
+    {
+      "path": "evidence/A5-reconnect-state.json",
+      "size": 60053,
+      "sha256": "42cc56af2bc97ab254c607d11917601815a76405451e0a404bcae418cb5f1b11"
+    },
+    {
+      "path": "evidence/A6-nak-state.json",
+      "size": 52770,
+      "sha256": "32dc9c1476c0be72090572b3011827d52424f6eb230d72e2b651446b60c1c607"
+    },
+    {
+      "path": "evidence/A7-silent-timeout-state.json",
+      "size": 65256,
+      "sha256": "cc1a5ed830300acc36a2b27bbb67935754d3cd57ad91cd0ccaa89b9ce5f96e87"
+    },
+    {
+      "path": "evidence/A7-timeout-state.json",
+      "size": 60042,
+      "sha256": "cbabbae1b3568a73a413a0a9abaf205dd52a76b17462001c20a14e084c7220dd"
+    },
+    {
+      "path": "evidence/A8-disconnected-state.json",
+      "size": 69825,
+      "sha256": "6e3dd7cec080e6e066f05595c2e7eff954e97c9c128fbf8016aafde56d108af8"
+    },
+    {
+      "path": "evidence/A9-final-state.json",
+      "size": 56518,
+      "sha256": "a7d7cfc8e2fa5b8d16bffbf9002c01d423762be21ebc544c4ad37c3cbab57345"
+    },
+    {
+      "path": "evidence/auth-candidate-radius.pcap",
+      "size": 6859,
+      "sha256": "828f4c8fad5ea4e02c0cd198d89830c5afe71bac16b4183fe5661c63c791ce39"
+    },
+    {
+      "path": "evidence/auth-endpoint-eapol.pcap",
+      "size": 4995,
+      "sha256": "aaee59b5b61a99b2cef3dfa76b9b33c9a51180eee400f8b4fe3cddbeb22037c2"
+    },
+    {
+      "path": "evidence/auth-switch-eapol.pcap",
+      "size": 4995,
+      "sha256": "bcaef3e1b3c4bdff62390be7389b23984f983631ec35e0b1b49a9cafb2d0c011"
+    },
+    {
+      "path": "evidence/auth-switch-radius.pcap",
+      "size": 6859,
+      "sha256": "66b8e08574ec1966a5e5a2f479ba52176ef258ebead719210efc7f3f7774774b"
+    },
+    {
+      "path": "evidence/coa-nak-control.pcap",
+      "size": 261,
+      "sha256": "47591577e21ba9666e2037b34beb298d1e9c5705d0b1b67ce1f8287626ce3764"
+    },
+    {
+      "path": "evidence/coa-quarantine-control.pcap",
+      "size": 249,
+      "sha256": "23e249aef9ff99067e9eeef654ab257c3ee4b68b37898c0eb4d5f6c71aa0bea3"
+    },
+    {
+      "path": "evidence/coa-quarantine-endpoint.pcap",
+      "size": 248805,
+      "sha256": "99b3a336080885d92522a119b3596570ae30d780afe424e07551b1707b2c9b69"
+    },
+    {
+      "path": "evidence/coa-quarantine-probes.jsonl",
+      "size": 10174,
+      "sha256": "5b5405618c6875bf592a3872e2df49d10014ced24e94fb84d6d74fb62facc875"
+    },
+    {
+      "path": "evidence/coa-quarantine-switch-access.pcap",
+      "size": 248805,
+      "sha256": "28701b3c45df5279a9ff55d7d12075146dddb798b5b2bb629cea6739fddbde57"
+    },
+    {
+      "path": "evidence/coa-restore-control.pcap",
+      "size": 243,
+      "sha256": "1aa5751ab5aa7f2560d34ba4ffad8b154ad053d4ae29d5bfd7df081b28efd617"
+    },
+    {
+      "path": "evidence/coa-restore-endpoint.pcap",
+      "size": 249622,
+      "sha256": "43aac2a36dd0ef7e73d71f23109fd796e968d08b9197578a16c1b94bf77f825f"
+    },
+    {
+      "path": "evidence/coa-restore-probes.jsonl",
+      "size": 12895,
+      "sha256": "0d5a4cdeb45d9ffb2e41bfa3d9f02ae1a5cb135ea1ea5b5632aa6a9bf6623e13"
+    },
+    {
+      "path": "evidence/coa-restore-switch-access.pcap",
+      "size": 249622,
+      "sha256": "ececfb26af8ca26e76357a4931dc48892be28d5a37388355c9f43e0cfdead428"
+    },
+    {
+      "path": "evidence/coa-timeout-control.pcap",
+      "size": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "evidence/coa-timeout-ingress.pcap",
+      "size": 447,
+      "sha256": "2f2fe30c1ccc7f21f1ba0cf30746f66c56ed0b218a3fae7e391f7c6cba15fc2f"
+    },
+    {
+      "path": "evidence/flow-client.jsonl",
+      "size": 20303,
+      "sha256": "b1aaf1a6f31b4b923e1fd1f47fe442f1aa6d9ca85ea5cb82863278b11d2b2a81"
+    },
+    {
+      "path": "evidence/flow-control.pcap",
+      "size": 468,
+      "sha256": "b440c9a86362cbf788fec3c5886e51a35e70a45c74cb7b2438e37948cb8320d9"
+    },
+    {
+      "path": "evidence/flow-corp.pcap",
+      "size": 35774,
+      "sha256": "1122567b9c48ad2ac2c4af8a3ceb95d91900ec59e22031b5f6159a5e4076122b"
+    },
+    {
+      "path": "evidence/flow-endpoint.pcap",
+      "size": 36470,
+      "sha256": "a1f0914da2c75a6fe5dbc77b063ba1ec350340ebf1e0ba42c8d492fdf81d676b"
+    },
+    {
+      "path": "evidence/flow-server.jsonl",
+      "size": 10885,
+      "sha256": "883f23f27a817d1d975e372973815dd88a02b6a318714e76652cfab6719a4fb6"
+    },
+    {
+      "path": "evidence/install-report.txt",
+      "size": 685,
+      "sha256": "0802ff76a8eb98d458a884c3c90fed71399acab2e0e472360edd94612901c3d8"
+    },
+    {
+      "path": "evidence/peer-endpoint.pcap",
+      "size": 814,
+      "sha256": "bacdc2ab1e022b79c01e17ed0549146abe38cacea57f9d1f233dc91407bcbdc7"
+    },
+    {
+      "path": "evidence/peer-peer.pcap",
+      "size": 364,
+      "sha256": "5ad3a6093e10c3c3780bc108906522cdcf83784e92319243557552e6399c249b"
+    },
+    {
+      "path": "evidence/reload-chaos.log",
+      "size": 4500,
+      "sha256": "f510bdf28f90e4bb8e2f3253714da9286938ffab7b8a0f36122965d72f1594a7"
+    },
+    {
+      "path": "evidence/switch-after-auth.txt",
+      "size": 311,
+      "sha256": "e9a56edd64d2a1278cf0814b52fd688453f9b778decf26aafe20564308e25011"
+    },
+    {
+      "path": "evidence/switch-ui-quarantine.txt",
+      "size": 284,
+      "sha256": "d0c012aa6d9dd88292bb7cea0a3d03c3059ead9eb484b2f9542e00dd74615b97"
+    },
+    {
+      "path": "evidence/switch-ui-restore.txt",
+      "size": 278,
+      "sha256": "4f25c290573346ac730dadcd6a23ac8a773cff4e6b06e548bbf69341ff3ab55d"
+    },
+    {
+      "path": "evidence/ui-quarantine-control.pcap",
+      "size": 249,
+      "sha256": "a13dc15719df18a1fbf7c4a43666ef5404082d90c5b134586a96f39e099c259d"
+    },
+    {
+      "path": "evidence/ui-quarantine-endpoint.pcap",
+      "size": 248888,
+      "sha256": "3ebb3766ca23f955e4fb0dcebf1046917eaf29cc901f5f91eb6aeb165084ae0f"
+    },
+    {
+      "path": "evidence/ui-quarantine-probes.jsonl",
+      "size": 10978,
+      "sha256": "f8833848766bce4f5e1d7cb87bee6632d56e1a8f8f1eb89a5a7ce4147006870d"
+    },
+    {
+      "path": "evidence/ui-quarantine-server.pcap",
+      "size": 249,
+      "sha256": "8e4caee3da6cf055eb8f353837fa73ebd12286a96551a65da898820ec9e14093"
+    },
+    {
+      "path": "evidence/ui-quarantine-switch-access.pcap",
+      "size": 248888,
+      "sha256": "33b534e696628ea5bf0fa4714d3f3d8f78a63a303aa5de9466cf7513fd2ae578"
+    },
+    {
+      "path": "evidence/ui-restore-control.pcap",
+      "size": 243,
+      "sha256": "9b1997b4a7939b20ab2b334324dee9eece2a1247673af31e6dbc7461e464095a"
+    },
+    {
+      "path": "evidence/ui-restore-endpoint.pcap",
+      "size": 246004,
+      "sha256": "83ba143009c5b0e2b29572436a0fd6f0795b2fe1679d59edb4f47c9b25418830"
+    },
+    {
+      "path": "evidence/ui-restore-probes.jsonl",
+      "size": 12077,
+      "sha256": "006768c459aef4de813a805108773a135eb6aab1206dcdd99f650127f0d8f81c"
+    },
+    {
+      "path": "evidence/ui-restore-server.pcap",
+      "size": 243,
+      "sha256": "57b6b3c5aa3c2ece0b1657d2368eead7d3c04f6c85543ccc873216cc9238d83c"
+    },
+    {
+      "path": "evidence/ui-restore-switch-access.pcap",
+      "size": 246004,
+      "sha256": "48d2850277749f4fdeda0b00dd2ead845698bc83dd742ae39cfac27cc317c3de"
+    },
+    {
+      "path": "README.md",
+      "size": 13359,
+      "sha256": "8b86d32f6b2f7cbdfe058770da4427fe2e4f351b447052461c66647bd35a0b5e"
+    },
+    {
+      "path": "sanitized-switch-config.txt",
+      "size": 1376,
+      "sha256": "8e683a0ee1e5c6626ba6d6b0548c8aa337fc0f5eec01fb94947136754546ef75"
+    }
+  ]
+}
