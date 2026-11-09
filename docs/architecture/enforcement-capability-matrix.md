@@ -52,7 +52,8 @@ Not modelled. No capability record, so not selectable.
 ## Aruba AOS-CX simulator ArubaOS-CX Virtual.10.07.0004, strategy `role_acl`
 
 **Status: platform capability partly demonstrated, with a reference RADIUS
-server. Not NAC-integrated, so not selectable.**
+server.** That covers per-session IPv4 role enforcement and a direct role
+change by RADIUS CoA. **Not NAC-integrated, so not selectable.**
 
 | | |
 |---|---|
@@ -61,6 +62,7 @@ server. Not NAC-integrated, so not selectable.**
 | Provenance | Third-party mirror supplied by the owner, **not vendor-verified** |
 | Topology | Separate EVE topology; the rc10 NAC baseline was untouched |
 | Reference diagnostic (2026-11-09) | [`a8c8207`](https://github.com/KidCarmi/nac/tree/a8c820741e475556095452869f682c0c56a89d2d/lab/evidence/aruba-1007-reference-20261109), 22 manifest entries, verified here |
+| Direct RADIUS CoA role change (2026-11-09) | [`d3cf745`](https://github.com/KidCarmi/nac/tree/d3cf745afe9d808bafc3f8ff10cb78f9c77ad7fb/lab/evidence/aruba-1007-coa-20261109), 24 manifest entries, verified here |
 | Original experiment, corrected | [`a8c8207`](https://github.com/KidCarmi/nac/tree/a8c820741e475556095452869f682c0c56a89d2d/lab/evidence/aruba-1007-compat-20261108), 10 entries, verified here |
 
 **Root cause of the earlier failure:** configuration, not the image.
@@ -93,7 +95,9 @@ switch-local `port-access reauthenticate`.
 | `deny_same_subnet_peers`, IPv4 | **demonstrated, endpoint-initiated only** | fresh TCP from the endpoint to the healthy same-subnet peer `10.70.10.11` timed out (3.0 s). The policy is ingress at the endpoint's port, so **peer-initiated traffic toward the endpoint was not tested** |
 | `cut_established_flows` | unverified | fresh flows only |
 | `ipv6` | unverified | IPv4 only |
-| role change by **CoA** (dynamic authorization) | unverified | each change used switch-local `port-access reauthenticate`, not a RADIUS CoA |
+| role change by **RADIUS CoA** (dynamic authorization), keeping IP and VLAN | **demonstrated, IPv4** ([`d3cf745`](https://github.com/KidCarmi/nac/tree/d3cf745afe9d808bafc3f8ff10cb78f9c77ad7fb/lab/evidence/aruba-1007-coa-20261109)) | <ul><li>`radclient` sent a session-targeted CoA to UDP/3799 with User-Name, NAS-IP-Address, NAS-Port-Id, Calling-Station-Id and `Aruba-User-Role`</li><li>corp → quarantine: CoA-ACK; switch role `quarantine`; the first sampled corp SYN after the ACK got no SYN-ACK at **+0.283 s**; the peer timed out</li><li>quarantine → corp: CoA-ACK; corp HTTP 200 by **+0.529 s**</li><li>address `10.70.10.50/24` and VLAN 10 unchanged; no operator re-authentication, endpoint reconnect, port bounce or DHCP renewal</li><li>the times are EVE-host packet bounds for this run, not latency guarantees</li></ul> |
+| no re-authentication on CoA | **observed, captured window only** | zero EAPOL on the access taps before their 1,200-packet caps; zero UDP/1812 in the 58 s control-tap windows |
+| remediation continuity during the change | **demonstrated, this run** | remediation HTTP 200 in all 72 (quarantine) and 83 (restore) probe samples |
 | DHCP behavior | unverified | static address |
 | phone+PC port | unverified | one endpoint |
 | NAC-integrated (nacd rules + CoA) | **not started** | the reference RADIUS server is a platform-capability harness, not a KidCarmi/nac pass |
@@ -102,7 +106,8 @@ switch-local `port-access reauthenticate`.
 | environment note | — | in this EVE setup, the endpoint and service virtio NICs needed `ethtool -K ens3 tx off tso off gso off` |
 
 **Next steps toward selectability:**
-1. A role change by RADIUS CoA, keeping the IP and VLAN.
+1. ~~A role change by RADIUS CoA, keeping the IP and VLAN.~~ Done:
+   demonstrated in `d3cf745` (IPv4, reference RADIUS).
 2. Established-flow cutting, IPv6, and peer-initiated same-subnet traffic.
 3. The NAC-integrated pass: a nacd decision returns the role, and a nacd
    CoA changes it.

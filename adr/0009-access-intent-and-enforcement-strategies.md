@@ -96,7 +96,9 @@ As of 2026-11-08:
   platform capability**, shown with a reference RADIUS server (`a8c8207`).
   Per-session IPv4 quarantine kept the address, blocked corp and
   endpoint-initiated same-subnet traffic, and kept remediation reachable.
-  It is **not NAC-integrated**, CoA is unverified, and it is not selectable.
+  A direct RADIUS CoA then changed the role both ways on the same IP and
+  VLAN, with no re-authentication in the captured window (`d3cf745`). It is
+  **not NAC-integrated** and not selectable.
 
 ### 3. Selecting a strategy never weakens the intent
 
