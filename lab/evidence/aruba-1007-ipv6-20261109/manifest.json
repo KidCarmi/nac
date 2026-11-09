@@ -1,0 +1,59 @@
+{
+  "experiment": "Aruba-CX-10.07-IPv6-fresh-flow",
+  "date_utc": "2026-11-09",
+  "switch_version": "ArubaOS-CX Virtual.10.07.0004",
+  "switch_build_sha": "64b88cbfc38a48a03d7b8b6229137e37f59c9310",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "files": [
+    {
+      "path": "aruba_ipv6_capture_guest.py",
+      "bytes": 918,
+      "sha256": "c2da178a182135fcf17ba12572efbe333bce3eae4075a1f044eae22515596c78"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109.tar.gz",
+      "bytes": 998,
+      "sha256": "16e4820d883dfe51b8a8d84c8eb25fa9a1c51279c702592abd9507cffc101c87"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/corp-tap.log",
+      "bytes": 168,
+      "sha256": "1922983264af33ce187042782db4bcab1f9677a24fe34d52c6378129a450c872"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/corp-tap.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/endpoint-tap.log",
+      "bytes": 168,
+      "sha256": "fb4cbf734655e0d92494658145b244f8be85ad282a7a701d28a3ed99d9f316d1"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/endpoint-tap.pcap",
+      "bytes": 424,
+      "sha256": "d35abadb2d6bf5581d91094d39eb5c8a064229eed2f6431203296b854fd7956d"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/server-tap.log",
+      "bytes": 168,
+      "sha256": "917a25b1eddfcba0250ade6d9b7ebe4ed0c2c37bb6b55718ec4eab75e0a2bfcb"
+    },
+    {
+      "path": "aruba-ipv6-role-20261109/server-tap.pcap",
+      "bytes": 468,
+      "sha256": "c04b4c5395f0a28a1988d1ce09a8d03d603c10dc82702a0e5313206f573b8558"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3363,
+      "sha256": "ab2588d69dbb06941df16efa427896f18a46455c2ecaf1ddd9c21567a0262969"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 1254,
+      "sha256": "ffed0730d56555c5d551aaa1ed13cd60cc7f00f3eb4d1afc8221d69fb97a8f3d"
+    }
+  ]
+}
