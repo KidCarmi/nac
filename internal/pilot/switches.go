@@ -26,7 +26,7 @@ var (
 	portRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9/.:-]{0,63}$`)
 	// AOS-CX names interfaces member/slot/port, e.g. 1/1/1.
 	arubaPortRe = regexp.MustCompile(`^[0-9]{1,2}/[0-9]{1,2}/[0-9]{1,3}$`)
-	segRe  = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
+	segRe       = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
 // TestedEOSVersion is the only EOS version the generated configuration has

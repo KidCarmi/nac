@@ -75,7 +75,9 @@ func enforcementFor(sw *domain.Switch) Enforcement {
 			Limitations: []string{
 				"A role CoA is applied without re-authentication; a CoA-ACK means the switch accepted it, not that traffic is restricted.",
 				"The role's policy is switch configuration, not NAC: what it denies is only what was tested in the lab.",
-				"Lab evidence (AOS-CX 10.07 Virtual): new TCP connections to tested peers were denied and established-flow data was blocked; existing TCP state was not torn down, and packets were still delivered for some flows. This is not full packet isolation.",
+				"Lab evidence (ArubaOS-CX Virtual 10.07, reference RADIUS without nacd, one endpoint, IPv4): under the quarantine role, fresh TCP to corp and to a same-subnet peer (both directions) was denied, and data on an established TCP flow was blocked.",
+				"Not packet isolation: a peer's inbound SYN still reached the endpoint. The role does not tear down TCP state: after Restore the same connection resumed and data queued during quarantine was delivered.",
+				"IPv6: only endpoint-initiated same-subnet fresh TCP was tested (denied). Routed, peer-initiated and established IPv6 flows and DHCPv6 are unverified.",
 				"Stronger isolation profiles are not available on this path.",
 			}}
 	}
