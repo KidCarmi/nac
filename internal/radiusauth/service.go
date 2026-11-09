@@ -60,8 +60,12 @@ func New(store Store, rules RuleSource, evaluator *access.Service, postureMaxAge
 
 // Reply is what nacd returns to FreeRADIUS.
 type Reply struct {
-	Accept       bool
-	VLAN         int
+	Accept bool
+	VLAN   int
+	// Role is set instead of VLAN on a role-enforcement (Aruba) switch:
+	// the adapter returns it as Aruba-User-Role and sends no Tunnel-*
+	// attributes, so the port VLAN and the endpoint IP stay unchanged.
+	Role         string
 	Segment      string
 	DecisionID   uuid.UUID
 	SessionID    uuid.UUID
@@ -137,6 +141,19 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 
 	switch rec.Action {
 	case domain.ActionAllow, domain.ActionQuarantine:
+		if sw.UsesRoles() {
+			// Role enforcement: the segment selects a local role that must
+			// already exist on the switch. A missing mapping is a reject,
+			// never a fallback to VLAN or to an unrestricted accept.
+			role, ok := sw.SegmentRoles[rec.Segment]
+			if !ok || role == "" {
+				rec.Result = "reject"
+				rec.Reason = fmt.Sprintf("segment %q has no role mapping on switch %s; add it under Switches (%s)", rec.Segment, sw.Name, rec.Reason)
+			} else {
+				rec.Result, rec.Role = "accept", role
+			}
+			break
+		}
 		vlan, ok := sw.SegmentVLANs[rec.Segment]
 		if !ok {
 			rec.Result = "reject"
@@ -153,6 +170,7 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 	}
 	sess.LastDecisionID = &rec.ID
 	sess.RequestedAction, sess.RequestedSegment, sess.RequestedVLAN = string(rec.Action), rec.Segment, rec.VLAN
+	sess.RequestedRole = rec.Role
 	sess.LastAuthAt = now
 	if rec.Result == "accept" {
 		sess.State = domain.SessionActive
@@ -170,6 +188,9 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 	if rec.VLAN != nil {
 		ev.Detail["vlan"] = fmt.Sprint(*rec.VLAN)
 	}
+	if rec.Role != "" {
+		ev.Detail["role"] = rec.Role
+	}
 	s.event(ctx, ev)
 	s.correlateCoA(ctx, sess, prev, rec)
 
@@ -177,6 +198,7 @@ func (s *Service) Authorize(ctx context.Context, req Request) (Reply, error) {
 	if rec.VLAN != nil {
 		reply.VLAN = *rec.VLAN
 	}
+	reply.Role = rec.Role
 	if !reply.Accept {
 		reply.ReplyMessage = "NAC: access denied (decision " + rec.ID.String() + ")"
 	}
@@ -410,10 +432,20 @@ func (s *Service) correlateCoA(ctx context.Context, sess, prev *domain.Session, 
 		return
 	}
 	now := s.now().UTC()
-	if rec.VLAN != nil && c.RequestedVLAN != nil && *rec.VLAN == *c.RequestedVLAN && rec.Result == "accept" {
+	switch {
+	case c.RequestedRole != "" && rec.Result == "accept" && rec.Role == c.RequestedRole:
+		// A role CoA does not cause a re-authentication; when one happens
+		// anyway (port flap, reauth timer, session replacement) and returns
+		// the requested role, the switch was handed that role again. This is
+		// still not traffic verification.
+		c.State, c.ObservedAt, c.ObservedDecisionID = domain.CoAObserved, &now, &rec.ID
+		c.Detail = fmt.Sprintf("re-authentication after CoA returned role %s (decision %s); not traffic verification", rec.Role, rec.ID)
+	case c.RequestedRole != "":
+		c.Detail = fmt.Sprintf("re-authentication after CoA returned %s/%s, not the requested role %s", rec.Result, rec.Segment, c.RequestedRole)
+	case rec.VLAN != nil && c.RequestedVLAN != nil && *rec.VLAN == *c.RequestedVLAN && rec.Result == "accept":
 		c.State, c.ObservedAt, c.ObservedDecisionID = domain.CoAObserved, &now, &rec.ID
 		c.Detail = fmt.Sprintf("re-authentication after CoA returned VLAN %d (decision %s)", *rec.VLAN, rec.ID)
-	} else {
+	default:
 		c.Detail = fmt.Sprintf("re-authentication after CoA returned %s/%s, not the requested VLAN", rec.Result, rec.Segment)
 	}
 	c.UpdatedAt = now
@@ -458,6 +490,7 @@ func (s *Service) Reject(ctx context.Context, req Request) error {
 		case err == nil:
 			cur.State, cur.LastAuthAt = domain.SessionRejected, now
 			cur.RequestedAction, cur.RequestedSegment, cur.RequestedVLAN = "", "", nil
+			cur.RequestedRole = ""
 			if err := s.store.UpdateSession(ctx, cur); err == nil {
 				ev.SessionID = &cur.ID
 			}

@@ -65,9 +65,16 @@ func (s *Server) handleRadiusAuthorize(w http.ResponseWriter, r *http.Request) {
 	if reply.Accept {
 		s.metrics.AccessDecision.WithLabelValues("accept").Inc()
 		out["control:Tmp-String-1"] = frValue("nac-accept")
-		out["reply:Tunnel-Type"] = frValue("VLAN")
-		out["reply:Tunnel-Medium-Type"] = frValue("IEEE-802")
-		out["reply:Tunnel-Private-Group-Id"] = frValue(strconv.Itoa(reply.VLAN))
+		if reply.Role != "" {
+			// Role enforcement (Aruba AOS-CX): the local role carries the
+			// access policy. No Tunnel-* attributes, so the port VLAN and the
+			// endpoint's IP stay unchanged.
+			out["reply:Aruba-User-Role"] = frValue(reply.Role)
+		} else {
+			out["reply:Tunnel-Type"] = frValue("VLAN")
+			out["reply:Tunnel-Medium-Type"] = frValue("IEEE-802")
+			out["reply:Tunnel-Private-Group-Id"] = frValue(strconv.Itoa(reply.VLAN))
+		}
 		out["reply:Class"] = frValue("nac:" + reply.DecisionID.String())
 	} else {
 		s.metrics.AccessDecision.WithLabelValues("reject").Inc()

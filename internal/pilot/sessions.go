@@ -20,6 +20,7 @@ type Requested struct {
 	Action     string     `json:"action,omitempty"`
 	Segment    string     `json:"segment,omitempty"`
 	VLAN       *int       `json:"vlan,omitempty"`
+	Role       string     `json:"role,omitempty"`
 	DecisionID *uuid.UUID `json:"decision_id,omitempty"`
 	At         time.Time  `json:"at"`
 	Override   string     `json:"override,omitempty"`
@@ -48,6 +49,50 @@ type SessionView struct {
 	// authorization (Requested) and the switch's view (Observed): whether
 	// the endpoint can actually use its VLAN. NAC never measures it.
 	EndpointReachability EndpointReachability `json:"endpoint_reachability"`
+	// Enforcement states how this switch applies the decision and what NAC
+	// can and cannot know about it, so a client (console, API, MCP) never
+	// has to infer it from the platform name.
+	Enforcement Enforcement `json:"enforcement"`
+}
+
+// Enforcement is the per-switch enforcement contract shown with a session.
+type Enforcement struct {
+	Platform    string   `json:"platform"`
+	Strategy    string   `json:"strategy"`  // vlan | role
+	Mechanism   string   `json:"mechanism"` // what is sent to the switch
+	Observation string   `json:"observation"`
+	Limitations []string `json:"limitations"`
+}
+
+func enforcementFor(sw *domain.Switch) Enforcement {
+	if sw == nil {
+		return Enforcement{Limitations: []string{"switch record not found"}}
+	}
+	if sw.UsesRoles() {
+		return Enforcement{Platform: sw.Platform, Strategy: domain.EnforcementRole,
+			Mechanism:   "Access-Accept and CoA-Request carry Aruba-User-Role (vendor 14823, type 1) naming a local role on the switch; no Tunnel-* attributes, so the VLAN and the endpoint's IP do not change",
+			Observation: "none: NAC has no AOS-CX observation adapter; check `show port-access clients` on the switch",
+			Limitations: []string{
+				"A role CoA is applied without re-authentication; a CoA-ACK means the switch accepted it, not that traffic is restricted.",
+				"The role's policy is switch configuration, not NAC: what it denies is only what was tested in the lab.",
+				"Lab evidence (AOS-CX 10.07 Virtual): new TCP connections to tested peers were denied and established-flow data was blocked; existing TCP state was not torn down, and packets were still delivered for some flows. This is not full packet isolation.",
+				"Stronger isolation profiles are not available on this path.",
+			}}
+	}
+	return Enforcement{Platform: sw.Platform, Strategy: domain.EnforcementVLAN,
+		Mechanism:   "Access-Accept carries Tunnel-Type/Tunnel-Medium-Type/Tunnel-Private-Group-Id; a CoA-Request with the same attributes makes the switch re-authenticate the session",
+		Observation: observationNote(sw),
+		Limitations: []string{
+			"After a VLAN change the endpoint keeps its old DHCP lease until its next renewal (see endpoint_reachability).",
+			"A CoA-ACK means the switch accepted the request; the session is observed only when the switch re-authenticates it.",
+		}}
+}
+
+func observationNote(sw *domain.Switch) string {
+	if sw.EAPIURL == "" {
+		return "none: no eAPI access configured; check `show dot1x hosts` on the switch"
+	}
+	return "eAPI `show dot1x hosts` (authorization status and VLAN)"
 }
 
 // EndpointReachability is always "not_observed": NAC knows what it asked the
@@ -62,9 +107,13 @@ type EndpointReachability struct {
 func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Switch) SessionView {
 	v := SessionView{Session: sess}
 	v.Requested = Requested{Action: sess.RequestedAction, Segment: sess.RequestedSegment, VLAN: sess.RequestedVLAN,
-		DecisionID: sess.LastDecisionID, At: sess.LastAuthAt, Override: sess.Override}
+		Role: sess.RequestedRole, DecisionID: sess.LastDecisionID, At: sess.LastAuthAt, Override: sess.Override}
+	v.Enforcement = enforcementFor(sw)
 	now := s.now().UTC()
 	switch {
+	case sw != nil && sw.UsesRoles():
+		v.Observed = Observed{Freshness: "unavailable", Note: "switch state is not observed: NAC has no observation adapter for " + sw.Platform +
+			". Check `show port-access clients` on the switch."}
 	case sw != nil && sw.EAPIURL == "" && sess.ObservedAt == nil:
 		v.Observed = Observed{Freshness: "unavailable", Note: "switch state is not observed: no eAPI access is configured for " + sw.Name +
 			". Check `show dot1x hosts` on the switch."}
@@ -94,6 +143,10 @@ func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Swit
 }
 
 func reachabilityNote(v SessionView) string {
+	if v.Enforcement.Strategy == domain.EnforcementRole {
+		return "NAC does not test the endpoint. A role change keeps the VLAN and the endpoint's address; " +
+			"whether the role restricts its traffic is not observed by NAC. Check the switch and test traffic."
+	}
 	const base = "NAC does not test the endpoint. Switch authorization and the switch's VLAN do not prove a usable address: " +
 		"after a VLAN change the endpoint keeps its old DHCP lease until its next renewal. Check the endpoint itself."
 	if v.Observed.Matches != nil && *v.Observed.Matches && v.Observed.VLAN != "" {
