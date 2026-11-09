@@ -279,8 +279,17 @@ both segments. The ACKs carried 3600 / 30 / 45.
         handshake).
       - It then delivered the messages queued during quarantine.
       - So the role blocks traffic but does not terminate sessions.
+    - **IPv6 ([`c26c3ec`](https://github.com/KidCarmi/nac/tree/c26c3ec8f9179aab319c989e96d51f2e7ed360c8/lab/evidence/aruba-1007-ipv6-20261109), verified here): endpoint-initiated,
+      same-subnet fresh TCP denied under quarantine and restored by CoA.**
+      - The role policy has IPv4 classes only, so how IPv6 is matched is
+        not identified.
+      - Not tested:
+        - an IPv6 remediation allow
+        - routed IPv6
+        - peer-initiated IPv6
+        - established IPv6 flows
+        - DHCPv6
     - **Still unverified:**
-      - IPv6
       - DHCP
       - shared phone+PC ports
       - the NAC-integrated pass
