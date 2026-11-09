@@ -112,6 +112,8 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 	pilotSvc := pilot.New(pilotRepo, versionSvc, accessSvc, recorder, logger, pilot.Config{
 		ClientsFile:       cfg.Pilot.ClientsFile,
 		OutageLog:         cfg.Pilot.OutageLog,
+		ReloadStatusFile:  cfg.Pilot.ReloadStatusFile,
+		SkipProcessCheck:  cfg.Pilot.SkipProcessCheck,
 		ObservationMaxAge: cfg.Pilot.ObservationMaxAge,
 		CoATimeout:        cfg.Pilot.CoATimeout,
 		CoAAttempts:       cfg.Pilot.CoARetries + 1,

@@ -3,7 +3,7 @@
 #   eapol_test (EAP-TLS supplicant acting as the switch) -> FreeRADIUS 3.2.5
 #   (deployments/freeradius) -> nacd -> PostgreSQL.
 #
-# Proves: unbound identity denied; binding grants corp VLAN; untrusted-CA
+# Proves: switch Configured only after FreeRADIUS loaded it (D1); unbound identity denied; binding grants corp VLAN; untrusted-CA
 # certificate rejected by EAP-TLS and diagnosable in NAC; nacd outage gives
 # Access-Reject with no cache and an imported outage-log entry; recovery.
 # CoA needs a real switch and is covered by test/integration (fake vEOS).
@@ -71,7 +71,7 @@ eap() { # conf -> 0 on SUCCESS
 }
 
 # ---- Install the adapter and start the services ----
-mkdir -p /var/lib/nac && rm -f "$CLIENTS" "$OUTAGE"
+mkdir -p /var/lib/nac && rm -f "$CLIENTS" "$OUTAGE" /var/lib/nac/freeradius-reload.status
 NAC_SERVICE_TOKEN=$TOKEN NAC_URL=$API NAC_CA_FILE="$WORK/pki/ca.pem" NAC_SERVER_CERT="$WORK/pki/server.pem" \
   NAC_SERVER_KEY="$WORK/pki/server.key" deployments/pilot/freeradius-setup.sh >/dev/null
 start_nacd; login
@@ -86,6 +86,21 @@ freeradius -X -d /etc/freeradius/3.0 >"$WORK/radiusd.log" 2>&1 &
 RAD_PID=$!
 for _ in $(seq 1 50); do grep -q "Ready to process requests" "$WORK/radiusd.log" && break; pause 0.2; done
 grep -q "Ready to process requests" "$WORK/radiusd.log" || fail "FreeRADIUS did not start"
+
+# ---- D1: nacd reports the switch configured only once FreeRADIUS loaded it ----
+api "$API/api/v1/switches/$SW" | jq -e '.status.configured.state == "pending"' >/dev/null \
+  || fail "before any reload result, configured must be pending: $(api "$API/api/v1/switches/$SW" | jq -c .status.configured)"
+# No systemd in this harness: the real helper runs the real freeradius -C, with a
+# systemctl stub that reports the -X FreeRADIUS (started after the write) as active.
+mkdir -p "$WORK/stub"; printf '#!/bin/sh\n[ "$1" = is-active ] && { [ "$2" = --quiet ] || echo active; exit 0; }\nexit 0\n' >"$WORK/stub/systemctl"
+chmod +x "$WORK/stub/systemctl"
+PATH="$WORK/stub:$PATH" deployments/pilot/nac-freeradius-reload || fail "reload helper: $(cat /var/lib/nac/freeradius-reload.status)"
+api "$API/api/v1/switches/$SW" | jq -e '.status.configured.state == "yes" and .status.freeradius_load.state == "yes"' >/dev/null \
+  || fail "after a successful reload with FreeRADIUS running, configured must be yes: $(api "$API/api/v1/switches/$SW" | jq -c .status.freeradius_load)"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOK" -H 'Content-Type: application/json' -XPOST "$API/api/v1/switches" \
+  -d "{\"name\":\"mapped\",\"radius_source_ip\":\"::ffff:10.250.99.200\",\"radius_secret\":\"$SECRET\",\"segment_vlans\":{\"corp\":10,\"quarantine\":20}}")
+[ "$CODE" = 422 ] || fail "IPv4-mapped source IP must be rejected (got HTTP $CODE)"
+ok "D1: configured pending until FreeRADIUS loaded the list, then yes (real freeradius -C, running process); ::ffff: source IP rejected (422)"
 
 api -XPOST "$API/api/v1/policies" -d '{"name":"corp-bound-devices","priority":10,"enabled":true,"action":"allow","segment":"corp",
   "conditions":[{"field":"identity.bound","operator":"eq","values":["true"]},{"field":"mac.matches_device","operator":"eq","values":["true"]}]}' >/dev/null

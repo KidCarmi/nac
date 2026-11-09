@@ -1,8 +1,9 @@
 [Unit]
 Description=Restart FreeRADIUS to load switches registered in nacd
 # FreeRADIUS 3 reads clients only at start (a HUP does not reload them).
+# The helper records the outcome in /var/lib/nac/freeradius-reload.status;
+# nacd reports a switch as configured only from that record.
 
 [Service]
 Type=oneshot
-ExecStartPre=/usr/sbin/freeradius -C -d /etc/freeradius/3.0
-ExecStart=/bin/systemctl try-restart freeradius.service
+ExecStart=/usr/local/sbin/nac-freeradius-reload

@@ -6,6 +6,33 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc12 (proposed; replacement for the D1 reload-path defect; not yet lab-run; rc10 stays the tested baseline)
+- **Known defect D1 fixed** (ASTRA chaos run on rc10, `5eb1ff7`: C4 FAIL).
+  - **Input:** `radius_source_ip` and `nas_ip` must be dotted IPv4.
+    IPv4-mapped spellings get `422`. Stored mapped rows are normalized at
+    start, and the client file never carries a non-IPv4 or duplicate
+    address.
+  - **Status:** the reload path now runs
+    `/usr/local/sbin/nac-freeradius-reload`, which records the result and
+    the client-file SHA-256 in `/var/lib/nac/freeradius-reload.status`.
+    Switch **Configured** and the new `freeradius_load` (switch status and
+    `/api/v1/radius/health`) are `yes` only when FreeRADIUS restarted with
+    exactly the current list and is running. Otherwise they are `pending`
+    or `no`, with the reason.
+  - **Recovery:** a failed FreeRADIUS is restarted once the list is valid;
+    a deliberately stopped one is left stopped.
+- **Console:** "Loaded by FreeRADIUS" on the overview and the switch page,
+  and a `pending` state.
+- **`scripts/chaos-freeradius-reload.sh`:**
+  - compares nacd's claim with the ground truth after every scenario
+  - adds C4b (hex mapped spelling) and C6 (FreeRADIUS deliberately stopped)
+- **Changed files beyond nacd:**
+  - `deployments/pilot/nac-freeradius-reload` (new)
+  - `nac-freeradius-reload.service`
+  - `install.sh`, which installs the helper
+
+  Re-run the installer to get them. No database migration.
+
 ### pilot-rc11 (proposed; not yet qualified; rc10 `b39649f` stays the tested baseline)
 - **Console CoA confirmation wording only.** The text no longer says
   "about 20 s" or "at its next DHCP renewal". It now states the measured
@@ -20,7 +47,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No API, decision, CoA packet or installer change.
 
 ### Open after pilot-rc10
-- **Known defect D1 (switch → FreeRADIUS reload path).** "Configured"
+- **Known defect D1 (switch → FreeRADIUS reload path), fixed in
+  `pilot-rc12`.** "Configured"
   reflects nacd writing the clients file, not FreeRADIUS loading it. An
   IPv4-mapped `radius_source_ip` (`::ffff:10.x`) is accepted, the reload is
   skipped, and FreeRADIUS fails at its next restart. Workaround and fix

@@ -96,6 +96,12 @@ type PilotConfig struct {
 	ClientsFile string
 	// OutageLog is the FreeRADIUS outage log nacd imports into the timeline.
 	OutageLog string
+	// ReloadStatusFile is where the reload helper records what FreeRADIUS
+	// loaded; default freeradius-reload.status next to ClientsFile.
+	ReloadStatusFile string
+	// SkipProcessCheck (NAC_FREERADIUS_PROCESS_CHECK=off) is for a FreeRADIUS
+	// on another host: nacd then cannot see whether it is running.
+	SkipProcessCheck bool
 	// EAPIInsecureSkipVerify accepts self-signed switch eAPI certificates.
 	EAPIInsecureSkipVerify bool
 	// EAPIAllowRSAKeyExchange lets the eAPI client (only) offer TLS 1.2 RSA
@@ -167,6 +173,8 @@ func Load() (*Config, error) {
 			CoARetries:              getInt("NAC_COA_RETRIES", 2),
 			ClientsFile:             os.Getenv("NAC_FREERADIUS_CLIENTS_FILE"),
 			OutageLog:               os.Getenv("NAC_FREERADIUS_OUTAGE_LOG"),
+			ReloadStatusFile:        os.Getenv("NAC_FREERADIUS_RELOAD_STATUS"),
+			SkipProcessCheck:        strings.EqualFold(os.Getenv("NAC_FREERADIUS_PROCESS_CHECK"), "off"),
 			EAPIInsecureSkipVerify:  getEnv("NAC_EAPI_INSECURE_SKIP_VERIFY", "false") == "true",
 			EAPIAllowRSAKeyExchange: getEnv("NAC_EAPI_TLS_ALLOW_RSA_KEX", "false") == "true",
 		},

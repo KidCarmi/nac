@@ -181,7 +181,7 @@ func (s *Service) Probe(ctx context.Context, id uuid.UUID) (*SwitchView, error) 
 		return nil, err
 	}
 	if sw.EAPIURL == "" {
-		return &SwitchView{Switch: *sw, Status: s.status(ctx, sw)}, nil
+		return s.GetSwitch(ctx, id)
 	}
 	now := s.now().UTC()
 	res, err := s.eapi.run(ctx, sw, "show version")

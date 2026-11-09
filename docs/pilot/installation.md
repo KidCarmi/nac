@@ -158,8 +158,13 @@ the installed binary (recorded as `running nacd:` in the install report).
    - the configuration checked with `freeradius -C`
 8. Installs and starts the systemd units:
    - `nacd.service`
-   - `nac-freeradius-reload.path`, which restarts FreeRADIUS when nacd
-     rewrites the switch list
+   - `nac-freeradius-reload.path`, which runs
+     `/usr/local/sbin/nac-freeradius-reload` when nacd rewrites the switch
+     list. The helper checks the configuration with `freeradius -C`,
+     restarts FreeRADIUS, and records the outcome in
+     `/var/lib/nac/freeradius-reload.status`. nacd shows a switch as
+     **Configured** only from that record, while a `freeradius` process is
+     running.
    - `freeradius.service`
 9. Writes `/etc/nac/install-report.txt`.
 
@@ -244,6 +249,22 @@ leading zeros. `openssl x509 -serial` may show a leading `0`.
 ```bash
 systemctl status nacd freeradius nac-freeradius-reload.path
 ```
+
+```bash
+cat /var/lib/nac/freeradius-reload.status
+```
+
+After you start FreeRADIUS by hand (or after it was stopped while a switch
+changed), the console shows "Loaded by FreeRADIUS: no" until the next reload.
+Record the load with:
+
+```bash
+systemctl start nac-freeradius-reload.service
+```
+
+If FreeRADIUS runs on another host than nacd, set
+`NAC_FREERADIUS_PROCESS_CHECK=off` in `/etc/nac/nacd.env`. That deployment is
+not part of the pilot.
 
 ```bash
 curl -fs http://127.0.0.1:8080/readyz

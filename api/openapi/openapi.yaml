@@ -2057,7 +2057,7 @@ components:
       type: object
       required: [state, detail]
       properties:
-        state: { type: string, enum: ["yes", "no", "unknown"] }
+        state: { type: string, enum: ["yes", "no", "unknown", "pending"] }
         at: { type: string, format: date-time }
         detail: { type: string }
         historical:
@@ -2072,13 +2072,32 @@ components:
           description: How a historical item relates to now, e.g. whether the verified session is still active.
     SwitchStatus:
       type: object
-      required: [configured, reachable, auth_request_seen, verified, radius_client_file]
+      required: [configured, reachable, auth_request_seen, verified, radius_client_file, freeradius_load]
       properties:
-        configured: { $ref: "#/components/schemas/StatusItem" }
+        configured:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            `yes` only when the switch is registered AND the running
+            FreeRADIUS has loaded the list that contains it (same state as
+            `freeradius_load`). Before `pilot-rc12` it meant only that nacd
+            had written the client file (known defect D1).
         reachable: { $ref: "#/components/schemas/StatusItem" }
         auth_request_seen: { $ref: "#/components/schemas/StatusItem" }
         verified: { $ref: "#/components/schemas/StatusItem" }
-        radius_client_file: { $ref: "#/components/schemas/StatusItem" }
+        radius_client_file:
+          $ref: "#/components/schemas/StatusItem"
+          description: Whether nacd wrote the client file. Not whether FreeRADIUS loaded it; see `freeradius_load`.
+        freeradius_load:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            Whether the running FreeRADIUS has loaded the current switch list
+            (known defect D1). `yes`: the reload helper restarted FreeRADIUS
+            with exactly the list nacd would write now, and a `freeradius`
+            process is running. `pending`: written, not yet confirmed (up to
+            60 s). `no`: rejected by `freeradius -C`, FreeRADIUS stopped or
+            not running, or not confirmed within 60 s; `detail` says which.
+            `unknown`: nacd does not manage the client file, or cannot see
+            whether FreeRADIUS runs.
     Switch:
       type: object
       description: A registered RADIUS client. Secrets are never returned, only whether they are set.
@@ -2128,7 +2147,11 @@ components:
           description: 1-63 letters, digits, `.`, `_` or `-`.
         radius_source_ip:
           type: string
-          description: IPv4 address FreeRADIUS sees as the packet source.
+          description: |
+            IPv4 address FreeRADIUS sees as the packet source, in dotted form
+            (`10.70.99.1`). IPv4-mapped IPv6 (`::ffff:10.70.99.1`,
+            `::ffff:a46:6301`) is rejected with `422`: FreeRADIUS refuses or
+            misreads it (known defect D1). `nas_ip` follows the same rule.
         nas_ip:
           type: string
           description: IPv4 NAS-IP-Address used in CoA; defaults to `radius_source_ip`.
@@ -2478,13 +2501,24 @@ components:
     # ---------------------------------------------------------------- RADIUS adapter
     RadiusHealth:
       type: object
-      required: [outage_log_import, radius_client_file, outage_semantics]
+      required: [outage_log_import, radius_client_file, freeradius_load, outage_semantics]
       properties:
         last_decision: { $ref: "#/components/schemas/AuthEvent" }
         last_eap_tls_reject: { $ref: "#/components/schemas/AuthEvent" }
         last_outage_reject: { $ref: "#/components/schemas/AuthEvent" }
         outage_log_import: { $ref: "#/components/schemas/StatusItem" }
         radius_client_file: { $ref: "#/components/schemas/StatusItem" }
+        freeradius_load:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            Whether the running FreeRADIUS has loaded the current switch list
+            (known defect D1). `yes`: the reload helper restarted FreeRADIUS
+            with exactly the list nacd would write now, and a `freeradius`
+            process is running. `pending`: written, not yet confirmed (up to
+            60 s). `no`: rejected by `freeradius -C`, FreeRADIUS stopped or
+            not running, or not confirmed within 60 s; `detail` says which.
+            `unknown`: nacd does not manage the client file, or cannot see
+            whether FreeRADIUS runs.
         outage_semantics: { type: string }
     FreeRADIUSRequest:
       type: object

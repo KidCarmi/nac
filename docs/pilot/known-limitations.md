@@ -34,9 +34,15 @@
 
 ## Known defect D1: "Configured" does not prove FreeRADIUS loaded the switch (found after `pilot-rc10`)
 
-**Status: open. Present in `pilot-rc10`, the rc11 wording candidate and the
-Aruba role candidate. Not fixed in any of them.** The fix will ship as its own,
-separately identifiable replacement candidate, not mixed into another change.
+**Status:**
+- **Confirmed by ASTRA** on `pilot-rc10` (C4 FAIL, an actual RADIUS outage
+  after a forced restart):
+  [`5eb1ff7`](https://github.com/KidCarmi/nac/tree/5eb1ff7dddabbaaff553bc1b8c85cb4f23090382/lab/evidence/aruba-reload-chaos-20261109).
+  In the same run, C1–C3 reached a valid loaded state within 12 s, and C5
+  recovered.
+- **Present in** `pilot-rc10`, `pilot-rc11` and `pilot-aruba-rc1`.
+- **Fixed in `pilot-rc12`** (proposed, not lab-run). That candidate changes
+  nothing else compared with rc11. See "The fix" below.
 
 **The defect.** A switch's "Configured: yes" means nacd **wrote**
 `/var/lib/nac/freeradius-clients.conf`. It does not mean FreeRADIUS loaded
@@ -71,12 +77,32 @@ node (scenarios C1–C3).
 
   Do not rely on the console's "Configured" alone.
 
-**Fix scope (proposed, separate candidate):**
-- Accept only dotted IPv4 for `radius_source_ip` and `nas_ip`, and reject
-  other spellings.
-- Report "configured" only after FreeRADIUS has loaded the current file,
-  from a result the reload unit records.
-- Decide the start-limit behavior from the chaos evidence.
+**The fix (`pilot-rc12`):**
+- **Input.** Only dotted IPv4 is accepted for `radius_source_ip` and
+  `nas_ip` (`422` otherwise). Rows an earlier version stored in mapped form
+  are rewritten to dotted IPv4 at nacd start (audited as
+  `switch.normalize_ip`). The client file never contains a non-IPv4 or
+  duplicate address.
+- **Status.** `nac-freeradius-reload` (run by the path unit) checks the
+  configuration, restarts FreeRADIUS and records the result with the
+  SHA-256 of the client file it validated. nacd's **Configured** and
+  **Loaded by FreeRADIUS** (`freeradius_load`) are:
+  - `yes` only when that record says the restart succeeded with exactly the
+    list nacd would write now **and** a `freeradius` process is running
+  - `pending` for up to 60 s after a write
+  - `no`, with the reason, otherwise
+- **Recovery.** A FreeRADIUS that **failed** (for example on an earlier
+  invalid list) is restarted once the list is valid. One that was
+  **deliberately stopped** is left stopped and reported `no`.
+- **Start limit.** Not changed. C1–C3 settled within 12 s, and the status
+  now reports any list that is not loaded.
+
+**What is left:**
+- After a manual start of FreeRADIUS, the status says `no` until the next
+  reload (`systemctl start nac-freeradius-reload.service`). It errs toward
+  "not loaded", never toward "loaded".
+- `NAC_FREERADIUS_PROCESS_CHECK=off` disables the process check when
+  FreeRADIUS runs on another host. That deployment is outside the pilot.
 
 ## Scope
 

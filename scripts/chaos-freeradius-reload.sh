@@ -16,6 +16,11 @@
 # Needs curl, jq, systemctl, stat. Each scenario prints PASS / FAIL / OBSERVED
 # and the evidence it used.
 #
+# From pilot-rc12 nacd reports what FreeRADIUS loaded (status.freeradius_load,
+# also in /api/v1/radius/health). After every scenario the script compares it
+# with the ground truth below: "yes" while not loaded is a FAIL (known defect
+# D1). Against rc10/rc11, which do not report it, the comparison is OBSERVED.
+#
 # "Loaded" means all of these hold:
 #   - freeradius.service is active
 #   - it (re)started after the clients file was last written
@@ -59,6 +64,19 @@ update_secret() { # update_secret <id> <secret>
 }
 delete_switch() { api -X DELETE "$NAC/api/v1/switches/$1" -o /dev/null; }
 configured_state() { api "$NAC/api/v1/switches/$1" | jq -r '.status.configured.state + " (" + .status.configured.detail + ")"'; }
+nacd_load() { api "$NAC/api/v1/radius/health" | jq -r '.freeradius_load.state // "not-reported"'; }
+check_nacd_agrees() { # check_nacd_agrees <scenario>: nacd's claim vs the ground truth
+	local claim truth
+	claim=$(nacd_load)
+	loaded && truth=yes || truth=no
+	case "$claim/$truth" in
+	not-reported/*) result OBSERVED "$1 nacd" "nacd does not report freeradius_load (pre-rc12); ground truth loaded=$truth" ;;
+	yes/no) result FAIL "$1 nacd" "nacd says loaded=yes but FreeRADIUS does NOT have the current list (D1)" ;;
+	yes/yes) result PASS "$1 nacd" "nacd says loaded=yes, and it is" ;;
+	*/yes) result FAIL "$1 nacd" "nacd says $claim but FreeRADIUS has the current list: $(api "$NAC/api/v1/radius/health" | jq -r .freeradius_load.detail)" ;;
+	*) result PASS "$1 nacd" "nacd says $claim, and FreeRADIUS does not have the current list: $(api "$NAC/api/v1/radius/health" | jq -r .freeradius_load.detail)" ;;
+	esac
+}
 
 fr_active() { systemctl is-active --quiet freeradius; }
 fr_started_epoch() { date -d "$(systemctl show freeradius -p ActiveEnterTimestamp --value)" +%s 2>/dev/null || echo 0; }
@@ -81,6 +99,7 @@ check_loaded() { # check_loaded <scenario>
 		result FAIL "$1" "FreeRADIUS does NOT have the current clients file (active=$(fr_active && echo yes || echo no) fr_start=$(fr_started_epoch) file=$(file_epoch) valid=$(file_valid && echo yes || echo no)); $(units_state)"
 		journalctl -u nac-freeradius-reload.service -u nac-freeradius-reload.path -u freeradius --since "-2min" --no-pager | tail -15
 	fi
+	check_nacd_agrees "$1"
 }
 
 say "baseline: $(units_state)"
@@ -120,11 +139,33 @@ if [[ "$bad" =~ ^[0-9a-f-]{36}$ ]]; then
 else
 	result PASS "C4 rejected" "nacd rejected ::ffff:$NET.200: $bad"
 fi
+# C4b: the hex spelling of the same address (loads, but as an IPv6 client).
+IFS=. read -r o1 o2 o3 <<<"$NET"
+hex=$(printf '::ffff:%x:%x' $(((o1 << 8) | o2)) $(((o3 << 8) | 200)))
+bad=$(create_switch chaos-mapped-hex "$hex")
+if [[ "$bad" =~ ^[0-9a-f-]{36}$ ]]; then
+	result FAIL "C4b accepted" "nacd accepted $hex (FreeRADIUS treats it as an IPv6 client)"
+	delete_switch "$bad"
+else
+	result PASS "C4b rejected" "nacd rejected $hex: $bad"
+fi
 
 # C5: FreeRADIUS killed right after a change (reload racing a crash).
 update_secret "$id1" "chaos-after-kill-secret-abcdef"
 sleep 0.3; systemctl kill -s KILL freeradius
 check_loaded "C5 kill during reload"
+
+# C6: FreeRADIUS deliberately stopped while a switch changes. The reload must
+# not start it, and nacd must not claim the list is loaded. After a start and
+# one reload, nacd must say yes again.
+systemctl stop freeradius
+update_secret "$id1" "chaos-while-stopped-secret-abcdef"
+sleep "$SETTLE"
+fr_active && result FAIL "C6 stopped" "the reload started a deliberately stopped FreeRADIUS" || result PASS "C6 stopped" "FreeRADIUS stayed stopped"
+check_nacd_agrees "C6 stopped"
+systemctl start freeradius
+systemctl start nac-freeradius-reload.service # records the load for nacd
+check_loaded "C6 restarted"
 
 # Cleanup.
 for i in "${ids[@]}" "$id1"; do [[ "$i" =~ ^[0-9a-f-]{36}$ ]] && delete_switch "$i"; done

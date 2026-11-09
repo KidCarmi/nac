@@ -152,6 +152,7 @@ type RadiusHealth struct {
 	LastOutageReject *domain.AuthEvent `json:"last_outage_reject,omitempty"`
 	OutageImport     StatusItem        `json:"outage_log_import"`
 	ClientsFile      StatusItem        `json:"radius_client_file"`
+	FreeRADIUSLoad   StatusItem        `json:"freeradius_load"`
 	Semantics        string            `json:"outage_semantics"`
 }
 
@@ -172,5 +173,10 @@ func (s *Service) Health(ctx context.Context) (*RadiusHealth, error) {
 	s.mu.Lock()
 	h.OutageImport, h.ClientsFile = s.outageStatus, s.clientsFileStatus
 	s.mu.Unlock()
+	sws, err := s.store.ListSwitches(ctx)
+	if err != nil {
+		return nil, err
+	}
+	h.FreeRADIUSLoad = s.loadState(sws)
 	return h, nil
 }
