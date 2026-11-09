@@ -221,19 +221,17 @@ evidence, and it was gathered without nacd.
 - a fresh database, in the separate Aruba topology
 - `pilot-rc10` and its topology stay untouched
 
-### Exact pins
+### Exact pins (`pilot-aruba-rc4`)
 
-**The values below are for `pilot-aruba-rc3`.** `pilot-aruba-rc4` changes nacd only
-(deployment files are identical); its pins are in
-[qualification status](qualification-status.md).
+Deployment files are byte-identical to `pilot-aruba-rc3`; only nacd changed.
 
 
 | What | Value |
 |---|---|
-| Commit | `d96bb741e8f36019af4c6d5152491c2e0a874fe6` |
-| nacd (`/usr/local/bin/nacd`; `BUNDLE-MANIFEST.txt` and `/etc/nac/install-report.txt` `nacd_sha256`) | `01e88d8b03bfbbe1b2c55388e6ef48b51d98b096df8b5a77822e3b0f5d97ae6a` |
+| Commit | `0148bf88985c5da9086b54aafd002fbfbfe71b75` |
+| nacd (`/usr/local/bin/nacd`; `BUNDLE-MANIFEST.txt` and `/etc/nac/install-report.txt` `nacd_sha256`) | `dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7` |
 | `freeradius_adapter_sha256` line in `/etc/nac/install-report.txt` | `3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32` |
-| Running commit (install report, `GET /version`) | `d96bb74` |
+| Running commit (install report, `GET /version`) | `0148bf8` |
 
 The installer copies these files verbatim, so the installed files have the
 same SHA-256 as at the commit:
@@ -260,15 +258,15 @@ files above instead.
 
 1. **Build** the bundle (Go toolchain `go1.25.0` is fetched if needed):
    ```bash
-   git checkout d96bb741e8f36019af4c6d5152491c2e0a874fe6
-   make pilot-bundle VERSION=pilot-aruba-rc3
+   git checkout 0148bf88985c5da9086b54aafd002fbfbfe71b75
+   make pilot-bundle VERSION=pilot-aruba-rc4
    ```
-   `nac-pilot-pilot-aruba-rc3/BUNDLE-MANIFEST.txt` inside the tarball must
+   `nac-pilot-pilot-aruba-rc4/BUNDLE-MANIFEST.txt` inside the tarball must
    show the nacd hash above.
-2. **Copy** `dist/nac-pilot-pilot-aruba-rc3.tar.gz` to the control node,
+2. **Copy** `dist/nac-pilot-pilot-aruba-rc4.tar.gz` to the control node,
    then extract it:
    ```bash
-   tar -xzf nac-pilot-pilot-aruba-rc3.tar.gz && cd nac-pilot-pilot-aruba-rc3
+   tar -xzf nac-pilot-pilot-aruba-rc4.tar.gz && cd nac-pilot-pilot-aruba-rc4
    ```
 3. **Install** with the CA that issued the endpoint's certificate, and a
    server certificate for FreeRADIUS. Add `--proxy URL` if apt needs one.
@@ -279,7 +277,7 @@ files above instead.
    then need a client certificate from it.
 4. **Verify the install:**
    - `/etc/nac/install-report.txt`: `nacd_sha256`,
-     `freeradius_adapter_sha256` and `running nacd: commit d96bb74`
+     `freeradius_adapter_sha256` and `running nacd: commit 0148bf8`
    - the file hashes above, with `sha256sum`
    - `systemctl status nacd freeradius nac-freeradius-reload.path` (all
      active)
