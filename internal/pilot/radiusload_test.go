@@ -99,3 +99,75 @@ func TestLoadState(t *testing.T) {
 	s.cfg.ClientsFile = ""
 	expect("unmanaged", "unknown", "does not manage")
 }
+
+// ASTRA (pilot-aruba-rc2 chaos C2/C3): a burst left FreeRADIUS on an older
+// list and no further reload ran. The backstop rewrites the identical file
+// (a new inode, so the systemd path unit fires) once the list stays
+// unconfirmed, rate-limited, and stops as soon as the record matches.
+func TestReloadBackstop(t *testing.T) {
+	dir := t.TempDir()
+	clients := filepath.Join(dir, "freeradius-clients.conf")
+	statusFile := filepath.Join(dir, "freeradius-reload.status")
+	sws := []domain.Switch{{Name: "sw1", RadiusSourceIP: "10.0.0.1", RadiusSecret: "lab-radius-secret-0123456789"}}
+	s := New(&listStore{sws: sws}, nil, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), Config{ClientsFile: clients})
+	s.frRunning = func() (bool, error) { return true, nil }
+	now := time.Now().UTC()
+	s.now = func() time.Time { return now }
+	ctx := context.Background()
+	s.WriteClientsFile(ctx)
+	want := sha256Hex([]byte(RenderClients(sws)))
+	if err := os.WriteFile(statusFile, []byte("result=ok\nclients_sha256=older\nat=2026-11-09T18:47:21Z\ndetail=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fiBefore, _ := os.Stat(clients)
+	rewritten := func() bool {
+		t.Helper()
+		fi, err := os.Stat(clients)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changed := !os.SameFile(fiBefore, fi)
+		fiBefore = fi
+		return changed
+	}
+
+	now = now.Add(10 * time.Second)
+	s.ReloadBackstop(ctx)
+	if rewritten() {
+		t.Fatal("re-triggered before reloadRetriggerAfter: the normal path may still be working")
+	}
+	now = now.Add(15 * time.Second) // 25 s after the write
+	s.ReloadBackstop(ctx)
+	if !rewritten() {
+		t.Fatal("unconfirmed list was not re-triggered")
+	}
+	if b, _ := os.ReadFile(clients); sha256Hex(b) != want {
+		t.Fatal("backstop changed the switch list")
+	}
+	now = now.Add(10 * time.Second)
+	s.ReloadBackstop(ctx)
+	if rewritten() {
+		t.Fatal("re-triggered again within reloadRetriggerEvery")
+	}
+	// The rewrites must not reset the grace period: a reload path that never
+	// answers ends in "no", not an endless "pending".
+	now = now.Add(time.Minute)
+	if st := s.loadState(sws); st.State != "no" {
+		t.Fatalf("never-confirmed list after the grace period: %s %q", st.State, st.Detail)
+	}
+	s.ReloadBackstop(ctx)
+	if !rewritten() {
+		t.Fatal("still unconfirmed after reloadRetriggerEvery: expected another re-trigger")
+	}
+	if err := os.WriteFile(statusFile, []byte("result=ok\nclients_sha256="+want+"\nat=2026-11-09T18:48:00.123Z\ndetail=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(time.Minute)
+	s.ReloadBackstop(ctx)
+	if rewritten() {
+		t.Fatal("re-triggered although FreeRADIUS confirmed this list")
+	}
+	if st := s.loadState(sws); st.State != "yes" || st.At == nil || st.At.Nanosecond() != 123e6 {
+		t.Fatalf("confirmed list (with the helper's millisecond time): %s %v %q", st.State, st.At, st.Detail)
+	}
+}

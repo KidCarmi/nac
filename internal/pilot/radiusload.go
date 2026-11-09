@@ -33,6 +33,79 @@ import (
 // 12 s in ASTRA's chaos run (C1-C3).
 const reloadGrace = 60 * time.Second
 
+// Reload backstop (ASTRA, pilot-aruba-rc2 chaos run: a burst of writes left
+// FreeRADIUS on an older list and nothing triggered another reload). If the
+// reload record still names another list reloadRetriggerAfter after the
+// current list was written, nacd rewrites the identical file so the systemd
+// path unit fires again, at most every reloadRetriggerEvery.
+const (
+	reloadBackstopEvery  = 10 * time.Second
+	reloadRetriggerAfter = 20 * time.Second
+	reloadRetriggerEvery = 30 * time.Second
+)
+
+// noteDesired records when a NEW switch list was first written. An identical
+// rewrite (nacd restart, backstop) keeps the original time.
+func (s *Service) noteDesired(sha string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sha != s.desiredSHA {
+		s.desiredSHA, s.desiredSince = sha, s.now().UTC()
+	}
+}
+
+// writtenAt is when the current list content was first written: from
+// noteDesired when known, else the file's modification time.
+func (s *Service) writtenAt(want string, mtime time.Time) time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.desiredSHA == want && !s.desiredSince.IsZero() {
+		return s.desiredSince
+	}
+	return mtime
+}
+
+// ReloadBackstop re-triggers the FreeRADIUS reload when the current switch
+// list has not been confirmed (see the constants above). It never changes the
+// list: it only rewrites what nacd would write anyway.
+func (s *Service) ReloadBackstop(ctx context.Context) {
+	if s.cfg.ClientsFile == "" {
+		return
+	}
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
+	sws, err := s.store.ListSwitches(ctx)
+	if err != nil {
+		return
+	}
+	data := []byte(RenderClients(sws))
+	want := sha256Hex(data)
+	if rec, err := readReloadRecord(s.reloadStatusFile()); err == nil && rec.SHA256 == want {
+		return // loaded, or a definitive result (rejected, stopped) for exactly this list
+	}
+	fi, err := os.Stat(s.cfg.ClientsFile)
+	now := s.now().UTC()
+	if err == nil && now.Sub(s.writtenAt(want, fi.ModTime().UTC())) < reloadRetriggerAfter {
+		return // the normal path may still be working
+	}
+	if !s.lastRetrigger.IsZero() && now.Sub(s.lastRetrigger) < reloadRetriggerEvery {
+		return
+	}
+	if err := writeAtomic(s.cfg.ClientsFile, data, 0o640); err != nil {
+		s.logger.Error("reload backstop could not rewrite the FreeRADIUS client file", "error", err)
+		return
+	}
+	s.noteDesired(want)
+	s.lastRetrigger = now
+	if s.retriggerWarned != want {
+		s.retriggerWarned = want
+		s.logger.Warn("FreeRADIUS has not confirmed the current switch list; rewrote the client file to trigger the reload again",
+			"clients_sha256", want, "status_file", s.reloadStatusFile())
+	} else {
+		s.logger.Debug("reload backstop re-triggered again", "clients_sha256", want)
+	}
+}
+
 // canonicalIPv4 accepts only the dotted-quad form of an IPv4 address, exactly
 // as FreeRADIUS will be given it. IPv4-mapped IPv6 (::ffff:10.0.0.1 or
 // ::ffff:a00:1) is rejected: FreeRADIUS either refuses it or treats it as an
@@ -156,7 +229,7 @@ func (s *Service) loadState(sws []domain.Switch) StatusItem {
 	if err != nil {
 		return StatusItem{State: "no", Detail: "client file " + s.cfg.ClientsFile + " is missing: " + err.Error()}
 	}
-	written := fi.ModTime().UTC()
+	written := s.writtenAt(want, fi.ModTime().UTC())
 	pendingOrNo := func(why string) StatusItem {
 		if now.Sub(written) < reloadGrace {
 			return StatusItem{State: "pending", At: &written, Detail: "written at " + written.Format(time.RFC3339) + "; waiting for FreeRADIUS to load it (" + why + ")"}
