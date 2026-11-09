@@ -49,7 +49,7 @@ other IPv4" (evidence in the
 | **Packet isolation** | **not met**: a peer's inbound SYN still reached the endpoint |
 | **Tear down existing TCP state** | **did not happen**: after Restore the same connection resumed, and data queued during quarantine was delivered |
 | IPv6 | only endpoint-initiated same-subnet fresh TCP was tested (denied). Everything else is unverified |
-| DHCP | unverified (static address in that lab) |
+| DHCP (one Linux client, one server) | **kept working under the role** (direct role CoA, no nacd; [`b0e5f47`](https://github.com/KidCarmi/nac/tree/b0e5f47d242ad15c04085f727b9d00c52e8f42f7/lab/evidence/aruba-dhcp-reference-20261109), 10/10 manifest entries verified here). Ubuntu 22.04.5 systemd-networkd, BusyBox udhcpd 1.30.1, 120 s lease / T1 60 / T2 105. Under quarantine the T1 unicast renewal got no reply, and the T2 broadcast rebind got an ACK; the address stayed usable past the original expiry. Same address, route and DNS through quarantine and restore. First corp SYN after the quarantine ACK was denied (+0.797 s); first corp HTTP 200 after the restore ACK at +0.533 s. 0 EAPOL and 0 new RADIUS authentications in both CoA windows. Other clients, servers and lease lengths are unverified |
 
 ## Setup
 
@@ -158,11 +158,42 @@ evidence, and it was gathered without nacd.
 - a fresh database, in the separate Aruba topology
 - `pilot-rc10` and its topology stay untouched
 
-**Install:**
-1. Build: `make pilot-bundle VERSION=pilot-aruba-rc2` at the pinned commit.
-   Check `BUNDLE-MANIFEST.txt` `nacd_sha256` against the pin.
-2. Install as in [installation](installation.md), on a clean control node.
-3. Compare the adapter files with the pinned hashes.
+**Install workflow** (pins in [qualification status](qualification-status.md)):
+1. **Build** at the pinned commit:
+   ```bash
+   git checkout 9f0dba137dd4b284abaaab090d32bf3fe3a21ada
+   make pilot-bundle VERSION=pilot-aruba-rc2
+   ```
+   `BUNDLE-MANIFEST.txt` must show `nacd_sha256:
+   333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0`.
+   Pin nacd and the files, not the tarball: its hash varies with file
+   times.
+2. **Control node:** a fresh Ubuntu 24.04 guest in the Aruba topology,
+   reachable from the switch's RADIUS source IP. Stop, or point away from,
+   the reference FreeRADIUS used for the platform runs, so that exactly one
+   RADIUS server answers the switch.
+3. **Install** from the extracted bundle, with the CA that issued the
+   endpoint certificate. The earlier lab CA mismatch was a setup error.
+   ```bash
+   sudo ./deployments/pilot/install.sh --ca ca.pem --server-cert radius.pem --server-key radius.key
+   ```
+   Then check:
+   - `/etc/nac/install-report.txt` shows the pinned `nacd_sha256` and the
+     running commit `9f0dba1`
+   - `sha256sum /usr/local/sbin/nac-freeradius-reload` gives
+     `32d0399af1f43043ddaa3e4411a61edd3fcbf8885ae8fac91ac91199465469f8`
+   - `/etc/freeradius/3.0/sites-available/nac` gives `d9928408…` (above)
+4. **Register** the switch in the console (Platform **Aruba AOS-CX**, roles
+   `corp` and `quarantine` as configured on the switch, access VLAN 10, port
+   `1/1/1`, dotted-IPv4 source). **Wait for Configured: yes** (Loaded by
+   FreeRADIUS). Then point the switch's `radius-server host` and
+   `dyn-authorization client` at the control node with the same secret.
+5. **Bind and publish:** create the device record, bind the certificate
+   from its first (denied) session, and publish a `bound → corp` rule, as
+   in the [operator walkthrough](operator-walkthrough.md).
+6. **Lab state:** the Aruba endpoint is on DHCP in the corp role. After any
+   component reboot, restart the transient `aruba-lab-dhcp.service` on the
+   corp service before testing.
 
 **Cases.** Each is an uninterrupted run. Record:
 - the product action time
