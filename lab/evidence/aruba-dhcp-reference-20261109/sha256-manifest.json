@@ -1,0 +1,56 @@
+{
+  "run": "aruba-dhcp-reference-20261109",
+  "kind": "switch-and-freeradius-reference-not-nac-product",
+  "files": [
+    {
+      "path": "analyze_aruba_dhcp_pcap.py",
+      "sha256": "c95828debf4e852a3ac9a86078e7f473aa24b0ffd6f3e64939a61947f78ccdb5",
+      "bytes": 4640
+    },
+    {
+      "path": "aruba_coa_send_control.py",
+      "sha256": "f80efd5f976a482d2c4182ef929594965da474c189b2cd61932a67eee4f5e4cd",
+      "bytes": 978
+    },
+    {
+      "path": "aruba_probe_endpoint.py",
+      "sha256": "b7b38f01fa674010a894157a915d49eb6d59de41e35c0c68fecee08c747cd44e",
+      "bytes": 1164
+    },
+    {
+      "path": "control-restore.pcap",
+      "sha256": "7e556ec52ee9873a09fad722af2a11e3c5eab3ca308b57f42d0bfc26ed82707c",
+      "bytes": 243
+    },
+    {
+      "path": "control-tap.pcap",
+      "sha256": "0ced6ae4ebb369e28d30ec187e29f609470825814bf5c26ecf53fa747a9ba45c",
+      "bytes": 249
+    },
+    {
+      "path": "endpoint-probes-quarantine.jsonl",
+      "sha256": "17d2459a6e57bb78920ab5fdae1d4b4d390fe77ad431ba584b2f80da40a67f60",
+      "bytes": 31187
+    },
+    {
+      "path": "endpoint-probes-restore.jsonl",
+      "sha256": "4d83e8048a08106a78674a5f3a24fc40e8e96101082bbb07f09252603d9f4f44",
+      "bytes": 25343
+    },
+    {
+      "path": "endpoint-restore.pcap",
+      "sha256": "1bca0e2ca53fc31435fcafb9b221a026fce515f9fdb4bf172e893444c8e5a2ae",
+      "bytes": 844609
+    },
+    {
+      "path": "endpoint-tap.pcap",
+      "sha256": "5864fbf10332c784edcb456818dc627fe60e619e4f874bf8d146bf3c7423f141",
+      "bytes": 302569
+    },
+    {
+      "path": "README.md",
+      "sha256": "0d1041bff6d0d1fe85ff75e9872bc3a69304ad3050715753bebee69c61be0a3f",
+      "bytes": 6802
+    }
+  ]
+}
