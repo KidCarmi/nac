@@ -1,0 +1,35 @@
+18:06:38 baseline: path=active/success service=inactive/success restarts_fr=0
+18:06:38 PASS [baseline] FreeRADIUS has the current clients file
+18:06:43 PASS [C1 single register] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:06:43 C1 nacd says configured: yes (registered in NAC: RADIUS source 10.250.99.9, VLANs corp=10, quarantine=20. The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.)
+18:06:48 PASS [C2 burst of 1 registrations] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:06:48 PASS [C2 file] 1/1 in clients file
+18:06:53 PASS [C3 burst of 1 secret rotations] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:06:53 PASS [C3 file] latest secret written
+18:06:59 OBSERVED [C4 accepted] nacd accepted ::ffff:10.250.99.200; nacd says configured: yes (registered in NAC: RADIUS source ::ffff:10.250.99.200, VLANs corp=10, quarantine=20. The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.)
+18:06:59 FAIL [C4 file] clients file now fails freeradius -C; FreeRADIUS kept the OLD list and will FAIL TO START at its next restart
+18:06:59 FAIL [C4 loaded] running FreeRADIUS no longer matches nacd; path=active/success service=failed/exit-code restarts_fr=0
+Job for freeradius.service failed because the control process exited with error code.
+See "systemctl status freeradius.service" and "journalctl -xeu freeradius.service" for details.
+18:07:07 FAIL [C4 outage] FreeRADIUS does not start while the bad switch exists: RADIUS outage
+18:07:22 PASS [C4 recovery after deleting the bad switch] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=1
+Failed to kill unit freeradius.service: Failed to send signal SIGKILL to auxiliary processes: Invalid argument
+18:07:27 FAIL [C5 kill during reload] FreeRADIUS does NOT have the current clients file (active=no fr_start=1794247642 file=1794247642 valid=yes); path=active/success service=inactive/success restarts_fr=1
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: You may redistribute copies of FreeRADIUS under the terms of the
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: GNU General Public License
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: For more information about these matters, see the file named COPYRIGHT
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: Starting - reading configuration files ...
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: Debug state unknown (cap_sys_ptrace capability not set)
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: Creating attribute Unix-Group
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_mschap (mschap): using internal authentication
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_rest: libcurl version: libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_rest (nac_authorize): Initialising connection pool
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_rest (nac_reject): Initialising connection pool
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_rest (nac_accounting): Initialising connection pool
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: rlm_detail (auth_log): 'User-Password' suppressed, will not appear in detail output
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: Compiling Post-Auth-Type REJECT for attr Post-Auth-Type
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: radiusd: #### Skipping IP addresses and Ports ####
+Nov 09 18:07:27 nac-clean-rc10 freeradius[2165]: Configuration appears to be OK
+18:07:32 PASS [cleanup] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:07:32 PASS [cleanup] no chaos switches left
+18:07:32 done: 9 PASS, 4 FAIL

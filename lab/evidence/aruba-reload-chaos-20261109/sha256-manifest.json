@@ -1,0 +1,22 @@
+{
+  "run": "aruba-reload-chaos-20261109",
+  "candidate_commit": "b39649f138e126ed6689a53b590855061042e341",
+  "script_commit": "597a0c7",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "d63d7464e5616ca413db0630d822ccb7e750e96dee482396bc50729a2aac30e1",
+      "bytes": 4605
+    },
+    {
+      "path": "burst-8.log",
+      "sha256": "6300236997688c623f0316d837d61ececd1dd1916fb9d549ba2b66bef4231bbe",
+      "bytes": 2235
+    },
+    {
+      "path": "outage-recovery.log",
+      "sha256": "46a7a76587607449b875b48788a467f3ebf08a75029fc7cefffc285f6c327845",
+      "bytes": 4220
+    }
+  ]
+}

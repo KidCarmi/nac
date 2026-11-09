@@ -1,0 +1,17 @@
+18:04:43 baseline: path=active/success service=inactive/success restarts_fr=0
+18:04:43 PASS [baseline] FreeRADIUS has the current clients file
+18:04:55 PASS [C1 single register] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:04:55 C1 nacd says configured: yes (registered in NAC: RADIUS source 10.250.99.9, VLANs corp=10, quarantine=20. The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.)
+18:05:08 PASS [C2 burst of 8 registrations] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:05:08 PASS [C2 file] 8/8 in clients file
+18:05:20 PASS [C3 burst of 8 secret rotations] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:05:20 PASS [C3 file] latest secret written
+18:05:32 OBSERVED [C4 accepted] nacd accepted ::ffff:10.250.99.200; nacd says configured: yes (registered in NAC: RADIUS source ::ffff:10.250.99.200, VLANs corp=10, quarantine=20. The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.)
+18:05:32 FAIL [C4 file] clients file now fails freeradius -C; FreeRADIUS kept the OLD list and will FAIL TO START at its next restart
+18:05:32 FAIL [C4 loaded] running FreeRADIUS no longer matches nacd; path=active/success service=failed/exit-code restarts_fr=0
+18:05:54 PASS [C4 recovery after deleting the bad switch] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+Failed to kill unit freeradius.service: Failed to send signal SIGKILL to auxiliary processes: Invalid argument
+18:06:07 PASS [C5 kill during reload] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=1
+18:06:19 PASS [cleanup] FreeRADIUS active and restarted after the last clients-file write; path=active/success service=inactive/success restarts_fr=0
+18:06:19 PASS [cleanup] no chaos switches left
+18:06:19 done: 10 PASS, 2 FAIL
