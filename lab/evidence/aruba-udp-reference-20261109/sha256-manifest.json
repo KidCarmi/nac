@@ -1,0 +1,46 @@
+{
+  "run": "aruba-udp-reference-20261109",
+  "kind": "switch-and-freeradius-reference-not-nac-product",
+  "files": [
+    {
+      "path": "analyze_aruba_udp_pcap.py",
+      "sha256": "90f21ebe8d1d6ce0f8b832ce72e2a59850100e6b8dfcd8a46edd7ffb83835774",
+      "bytes": 2523
+    },
+    {
+      "path": "aruba_udp_echo.py",
+      "sha256": "fbecc328cb1971297c4cfed4c6b0a4148283c6204a6e2fb680e850351f320847",
+      "bytes": 676
+    },
+    {
+      "path": "aruba_udp_probe.py",
+      "sha256": "4de49129355dc6b1330c109e88f3834df192382bb96ce143a7b9b2c22ac86472",
+      "bytes": 954
+    },
+    {
+      "path": "control.pcap",
+      "sha256": "f17ba20eba58e95e1d35e38150c54bcbd7b664338fadbde5f4d0e46e52e27546",
+      "bytes": 468
+    },
+    {
+      "path": "corp.pcap",
+      "sha256": "a1265844f1a1144a8c020c6451141332596cc094a43d463c799584e4873f476d",
+      "bytes": 687
+    },
+    {
+      "path": "endpoint.pcap",
+      "sha256": "b62a20fab93a91368f2645cf26769218d675d8e88e4bc02ebadcdad28ac873e2",
+      "bytes": 2490
+    },
+    {
+      "path": "README.md",
+      "sha256": "49d14c03c4c4b1cdb848b6be108b772f78f4ae506ce7964380b0cd7e3d47bcda",
+      "bytes": 4495
+    },
+    {
+      "path": "remediation.pcap",
+      "sha256": "c06d637ecb0a637966c77e5b9db5f3159e2c6007df74b0036841bdc5c38aa131",
+      "bytes": 1494
+    }
+  ]
+}
