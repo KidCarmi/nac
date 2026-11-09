@@ -253,9 +253,17 @@ both segments. The ACKs carried 3600 / 30 / 45.
         started
       - remediation stayed reachable
       - the `corp` role restored all three
+    - **Direct RADIUS CoA role change: demonstrated (IPv4, reference
+      RADIUS, [`d3cf745`](https://github.com/KidCarmi/nac/tree/d3cf745afe9d808bafc3f8ff10cb78f9c77ad7fb/lab/evidence/aruba-1007-coa-20261109), verified here).**
+      - A session-targeted CoA moved the session corp → quarantine → corp,
+        on the same IP and VLAN.
+      - Sampled denial came by +0.283 s after the ACK, and restoration by
+        +0.529 s. These are bounds for this run, not guarantees.
+      - Remediation was reachable in every sample.
+      - No re-authentication appeared in the captured window.
+      - Compare the VLAN path on vEOS: denial in 1–2.5 s, then 25 s to
+        30 min before the endpoint has a usable address.
     - **Still unverified:**
-      - role change by **CoA**: each change used switch-local
-        re-authentication
       - peer-initiated same-subnet traffic
       - established-flow cutting
       - IPv6
