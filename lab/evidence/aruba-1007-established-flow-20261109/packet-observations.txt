@@ -1,0 +1,14 @@
+Single TCP 4-tuple: 10.70.10.50:37056 -> 10.70.10.10:8082.
+EVE host clock, 2026-11-09 UTC:
+17:47:35.913330 Last pre-CoA corp echo response on corp tap.
+17:47:36.371646 RADIUS CoA-Request ID 80 for quarantine on server tap.
+17:47:36.413931 CoA-ACK ID 80.
+17:47:43.188202 Endpoint tap sees established-flow TCP data retransmission; corp tap does not.
+17:47:49.844323 Endpoint tap sees another retransmission; corp tap does not.
+17:48:05.466597 CoA-Request ID 193 for corp restoration.
+17:48:05.470745 CoA-ACK ID 193.
+17:48:30.293582 Original 4-tuple data reaches corp tap again.
+17:48:30.293780 Corp echo response on the original 4-tuple.
+17:48:30.294581 Endpoint sends queued 175-byte batch on the same 4-tuple.
+17:48:30.294779 Corp echoes that batch.
+The client log has 59 matching echoes, then 36 receive timeouts, then 23 mismatched echoes containing earlier sequence numbers. The server log records messages 59–94 arriving after restoration.

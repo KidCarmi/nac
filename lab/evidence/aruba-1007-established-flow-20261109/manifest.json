@@ -1,0 +1,94 @@
+{
+  "experiment": "Aruba-CX-10.07-established-flow-CoA",
+  "date_utc": "2026-11-09",
+  "switch_version": "ArubaOS-CX Virtual.10.07.0004",
+  "switch_build_sha": "64b88cbfc38a48a03d7b8b6229137e37f59c9310",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "files": [
+    {
+      "path": "aruba-established-flow-20261109.tar.gz",
+      "bytes": 17808,
+      "sha256": "abaebc8b02a1378ea5612ef9d573cde1a39df850eb203e22ad51506225ce7aae"
+    },
+    {
+      "path": "aruba-established-flow-20261109/client.jsonl",
+      "bytes": 15496,
+      "sha256": "10691a33f7e3d65203a0f5dfdd8e5d332adffdf06ccf1f8aa4f57e291f13e6ce"
+    },
+    {
+      "path": "aruba-established-flow-20261109/corp-tap.log",
+      "bytes": 172,
+      "sha256": "aed843135678640728db22b15366b63a3e2fff15af31a8a35e0a658a2bdd2769"
+    },
+    {
+      "path": "aruba-established-flow-20261109/corp-tap.pcap",
+      "bytes": 21874,
+      "sha256": "525d49f9fd29130edad393b44d991810b03ce23ab022606f93b3b8be63980e2d"
+    },
+    {
+      "path": "aruba-established-flow-20261109/endpoint-tap.log",
+      "bytes": 172,
+      "sha256": "5b91c7ddadf0a0065fbdcf1fc419c6d56c8f27e4ef87fabc216ece52fa26ef48"
+    },
+    {
+      "path": "aruba-established-flow-20261109/endpoint-tap.pcap",
+      "bytes": 22657,
+      "sha256": "e9b3b63e1b08824c89c3b534151a71ddb6a6dd788cd4ccca8dea75d3f174e145"
+    },
+    {
+      "path": "aruba-established-flow-20261109/server-tap.log",
+      "bytes": 168,
+      "sha256": "917a25b1eddfcba0250ade6d9b7ebe4ed0c2c37bb6b55718ec4eab75e0a2bfcb"
+    },
+    {
+      "path": "aruba-established-flow-20261109/server-tap.pcap",
+      "bytes": 468,
+      "sha256": "9644f36a50d702069bbec6d6f9a273404e6d27df6d82af9a23167c805f24c061"
+    },
+    {
+      "path": "aruba-established-flow-20261109/server.jsonl",
+      "bytes": 7016,
+      "sha256": "02f3c31ed7d2f324cdd3fd01cc698e16ac5b6239b78bf114ded415f296b5c7cc"
+    },
+    {
+      "path": "aruba-established-flow-20261109/switch-control-tap.log",
+      "bytes": 168,
+      "sha256": "1c663933151e0f1c5fb8979fbfc31634701cc6ff78fc699fdc884e2d29e28bbc"
+    },
+    {
+      "path": "aruba-established-flow-20261109/switch-control-tap.pcap",
+      "bytes": 468,
+      "sha256": "15a7bd8508bab705e0f6825badf7eb4e8a64fb69e535744c646c690795a178d0"
+    },
+    {
+      "path": "packet-observations.txt",
+      "bytes": 947,
+      "sha256": "69fc139fd42a16a2eceeacb0d9129eca00e408a3c94590a53b52b877acecd698"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4666,
+      "sha256": "fd089abc88aca05a5345190d08f22b1c065f13a4f5fbeae444a9a4bc502fea1b"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 1382,
+      "sha256": "e257086c2876c797523f4c810837ad0a7fbe711db5d1bfd8cabc9d6c2421c50c"
+    },
+    {
+      "path": "scripts/aruba_flow_capture_guest.py",
+      "bytes": 966,
+      "sha256": "5979be22623c0abefac794c5ce7b01bfc9df1b4de0d0d57701f5067a07892c73"
+    },
+    {
+      "path": "scripts/aruba_flow_client.py",
+      "bytes": 1079,
+      "sha256": "19ae938aeccb37492899def636f49de5ce5413a8c5c20491c0091320bb5ea3cb"
+    },
+    {
+      "path": "scripts/aruba_flow_server.py",
+      "bytes": 1168,
+      "sha256": "fa88631e48b5053b744d34a494848e1a113f6ba540abf655d37e68d03864e036"
+    }
+  ]
+}
