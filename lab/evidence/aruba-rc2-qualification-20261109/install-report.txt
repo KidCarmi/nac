@@ -1,0 +1,19 @@
+installed_at: 2026-11-09T18:44:49Z
+os: Ubuntu 24.04.5 LTS
+nacd: nacd pilot-aruba-rc2 commit 9f0dba1 built 2026-11-09T18:32:14Z
+nacd_sha256: 333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0
+bundle: version: pilot-aruba-rc2
+bundle: commit: 9f0dba137dd4b284abaaab090d32bf3fe3a21ada
+bundle: build_date: 2026-11-09T18:32:14Z
+bundle: toolchain: go1.25.0 linux/amd64 CGO_ENABLED=0 -trimpath
+bundle: nacd_sha256: 333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0
+package: freeradius 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-common 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-rest 3.2.5+dfsg-3~ubuntu24.04.3
+package: freeradius-utils 3.2.5+dfsg-3~ubuntu24.04.3
+package: openssl 3.0.13-0ubuntu3.16
+package: postgresql 16+257build1.1
+package: postgresql-16 16.15-0ubuntu0.24.04.1
+freeradius_adapter_sha256: 3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32
+pki: disposable test PKI (lab only)
+running nacd: commit 9f0dba1

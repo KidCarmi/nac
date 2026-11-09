@@ -1,0 +1,92 @@
+{
+  "manifest_version": 1,
+  "candidate": "pilot-aruba-rc2",
+  "commit": "9f0dba137dd4b284abaaab090d32bf3fe3a21ada",
+  "files": [
+    {
+      "path": "aruba_rc2_coa_analyze.py",
+      "bytes": 4670,
+      "sha256": "e8ee44def29cac2f7d7a89c1578bbf4906651b51d725d219df03f8eeb862bd5f"
+    },
+    {
+      "path": "Aruba-Role-ACL-1007.unl",
+      "bytes": 5014,
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94"
+    },
+    {
+      "path": "evidence/coa-quarantine-control.pcap",
+      "bytes": 249,
+      "sha256": "e6d7d28cfda113ad5c358698ca47f1b5e500850f13d8222abbcd41ac67a051ce"
+    },
+    {
+      "path": "evidence/coa-quarantine-endpoint.pcap",
+      "bytes": 145734,
+      "sha256": "5c04d7142a68f1352e88de045c215c16fc544f0c1c97e44167f48e31dfaa7219"
+    },
+    {
+      "path": "evidence/coa-quarantine-probes.jsonl",
+      "bytes": 11130,
+      "sha256": "65e9a02ff7d5a0ed10bebd62f5c9e9dd9545c8cfc6f72bf21039cf69071c6fe3"
+    },
+    {
+      "path": "evidence/coa-restore-control.pcap",
+      "bytes": 243,
+      "sha256": "5f7b846d60fd01d3adf42a9f4bcc343da75708b46c24f5e5731f22c8fc30810a"
+    },
+    {
+      "path": "evidence/coa-restore-endpoint.pcap",
+      "bytes": 234934,
+      "sha256": "4a0f12b1e58972b56eefa887a124648f5d51fb659cec1d88e7c50f2a8b3037a9"
+    },
+    {
+      "path": "evidence/coa-restore-probes.jsonl",
+      "bytes": 13035,
+      "sha256": "e5c1cf3561f154c27eb2da68baa65ce5b8aa8273abe70cc1771e892192b6d6d5"
+    },
+    {
+      "path": "evidence/corp-login-eapol.pcap",
+      "bytes": 3826,
+      "sha256": "3198182a99e9b7aa078a56626fffdafe116e6e2c4bd9626bebc92647d43c5148"
+    },
+    {
+      "path": "evidence/corp-login-radius.pcap",
+      "bytes": 8634,
+      "sha256": "217cc336f66b3d0f7a16c502b2a82a4f0cee188c078207d36eacef1cdf347fc1"
+    },
+    {
+      "path": "evidence/first-login-eapol.pcap",
+      "bytes": 2059,
+      "sha256": "0433373b33bfb71fbaa32fb3529518fa3e5178e2019a413682c56e8f29592a36"
+    },
+    {
+      "path": "evidence/first-login-radius.pcap",
+      "bytes": 4208,
+      "sha256": "d678a238d8f234e4464d71303538beb4e614273b4e8259b45d621a50be2e31b4"
+    },
+    {
+      "path": "evidence/switch-after-restore.txt",
+      "bytes": 2361,
+      "sha256": "947b50e9c06e6076b54e097450e3d6c307fbfd2130fc22db6018dd0af7bd78f0"
+    },
+    {
+      "path": "install-report.txt",
+      "bytes": 966,
+      "sha256": "719c7ce796eea8e9b47d4cf45d68f3849d4449a3966d213cb3d902e778976830"
+    },
+    {
+      "path": "product-state.json",
+      "bytes": 37768,
+      "sha256": "d93e2018a02b20b1e7a67823972e6a9bce5b401f506d51a84068a5a62937efc5"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9141,
+      "sha256": "8c14c03a21e5c47e222680fbf811568f459180f6a1961a71aed81778db14a06f"
+    },
+    {
+      "path": "reload-chaos.log",
+      "bytes": 3936,
+      "sha256": "873057a06bdbca5a49e4fd1cd77e8bf71033acdfad4e07838d26011fe477588e"
+    }
+  ]
+}

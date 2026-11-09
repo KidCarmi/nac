@@ -1,0 +1,975 @@
+{
+  "captured_at": "2026-11-09T19:02:53.886131+00:00",
+  "policies": {
+    "items": [
+      {
+        "action": "allow",
+        "conditions": [
+          {
+            "field": "identity.bound",
+            "operator": "eq",
+            "values": [
+              "true"
+            ]
+          },
+          {
+            "field": "mac.matches_device",
+            "operator": "eq",
+            "values": [
+              "true"
+            ]
+          }
+        ],
+        "created_at": "2026-11-09T18:54:57.494394Z",
+        "enabled": true,
+        "id": "27dc5563-498b-41a2-8c44-5168f3d998b2",
+        "name": "bound-eap-corp",
+        "priority": 100,
+        "segment": "corp",
+        "updated_at": "2026-11-09T18:54:57.494394Z"
+      }
+    ],
+    "page": {
+      "count": 1,
+      "limit": 50,
+      "offset": 0
+    }
+  },
+  "radius_health": {
+    "freeradius_load": {
+      "at": "2026-11-09T18:50:04Z",
+      "detail": "FreeRADIUS restarted with this switch list and is running",
+      "state": "yes"
+    },
+    "last_decision": {
+      "client_ip": "10.70.99.1",
+      "decision_id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+      "detail": {
+        "matched_rule": "bound-eap-corp",
+        "new_session": "false",
+        "policy_version": "2",
+        "role": "corp",
+        "segment": "corp"
+      },
+      "id": "2c8bb2ac-0439-41fe-8b64-0480f521eab6",
+      "mac": "00:50:00:00:3e:00",
+      "nas_port_id": "1/1/1",
+      "occurred_at": "2026-11-09T18:55:16.891126Z",
+      "reason": "matched policy bound-eap-corp",
+      "result": "accept",
+      "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+      "source": "nacd",
+      "stage": "nac-decision",
+      "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959"
+    },
+    "outage_log_import": {
+      "at": "2026-11-09T19:02:50.922951568Z",
+      "detail": "outage log /var/log/freeradius/nac-outage.log read; 0 new entr(y/ies) imported",
+      "state": "yes"
+    },
+    "outage_semantics": "No authorization cache. While nacd is unreachable FreeRADIUS rejects new logins and re-authentications (Reply-Message \"NAC decision service unavailable\"); sessions already authorized stay up on the switch until they re-authenticate.",
+    "radius_client_file": {
+      "at": "2026-11-09T18:50:03.77594436Z",
+      "detail": "1 switch(es) written to /var/lib/nac/freeradius-clients.conf; FreeRADIUS restarts to load them (see freeradius_load for whether it did)",
+      "state": "yes"
+    }
+  },
+  "session": {
+    "binding": {
+      "created_at": "2026-11-09T18:54:57.487964Z",
+      "created_by": "admin@nac.local",
+      "endpoint_id": "8f574f10-0f01-43ca-8e67-a2809da896b8",
+      "id": "38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd",
+      "issuer": "/CN=NAC Test CA",
+      "note": "bound from session ff97df77-c43e-464d-a0be-a03236264215",
+      "revision": 1,
+      "serial": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963",
+      "subject_cn": "wired-endpoint-01",
+      "updated_at": "2026-11-09T18:54:57.487964Z"
+    },
+    "binding_id": "38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd",
+    "calling_station_id": "00-50-00-00-3E-00",
+    "cert_cn": "wired-endpoint-01",
+    "cert_issuer": "/CN=NAC Test CA",
+    "cert_serial": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963",
+    "coa_requests": [
+      {
+        "attempts": 1,
+        "created_at": "2026-11-09T18:58:49.151586Z",
+        "created_by": "admin@nac.local",
+        "detail": "switch acknowledged () the role change to quarantine. Aruba applies the role without re-authentication; NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. Verify on the switch (`show port-access clients`) and with traffic tests.",
+        "id": "cf89eb21-b03a-46c0-bd87-7de215859bc2",
+        "kind": "quarantine",
+        "radius_id": 134,
+        "requested_role": "quarantine",
+        "requested_segment": "quarantine",
+        "responded_at": "2026-11-09T18:58:49.200907Z",
+        "sent_at": "2026-11-09T18:58:49.162677Z",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "state": "acked",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "target": {
+          "address": "10.70.99.1:3799",
+          "calling_station_id": "00-50-00-00-3E-00",
+          "nas_ip_address": "10.70.99.1",
+          "nas_port_id": "1/1/1",
+          "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+          "session_started_at": "2026-11-09T18:53:24.455694Z",
+          "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+          "switch_name": "nac-aruba-rc2",
+          "user_name": "wired-endpoint-01"
+        },
+        "updated_at": "2026-11-09T18:58:49.200912Z"
+      },
+      {
+        "attempts": 1,
+        "created_at": "2026-11-09T19:00:23.48439Z",
+        "created_by": "admin@nac.local",
+        "detail": "switch acknowledged () the role change to corp. Aruba applies the role without re-authentication; NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. Verify on the switch (`show port-access clients`) and with traffic tests.",
+        "id": "317f316c-bfd0-4211-89d8-bc8c79d2ef06",
+        "kind": "restore",
+        "radius_id": 111,
+        "requested_role": "corp",
+        "requested_segment": "corp",
+        "responded_at": "2026-11-09T19:00:23.50469Z",
+        "sent_at": "2026-11-09T19:00:23.493554Z",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "state": "acked",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "target": {
+          "address": "10.70.99.1:3799",
+          "calling_station_id": "00-50-00-00-3E-00",
+          "nas_ip_address": "10.70.99.1",
+          "nas_port_id": "1/1/1",
+          "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+          "session_started_at": "2026-11-09T18:53:24.455694Z",
+          "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+          "switch_name": "nac-aruba-rc2",
+          "user_name": "wired-endpoint-01"
+        },
+        "updated_at": "2026-11-09T19:00:23.504695Z"
+      }
+    ],
+    "decisions": [
+      {
+        "action": "deny",
+        "id": "fbe2a947-8ab9-4b2b-9d61-95b6cf670eb0",
+        "inputs": {
+          "identity.authenticated": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "true"
+          },
+          "identity.bound": {
+            "authenticated": false,
+            "note": "no identity binding for this certificate issuer and serial",
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "nac-binding",
+            "status": "present",
+            "value": "false"
+          },
+          "identity.issuer": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "/CN=NAC Test CA"
+          },
+          "identity.serial": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963"
+          },
+          "identity.subject_cn": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "wired-endpoint-01"
+          },
+          "mac": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "nas",
+            "status": "present",
+            "value": "00:50:00:00:3e:00"
+          },
+          "mac.matches_device": {
+            "authenticated": false,
+            "note": "no bound device to compare",
+            "source": "nac-binding",
+            "status": "missing"
+          },
+          "nas.port": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "nas",
+            "status": "present",
+            "value": "1/1/1"
+          },
+          "nas.switch": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:53:24.455694192Z",
+            "source": "nas",
+            "status": "present",
+            "value": "nac-aruba-rc2"
+          },
+          "session.override": {
+            "authenticated": false,
+            "note": "no operator override",
+            "source": "operator",
+            "status": "missing"
+          }
+        },
+        "insufficient_evidence": [],
+        "occurred_at": "2026-11-09T18:53:24.455694Z",
+        "policy_version": 1,
+        "policy_version_id": "38a17202-a29e-4261-a1a7-0b0d3eaacca1",
+        "reason": "no policy matched; applied default action",
+        "result": "reject",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "subject": "wired-endpoint-01 (00:50:00:00:3e:00)",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "trace": []
+      },
+      {
+        "action": "allow",
+        "id": "3dcf28d7-44dd-4dac-9110-bbb48c151853",
+        "inputs": {
+          "device_type": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:54:57.476349Z",
+            "source": "endpoint-record",
+            "status": "present",
+            "value": "workstation"
+          },
+          "hostname": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:54:57.476349Z",
+            "source": "endpoint-record",
+            "status": "present",
+            "value": "wired-endpoint-01"
+          },
+          "identity.authenticated": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "true"
+          },
+          "identity.bound": {
+            "authenticated": true,
+            "note": "binding 38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd revision 1",
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "nac-binding",
+            "status": "present",
+            "value": "true"
+          },
+          "identity.issuer": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "/CN=NAC Test CA"
+          },
+          "identity.serial": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963"
+          },
+          "identity.subject_cn": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "wired-endpoint-01"
+          },
+          "ip": {
+            "authenticated": false,
+            "note": "source supplied an empty value",
+            "source": "endpoint-record",
+            "status": "missing"
+          },
+          "mac": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "nas",
+            "status": "present",
+            "value": "00:50:00:00:3e:00"
+          },
+          "mac.matches_device": {
+            "authenticated": false,
+            "note": "device MAC 00:50:00:00:3e:00, switch reported 00:50:00:00:3e:00",
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "nac-binding",
+            "status": "present",
+            "value": "true"
+          },
+          "nas.port": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "nas",
+            "status": "present",
+            "value": "1/1/1"
+          },
+          "nas.switch": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:13.536359684Z",
+            "source": "nas",
+            "status": "present",
+            "value": "nac-aruba-rc2"
+          },
+          "posture": {
+            "authenticated": false,
+            "note": "no posture result recorded",
+            "source": "posture",
+            "status": "missing"
+          },
+          "session.override": {
+            "authenticated": false,
+            "note": "no operator override",
+            "source": "operator",
+            "status": "missing"
+          }
+        },
+        "insufficient_evidence": [],
+        "matched_rule": "bound-eap-corp",
+        "matched_rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2",
+        "occurred_at": "2026-11-09T18:55:13.536359Z",
+        "policy_version": 2,
+        "policy_version_id": "59760412-0e76-4013-8905-e5103e061db2",
+        "reason": "matched policy bound-eap-corp",
+        "result": "accept",
+        "role": "corp",
+        "segment": "corp",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "subject": "wired-endpoint-01 (00:50:00:00:3e:00)",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "trace": [
+          {
+            "action": "allow",
+            "conditions": [
+              {
+                "evidence": "present",
+                "field": "identity.bound",
+                "observed": "true",
+                "operator": "eq",
+                "outcome": "match",
+                "values": [
+                  "true"
+                ]
+              },
+              {
+                "evidence": "present",
+                "field": "mac.matches_device",
+                "observed": "true",
+                "operator": "eq",
+                "outcome": "match",
+                "values": [
+                  "true"
+                ]
+              }
+            ],
+            "outcome": "matched",
+            "priority": 100,
+            "rule": "bound-eap-corp",
+            "rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2"
+          }
+        ]
+      },
+      {
+        "action": "allow",
+        "id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+        "inputs": {
+          "device_type": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:54:57.476349Z",
+            "source": "endpoint-record",
+            "status": "present",
+            "value": "workstation"
+          },
+          "hostname": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:54:57.476349Z",
+            "source": "endpoint-record",
+            "status": "present",
+            "value": "wired-endpoint-01"
+          },
+          "identity.authenticated": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "true"
+          },
+          "identity.bound": {
+            "authenticated": true,
+            "note": "binding 38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd revision 1",
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "nac-binding",
+            "status": "present",
+            "value": "true"
+          },
+          "identity.issuer": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "/CN=NAC Test CA"
+          },
+          "identity.serial": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963"
+          },
+          "identity.subject_cn": {
+            "authenticated": true,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "eap-tls",
+            "status": "present",
+            "value": "wired-endpoint-01"
+          },
+          "ip": {
+            "authenticated": false,
+            "note": "source supplied an empty value",
+            "source": "endpoint-record",
+            "status": "missing"
+          },
+          "mac": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "nas",
+            "status": "present",
+            "value": "00:50:00:00:3e:00"
+          },
+          "mac.matches_device": {
+            "authenticated": false,
+            "note": "device MAC 00:50:00:00:3e:00, switch reported 00:50:00:00:3e:00",
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "nac-binding",
+            "status": "present",
+            "value": "true"
+          },
+          "nas.port": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "nas",
+            "status": "present",
+            "value": "1/1/1"
+          },
+          "nas.switch": {
+            "authenticated": false,
+            "observed_at": "2026-11-09T18:55:16.882774522Z",
+            "source": "nas",
+            "status": "present",
+            "value": "nac-aruba-rc2"
+          },
+          "posture": {
+            "authenticated": false,
+            "note": "no posture result recorded",
+            "source": "posture",
+            "status": "missing"
+          },
+          "session.override": {
+            "authenticated": false,
+            "note": "no operator override",
+            "source": "operator",
+            "status": "missing"
+          }
+        },
+        "insufficient_evidence": [],
+        "matched_rule": "bound-eap-corp",
+        "matched_rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2",
+        "occurred_at": "2026-11-09T18:55:16.882774Z",
+        "policy_version": 2,
+        "policy_version_id": "59760412-0e76-4013-8905-e5103e061db2",
+        "reason": "matched policy bound-eap-corp",
+        "result": "accept",
+        "role": "corp",
+        "segment": "corp",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "subject": "wired-endpoint-01 (00:50:00:00:3e:00)",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "trace": [
+          {
+            "action": "allow",
+            "conditions": [
+              {
+                "evidence": "present",
+                "field": "identity.bound",
+                "observed": "true",
+                "operator": "eq",
+                "outcome": "match",
+                "values": [
+                  "true"
+                ]
+              },
+              {
+                "evidence": "present",
+                "field": "mac.matches_device",
+                "observed": "true",
+                "operator": "eq",
+                "outcome": "match",
+                "values": [
+                  "true"
+                ]
+              }
+            ],
+            "outcome": "matched",
+            "priority": 100,
+            "rule": "bound-eap-corp",
+            "rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2"
+          }
+        ]
+      }
+    ],
+    "endpoint": {
+      "access_status": "unknown",
+      "created_at": "2026-11-09T18:54:57.476349Z",
+      "device_type": "workstation",
+      "hostname": "wired-endpoint-01",
+      "id": "8f574f10-0f01-43ca-8e67-a2809da896b8",
+      "last_seen": "2026-11-09T18:54:57.476349Z",
+      "mac": "00:50:00:00:3e:00",
+      "posture": "unknown",
+      "updated_at": "2026-11-09T18:54:57.476349Z"
+    },
+    "endpoint_id": "8f574f10-0f01-43ca-8e67-a2809da896b8",
+    "endpoint_reachability": {
+      "note": "NAC does not test the endpoint. A role change keeps the VLAN and the endpoint's address; whether the role restricts its traffic is not observed by NAC. Check the switch and test traffic.",
+      "state": "not_observed"
+    },
+    "enforcement": {
+      "limitations": [
+        "A role CoA is applied without re-authentication; a CoA-ACK means the switch accepted it, not that traffic is restricted.",
+        "The role's policy is switch configuration, not NAC: what it denies is only what was tested in the lab.",
+        "Lab evidence (ArubaOS-CX Virtual 10.07, reference RADIUS without nacd, one endpoint, IPv4): under the quarantine role, fresh TCP to corp and to a same-subnet peer (both directions) was denied, and data on an established TCP flow was blocked.",
+        "Not packet isolation: a peer's inbound SYN still reached the endpoint. The role does not tear down TCP state: after Restore the same connection resumed and data queued during quarantine was delivered.",
+        "IPv6: only endpoint-initiated same-subnet fresh TCP was tested (denied). Routed, peer-initiated and established IPv6 flows and DHCPv6 are unverified.",
+        "Stronger isolation profiles are not available on this path."
+      ],
+      "mechanism": "Access-Accept and CoA-Request carry Aruba-User-Role (vendor 14823, type 1) naming a local role on the switch; no Tunnel-* attributes, so the VLAN and the endpoint's IP do not change",
+      "observation": "none: NAC has no AOS-CX observation adapter; check `show port-access clients` on the switch",
+      "platform": "aruba-aos-cx",
+      "strategy": "role"
+    },
+    "explanation": [
+      "Authenticated identity: certificate CN \"wired-endpoint-01\", serial 5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963, issuer \"/CN=NAC Test CA\" (validated by FreeRADIUS EAP-TLS).",
+      "Bound to device 8f574f10-0f01-43ca-8e67-a2809da896b8 by identity binding 38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd (revision 1).",
+      "Last decision 037f19fe-3264-40ba-8952-fe85f75e9769 at 2026-11-09T18:55:16Z: ACCEPT, policy version 2, matched rule \"bound-eap-corp\". Reason: matched policy bound-eap-corp",
+      "Connection: unknown (last authentication only). NAC receives no RADIUS accounting and no fresh switch observation for this session, so it cannot tell whether the endpoint is still connected. Last authenticated 7m37s ago. A CoA still targets only this switch, port and MAC; if the endpoint left, the switch refuses it (Error-Cause 503).",
+      "Switch-observed state: unavailable. switch state is not observed: NAC has no observation adapter for aruba-aos-cx. Check `show port-access clients` on the switch."
+    ],
+    "id": "ff97df77-c43e-464d-a0be-a03236264215",
+    "last_auth_at": "2026-11-09T18:55:16.882774Z",
+    "last_coa": {
+      "attempts": 1,
+      "created_at": "2026-11-09T19:00:23.48439Z",
+      "created_by": "admin@nac.local",
+      "detail": "switch acknowledged () the role change to corp. Aruba applies the role without re-authentication; NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. Verify on the switch (`show port-access clients`) and with traffic tests.",
+      "id": "317f316c-bfd0-4211-89d8-bc8c79d2ef06",
+      "kind": "restore",
+      "radius_id": 111,
+      "requested_role": "corp",
+      "requested_segment": "corp",
+      "responded_at": "2026-11-09T19:00:23.50469Z",
+      "sent_at": "2026-11-09T19:00:23.493554Z",
+      "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+      "state": "acked",
+      "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+      "target": {
+        "address": "10.70.99.1:3799",
+        "calling_station_id": "00-50-00-00-3E-00",
+        "nas_ip_address": "10.70.99.1",
+        "nas_port_id": "1/1/1",
+        "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+        "session_started_at": "2026-11-09T18:53:24.455694Z",
+        "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+        "switch_name": "nac-aruba-rc2",
+        "user_name": "wired-endpoint-01"
+      },
+      "updated_at": "2026-11-09T19:00:23.504695Z"
+    },
+    "last_decision": {
+      "action": "allow",
+      "id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+      "inputs": {
+        "device_type": {
+          "authenticated": false,
+          "observed_at": "2026-11-09T18:54:57.476349Z",
+          "source": "endpoint-record",
+          "status": "present",
+          "value": "workstation"
+        },
+        "hostname": {
+          "authenticated": false,
+          "observed_at": "2026-11-09T18:54:57.476349Z",
+          "source": "endpoint-record",
+          "status": "present",
+          "value": "wired-endpoint-01"
+        },
+        "identity.authenticated": {
+          "authenticated": true,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "eap-tls",
+          "status": "present",
+          "value": "true"
+        },
+        "identity.bound": {
+          "authenticated": true,
+          "note": "binding 38e495b0-9b4e-41e2-bf0d-a6c2d8a1b4bd revision 1",
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "nac-binding",
+          "status": "present",
+          "value": "true"
+        },
+        "identity.issuer": {
+          "authenticated": true,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "eap-tls",
+          "status": "present",
+          "value": "/CN=NAC Test CA"
+        },
+        "identity.serial": {
+          "authenticated": true,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "eap-tls",
+          "status": "present",
+          "value": "5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963"
+        },
+        "identity.subject_cn": {
+          "authenticated": true,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "eap-tls",
+          "status": "present",
+          "value": "wired-endpoint-01"
+        },
+        "ip": {
+          "authenticated": false,
+          "note": "source supplied an empty value",
+          "source": "endpoint-record",
+          "status": "missing"
+        },
+        "mac": {
+          "authenticated": false,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "nas",
+          "status": "present",
+          "value": "00:50:00:00:3e:00"
+        },
+        "mac.matches_device": {
+          "authenticated": false,
+          "note": "device MAC 00:50:00:00:3e:00, switch reported 00:50:00:00:3e:00",
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "nac-binding",
+          "status": "present",
+          "value": "true"
+        },
+        "nas.port": {
+          "authenticated": false,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "nas",
+          "status": "present",
+          "value": "1/1/1"
+        },
+        "nas.switch": {
+          "authenticated": false,
+          "observed_at": "2026-11-09T18:55:16.882774522Z",
+          "source": "nas",
+          "status": "present",
+          "value": "nac-aruba-rc2"
+        },
+        "posture": {
+          "authenticated": false,
+          "note": "no posture result recorded",
+          "source": "posture",
+          "status": "missing"
+        },
+        "session.override": {
+          "authenticated": false,
+          "note": "no operator override",
+          "source": "operator",
+          "status": "missing"
+        }
+      },
+      "insufficient_evidence": [],
+      "matched_rule": "bound-eap-corp",
+      "matched_rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2",
+      "occurred_at": "2026-11-09T18:55:16.882774Z",
+      "policy_version": 2,
+      "policy_version_id": "59760412-0e76-4013-8905-e5103e061db2",
+      "reason": "matched policy bound-eap-corp",
+      "result": "accept",
+      "role": "corp",
+      "segment": "corp",
+      "session_id": "ff97df77-c43e-464d-a0be-a03236264215",
+      "subject": "wired-endpoint-01 (00:50:00:00:3e:00)",
+      "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+      "trace": [
+        {
+          "action": "allow",
+          "conditions": [
+            {
+              "evidence": "present",
+              "field": "identity.bound",
+              "observed": "true",
+              "operator": "eq",
+              "outcome": "match",
+              "values": [
+                "true"
+              ]
+            },
+            {
+              "evidence": "present",
+              "field": "mac.matches_device",
+              "observed": "true",
+              "operator": "eq",
+              "outcome": "match",
+              "values": [
+                "true"
+              ]
+            }
+          ],
+          "outcome": "matched",
+          "priority": 100,
+          "rule": "bound-eap-corp",
+          "rule_id": "27dc5563-498b-41a2-8c44-5168f3d998b2"
+        }
+      ]
+    },
+    "last_decision_id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+    "liveness": {
+      "basis": "last authentication only",
+      "note": "NAC receives no RADIUS accounting and no fresh switch observation for this session, so it cannot tell whether the endpoint is still connected. Last authenticated 7m37s ago. A CoA still targets only this switch, port and MAC; if the endpoint left, the switch refuses it (Error-Cause 503).",
+      "state": "unknown"
+    },
+    "mac": "00:50:00:00:3e:00",
+    "nas_ip_address": "10.70.99.1",
+    "nas_port_id": "1/1/1",
+    "observed": {
+      "freshness": "unavailable",
+      "note": "switch state is not observed: NAC has no observation adapter for aruba-aos-cx. Check `show port-access clients` on the switch."
+    },
+    "requested": {
+      "action": "allow",
+      "at": "2026-11-09T18:55:16.882774Z",
+      "decision_id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+      "role": "corp",
+      "segment": "corp"
+    },
+    "requested_action": "allow",
+    "requested_role": "corp",
+    "requested_segment": "corp",
+    "started_at": "2026-11-09T18:53:24.455694Z",
+    "state": "active",
+    "switch": {
+      "access_ports": [
+        "1/1/1"
+      ],
+      "access_vlan": 10,
+      "coa_port": 3799,
+      "created_at": "2026-11-09T18:50:03.774096Z",
+      "eapi_password_set": false,
+      "enforcement": "role",
+      "eos_version": "ArubaOS-CX Virtual.10.07.0004",
+      "id": "94599172-00ad-4151-94c8-1f9231cf4959",
+      "last_radius_at": "2026-11-09T18:55:16.882774Z",
+      "name": "nac-aruba-rc2",
+      "nas_ip": "10.70.99.1",
+      "platform": "aruba-aos-cx",
+      "radius_secret_set": true,
+      "radius_server_ip": "10.70.99.5",
+      "radius_source_ip": "10.70.99.1",
+      "segment_roles": {
+        "corp": "corp",
+        "quarantine": "quarantine"
+      },
+      "segment_vlans": {},
+      "status": {
+        "auth_request_seen": {
+          "at": "2026-11-09T18:55:16.882774Z",
+          "detail": "FreeRADIUS forwarded a request from 10.70.99.1",
+          "state": "yes"
+        },
+        "configured": {
+          "at": "2026-11-09T18:50:04Z",
+          "detail": "registered in NAC: RADIUS source 10.70.99.1, roles corp=corp, quarantine=quarantine (Aruba-User-Role; VLAN and IP unchanged). FreeRADIUS: FreeRADIUS restarted with this switch list and is running. The switch itself is configured by applying the reference AOS-CX configuration; NAC cannot confirm that until a request arrives.",
+          "state": "yes"
+        },
+        "freeradius_load": {
+          "at": "2026-11-09T18:50:04Z",
+          "detail": "FreeRADIUS restarted with this switch list and is running",
+          "state": "yes"
+        },
+        "radius_client_file": {
+          "at": "2026-11-09T18:50:03.77594436Z",
+          "detail": "1 switch(es) written to /var/lib/nac/freeradius-clients.conf; FreeRADIUS restarts to load them (see freeradius_load for whether it did)",
+          "state": "yes"
+        },
+        "reachable": {
+          "detail": "NAC has no management or observation adapter for Aruba in this candidate; it cannot probe the switch. RADIUS requests and CoA replies still prove the RADIUS path.",
+          "state": "unknown"
+        },
+        "verified": {
+          "detail": "run Verify after a test endpoint authenticates",
+          "state": "no"
+        }
+      },
+      "updated_at": "2026-11-09T18:50:03.774096Z"
+    },
+    "switch_id": "94599172-00ad-4151-94c8-1f9231cf4959",
+    "switch_name": "nac-aruba-rc2",
+    "timeline": [
+      {
+        "at": "2026-11-09T18:53:24.475098Z",
+        "decision_id": "fbe2a947-8ab9-4b2b-9d61-95b6cf670eb0",
+        "kind": "event",
+        "result": "reject",
+        "source": "nacd",
+        "stage": "nac-decision",
+        "summary": "no policy matched; applied default action"
+      },
+      {
+        "at": "2026-11-09T18:55:13.545864Z",
+        "decision_id": "3dcf28d7-44dd-4dac-9110-bbb48c151853",
+        "kind": "event",
+        "result": "accept",
+        "source": "nacd",
+        "stage": "nac-decision",
+        "summary": "matched policy bound-eap-corp"
+      },
+      {
+        "at": "2026-11-09T18:55:16.891126Z",
+        "decision_id": "037f19fe-3264-40ba-8952-fe85f75e9769",
+        "kind": "event",
+        "result": "accept",
+        "source": "nacd",
+        "stage": "nac-decision",
+        "summary": "matched policy bound-eap-corp"
+      },
+      {
+        "at": "2026-11-09T18:58:49.158354Z",
+        "coa_id": "cf89eb21-b03a-46c0-bd87-7de215859bc2",
+        "kind": "event",
+        "result": "info",
+        "source": "operator",
+        "stage": "operator",
+        "summary": "operator admin@nac.local requested quarantine; target nac-aruba-rc2 1/1/1 00-50-00-00-3E-00; requested segment quarantine role quarantine (Aruba-User-Role CoA; VLAN and IP unchanged)"
+      },
+      {
+        "at": "2026-11-09T18:58:49.200912Z",
+        "coa_id": "cf89eb21-b03a-46c0-bd87-7de215859bc2",
+        "kind": "coa",
+        "result": "acked",
+        "source": "nacd",
+        "stage": "coa",
+        "summary": "CoA quarantine \u2192 acked (attempts 1): switch acknowledged () the role change to quarantine. Aruba applies the role without re-authentication; NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. Verify on the switch (`show port-access clients`) and with traffic tests."
+      },
+      {
+        "at": "2026-11-09T18:58:49.202811Z",
+        "coa_id": "cf89eb21-b03a-46c0-bd87-7de215859bc2",
+        "kind": "event",
+        "result": "info",
+        "source": "switch",
+        "stage": "coa",
+        "summary": "CoA-ACK received for role quarantine (not traffic verification)"
+      },
+      {
+        "at": "2026-11-09T19:00:23.489469Z",
+        "coa_id": "317f316c-bfd0-4211-89d8-bc8c79d2ef06",
+        "kind": "event",
+        "result": "info",
+        "source": "operator",
+        "stage": "operator",
+        "summary": "operator admin@nac.local requested restore; target nac-aruba-rc2 1/1/1 00-50-00-00-3E-00; requested segment corp role corp (Aruba-User-Role CoA; VLAN and IP unchanged)"
+      },
+      {
+        "at": "2026-11-09T19:00:23.504695Z",
+        "coa_id": "317f316c-bfd0-4211-89d8-bc8c79d2ef06",
+        "kind": "coa",
+        "result": "acked",
+        "source": "nacd",
+        "stage": "coa",
+        "summary": "CoA restore \u2192 acked (attempts 1): switch acknowledged () the role change to corp. Aruba applies the role without re-authentication; NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. Verify on the switch (`show port-access clients`) and with traffic tests."
+      },
+      {
+        "at": "2026-11-09T19:00:23.506953Z",
+        "coa_id": "317f316c-bfd0-4211-89d8-bc8c79d2ef06",
+        "kind": "event",
+        "result": "info",
+        "source": "switch",
+        "stage": "coa",
+        "summary": "CoA-ACK received for role corp (not traffic verification)"
+      }
+    ],
+    "user_name": "wired-endpoint-01"
+  },
+  "switch": {
+    "access_ports": [
+      "1/1/1"
+    ],
+    "access_vlan": 10,
+    "coa_port": 3799,
+    "created_at": "2026-11-09T18:50:03.774096Z",
+    "eapi_password_set": false,
+    "enforcement": "role",
+    "eos_version": "ArubaOS-CX Virtual.10.07.0004",
+    "id": "94599172-00ad-4151-94c8-1f9231cf4959",
+    "last_radius_at": "2026-11-09T18:55:16.882774Z",
+    "name": "nac-aruba-rc2",
+    "nas_ip": "10.70.99.1",
+    "platform": "aruba-aos-cx",
+    "radius_secret_set": true,
+    "radius_server_ip": "10.70.99.5",
+    "radius_source_ip": "10.70.99.1",
+    "segment_roles": {
+      "corp": "corp",
+      "quarantine": "quarantine"
+    },
+    "segment_vlans": {},
+    "status": {
+      "auth_request_seen": {
+        "at": "2026-11-09T18:55:16.882774Z",
+        "detail": "FreeRADIUS forwarded a request from 10.70.99.1",
+        "state": "yes"
+      },
+      "configured": {
+        "at": "2026-11-09T18:50:04Z",
+        "detail": "registered in NAC: RADIUS source 10.70.99.1, roles corp=corp, quarantine=quarantine (Aruba-User-Role; VLAN and IP unchanged). FreeRADIUS: FreeRADIUS restarted with this switch list and is running. The switch itself is configured by applying the reference AOS-CX configuration; NAC cannot confirm that until a request arrives.",
+        "state": "yes"
+      },
+      "freeradius_load": {
+        "at": "2026-11-09T18:50:04Z",
+        "detail": "FreeRADIUS restarted with this switch list and is running",
+        "state": "yes"
+      },
+      "radius_client_file": {
+        "at": "2026-11-09T18:50:03.77594436Z",
+        "detail": "1 switch(es) written to /var/lib/nac/freeradius-clients.conf; FreeRADIUS restarts to load them (see freeradius_load for whether it did)",
+        "state": "yes"
+      },
+      "reachable": {
+        "detail": "NAC has no management or observation adapter for Aruba in this candidate; it cannot probe the switch. RADIUS requests and CoA replies still prove the RADIUS path.",
+        "state": "unknown"
+      },
+      "verified": {
+        "detail": "run Verify after a test endpoint authenticates",
+        "state": "no"
+      }
+    },
+    "updated_at": "2026-11-09T18:50:03.774096Z"
+  },
+  "version": {
+    "build_date": "2026-11-09T18:32:14Z",
+    "commit": "9f0dba1",
+    "version": "pilot-aruba-rc2"
+  }
+}
