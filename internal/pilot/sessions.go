@@ -139,7 +139,11 @@ func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Swit
 	if coas, err := s.store.SessionCoAs(ctx, sess.ID); err == nil && len(coas) > 0 {
 		v.LastCoA = &coas[len(coas)-1]
 	}
-	v.Liveness = liveness(sess, v.Observed, now)
+	var acct *acctSeen
+	if evs, err := s.store.SessionEvents(ctx, &sess); err == nil {
+		acct = lastAccounting(sess.ID, evs)
+	}
+	v.Liveness = liveness(sess, v.Observed, acct, now)
 	v.EndpointReachability = EndpointReachability{State: "not_observed", Note: reachabilityNote(v)}
 	return v
 }
@@ -168,7 +172,39 @@ type Liveness struct {
 	Note  string `json:"note"`
 }
 
-func liveness(sess domain.Session, o Observed, now time.Time) Liveness {
+// acctSeen is the latest RADIUS accounting packet NAC accepted for a session.
+type acctSeen struct {
+	Type string // Start | Interim-Update | Stop (as the switch sent it)
+	At   time.Time
+	ID   string // Acct-Session-Id
+}
+
+// lastAccounting returns the latest ACCEPTED accounting packet recorded for
+// this session (packets ignored as stale are recorded as "... ignored: ..."
+// and do not count), or nil. Acct-Session-Id on the session alone is not
+// evidence: it is also copied from Access-Requests.
+func lastAccounting(sessionID uuid.UUID, evs []domain.AuthEvent) *acctSeen {
+	var last *acctSeen
+	for i := range evs {
+		e := &evs[i]
+		if e.Stage != domain.StageAccounting || e.SessionID == nil || *e.SessionID != sessionID {
+			continue
+		}
+		typ := e.Detail["acct_status_type"]
+		if typ == "" || e.Reason != "accounting "+typ {
+			continue
+		}
+		if last == nil || !e.OccurredAt.Before(last.At) {
+			last = &acctSeen{Type: typ, At: e.OccurredAt, ID: e.Detail["acct_session_id"]}
+		}
+	}
+	return last
+}
+
+// liveness says whether NAC knows the endpoint is still connected. The note
+// states exactly what NAC has received (ASTRA, pilot-aruba-rc3: it used to say
+// "no RADIUS accounting" even when an accounting Start was stored).
+func liveness(sess domain.Session, o Observed, acct *acctSeen, now time.Time) Liveness {
 	switch {
 	case sess.State == domain.SessionEnded:
 		return Liveness{State: "ended", Basis: "nac",
@@ -177,12 +213,23 @@ func liveness(sess domain.Session, o Observed, now time.Time) Liveness {
 		return Liveness{State: "connected", Basis: o.Source, Note: "the switch currently lists this MAC as authenticated on this port"}
 	case o.Freshness == "fresh":
 		return Liveness{State: "absent", Basis: o.Source, Note: "the switch does not list this MAC as authenticated on this port; a CoA would be refused (503)"}
-	default:
-		return Liveness{State: "unknown", Basis: "last authentication only",
-			Note: fmt.Sprintf("NAC receives no RADIUS accounting and no fresh switch observation for this session, so it cannot tell "+
-				"whether the endpoint is still connected. Last authenticated %s ago. A CoA still targets only this switch, port and MAC; "+
-				"if the endpoint left, the switch refuses it (Error-Cause 503).", now.Sub(sess.LastAuthAt).Truncate(time.Second))}
 	}
+	coa := fmt.Sprintf("Last authenticated %s ago. A CoA still targets only this switch, port and MAC; "+
+		"if the endpoint left, the switch refuses it (Error-Cause 503).", now.Sub(sess.LastAuthAt).Truncate(time.Second))
+	if acct != nil {
+		id := ""
+		if acct.ID != "" {
+			id = " (Acct-Session-Id " + acct.ID + ")"
+		}
+		return Liveness{State: "unknown", Basis: "accounting " + acct.Type + ", no Stop",
+			Note: fmt.Sprintf("NAC received RADIUS accounting %s for this session %s ago%s and no Stop since. "+
+				"That shows the switch opened (or still reported) the session; it does not prove the endpoint is connected now: "+
+				"NAC learns of a disconnect only from an accounting Stop, which can be lost, and it has no fresh switch observation. ",
+				acct.Type, now.Sub(acct.At).Truncate(time.Second), id) + coa}
+	}
+	return Liveness{State: "unknown", Basis: "last authentication only",
+		Note: "NAC has received no RADIUS accounting and has no fresh switch observation for this session, so it cannot tell " +
+			"whether the endpoint is still connected. " + coa}
 }
 
 // SessionQuery filters the session list.

@@ -51,6 +51,28 @@ func TestQuarantineSurvivesAccountingStopAndSessionReplacement(t *testing.T) {
 	h.do("GET", "/api/v1/sessions?state=active", nil, 200, &list, true)
 	s1 := list.Sessions[0]["id"].(string)
 
+	// ASTRA (pilot-aruba-rc3): with a stored accounting Start, the session
+	// must not claim "no RADIUS accounting"; liveness stays unknown (no fresh
+	// observation) and says why a Start does not prove presence.
+	var sv map[string]any
+	h.do("GET", "/api/v1/sessions/"+s1, nil, 200, &sv, true)
+	lv := sv["liveness"].(map[string]any)
+	if note := lv["note"].(string); lv["state"] != "unknown" || lv["basis"] != "accounting Start, no Stop" ||
+		strings.Contains(note, "no RADIUS accounting") || !strings.Contains(note, "received RADIUS accounting Start for this session") ||
+		!strings.Contains(note, "(Acct-Session-Id acct-1)") || !strings.Contains(note, "does not prove the endpoint is connected now") {
+		t.Fatalf("liveness with a stored accounting Start: %+v", lv)
+	}
+	why := strings.Join(func() []string {
+		var out []string
+		for _, l := range sv["explanation"].([]any) {
+			out = append(out, l.(string))
+		}
+		return out
+	}(), "\n")
+	if strings.Contains(why, "no RADIUS accounting") || !strings.Contains(why, "accounting Start") {
+		t.Fatalf("Why panel contradicts the stored accounting Start:\n%s", why)
+	}
+
 	// The switch's behaviour on a CoA re-authentication with accounting on.
 	reauthAs := func(oldID, newID string) func(*radius.Packet) {
 		return func(*radius.Packet) {

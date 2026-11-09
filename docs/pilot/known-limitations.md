@@ -215,7 +215,16 @@ The bounded Aruba integration and its limits are in
   endpoint unplugs, until the next authentication on that port and MAC.
 - **Liveness.** Without a fresh eAPI observation, the session page says
   liveness is **unknown**: "active" means the last authentication was
-  accepted, not that the endpoint is connected now.
+  accepted, not that the endpoint is connected now. The note states what
+  NAC has:
+  - "has received no RADIUS accounting", or
+  - "received RADIUS accounting Start (or Interim-Update) … and no Stop
+    since", with the time and Acct-Session-Id. That shows the switch opened
+    the session, not that the endpoint is still there: NAC learns of a
+    disconnect only from a Stop, which can be lost.
+
+  Before `pilot-rc14` the note said "no RADIUS accounting" even when a Start
+  was stored (ASTRA, `pilot-aruba-rc3` console run): defect D2, wording only.
 - **Switch-observed state** comes only from eAPI (`show dot1x hosts | json`).
   The `fe7c981` lab run had no eAPI configured, so observation showed
   "unavailable" and **Verify** was "decision only". eAPI observation and

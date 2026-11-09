@@ -1,10 +1,12 @@
-# Aruba AOS-CX role path (`pilot-aruba-rc3`)
+# Aruba AOS-CX role path (`pilot-aruba-rc4`)
 
 **Status: owner-approved bounded integration, not lab-qualified.**
 - `pilot-rc10` (`b39649f`) stays the tested baseline. This candidate does
   not replace it.
-- `pilot-aruba-rc3` is `pilot-aruba-rc1` plus the known defect D1 fix and
-  its reload-race fix (`pilot-rc13`), merged, and nothing else. A switch
+- `pilot-aruba-rc4` is `pilot-aruba-rc3` plus the D2 session-liveness
+  wording fix (`pilot-rc14`), merged, and nothing else. `pilot-aruba-rc3` is
+  `pilot-aruba-rc1` plus the known defect D1 fix and its reload-race fix
+  (`pilot-rc13`). A switch
   shows as Configured only after FreeRADIUS has loaded it, also under
   bursts; see [known limitations](known-limitations.md). rc1 and rc2 are
   superseded: rc2's D1 retest failed.
@@ -219,7 +221,11 @@ evidence, and it was gathered without nacd.
 - a fresh database, in the separate Aruba topology
 - `pilot-rc10` and its topology stay untouched
 
-### Exact pins (`pilot-aruba-rc3`)
+### Exact pins
+
+**The values below are for `pilot-aruba-rc3`.** `pilot-aruba-rc4` changes nacd only
+(deployment files are identical); its pins are in
+[qualification status](qualification-status.md).
 
 
 | What | Value |
