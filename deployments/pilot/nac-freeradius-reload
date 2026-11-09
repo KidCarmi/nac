@@ -32,10 +32,16 @@ MAX_PASSES=${NAC_RELOAD_MAX_PASSES:-10}
 LOCK=${NAC_RELOAD_LOCK:-/run/nac-freeradius-reload.lock}
 
 # One run at a time: systemd serialises the unit, this also covers a manual run.
+# Children must not inherit the lock (fd 9 is closed for every command below),
+# or a long-lived child would hold it and every later run would block. The
+# wait is bounded so a stuck lock fails visibly instead of hanging the unit.
 exec 9>"$LOCK" || exit 1
-flock 9
+if ! flock -w "${NAC_RELOAD_LOCK_WAIT:-120}" 9; then
+	echo "nac-freeradius-reload: another reload still holds $LOCK; giving up (nacd will re-trigger)" >&2
+	exit 1
+fi
 
-hash_clients() { sha256sum "$CLIENTS" 2>/dev/null | cut -d' ' -f1; }
+hash_clients() { sha256sum "$CLIENTS" 2>/dev/null 9>&- | cut -d' ' -f1; }
 
 record() { # record <result> <detail>: for the content hashed in $sum
 	tmp=$(mktemp "$(dirname "$STATUS")/.nac-reload-status.XXXXXX") || exit 1
@@ -51,7 +57,7 @@ reload_once() { # validate and restart for the content hashed in $sum; 0 = loade
 		return 1
 	fi
 	# -l stdout: without it, -C writes its errors to radius.log, not to us.
-	if ! out=$(/usr/sbin/freeradius -C -l stdout -d "$RADDB" 2>&1); then
+	if ! out=$(/usr/sbin/freeradius -C -l stdout -d "$RADDB" 2>&1 9>&-); then
 		why=$(printf '%s\n' "$out" | grep -i -E 'error|invalid|failed' | head -n1 | sed 's/^.* : Error: //')
 		record fail "freeradius -C rejected the configuration, so FreeRADIUS was not restarted and still runs the previous client list (and will not start again until this is fixed): ${why:-see freeradius -C -l stdout}"
 		return 1
@@ -59,16 +65,16 @@ reload_once() { # validate and restart for the content hashed in $sum; 0 = loade
 	# active/activating/reloading: restart to load the list. failed: restart
 	# too, so a FreeRADIUS that failed on an earlier invalid list recovers once
 	# the list is valid again. inactive (deliberately stopped): leave it.
-	state=$(systemctl is-active freeradius.service 2>/dev/null)
+	state=$(systemctl is-active freeradius.service 2>/dev/null 9>&-)
 	if [ "$state" = inactive ]; then
 		record not_running "FreeRADIUS is stopped, so the client list is not loaded (start it: systemctl start freeradius)"
 		return 1
 	fi
-	if ! systemctl restart freeradius.service; then
+	if ! systemctl restart freeradius.service 9>&-; then
 		record fail "systemctl restart freeradius failed: see journalctl -u freeradius"
 		return 1
 	fi
-	if ! systemctl is-active --quiet freeradius.service; then
+	if ! systemctl is-active --quiet freeradius.service 9>&-; then
 		record fail "FreeRADIUS is not active after the restart: see journalctl -u freeradius"
 		return 1
 	fi
