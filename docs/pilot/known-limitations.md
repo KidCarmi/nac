@@ -223,9 +223,10 @@ node (scenarios C1–C3).
 
   Before `pilot-rc14` the note said "no RADIUS accounting" even when a Start
   was stored (ASTRA, `pilot-aruba-rc3` console run): defect D2, wording only.
-  - **D2 fix lab result** (reported by ASTRA; evidence package not yet
-    published): **PASS** in the API and the console, on exact
-    `pilot-aruba-rc4` nacd (`dd2b6137…`), which carries the rc14 code.
+  - **D2 fix lab result: PASS** in the API and the console, on exact
+    `pilot-aruba-rc4` nacd (`dd2b6137…`, independently built), which
+    carries the rc14 code. ASTRA [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified
+    here.
   - **Method:** a targeted retest. nacd was swapped in place on the
     existing rc3 guest, with the same adapter, switch and session; this was
     not a clean install. Liveness stayed `unknown`; the basis read
