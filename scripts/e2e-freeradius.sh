@@ -6,6 +6,9 @@
 # Proves: unbound identity denied; binding grants corp VLAN; untrusted-CA
 # certificate rejected by EAP-TLS and diagnosable in NAC; nacd outage gives
 # Access-Reject with no cache and an imported outage-log entry; recovery.
+# Then the same switch is re-registered as Aruba AOS-CX (role enforcement):
+# Access-Accept carries Aruba-User-Role and no Tunnel-* attributes, and an
+# operator quarantine (CoA unanswered here) applies at the next login.
 # CoA needs a real switch and is covered by test/integration (fake vEOS).
 #
 # Requires: root, freeradius 3.2.5 + freeradius-rest, eapoltest, PostgreSQL,
@@ -66,8 +69,8 @@ network={
 EOF
 sed -e "s#client.pem#rogue.pem#; s#client.key#rogue.key#" "$WORK/eap-good.conf" >"$WORK/eap-rogue.conf"
 
-eap() { # conf -> 0 on SUCCESS
-  eapol_test -c "$1" -a 127.0.0.1 -p 1812 -s "$SECRET" -M 00:50:00:00:02:00 -N87:s:Ethernet1 -t 8 >"$WORK/eapol-$2.log" 2>&1
+eap() { # conf name [NAS-Port-Id] -> 0 on SUCCESS
+  eapol_test -c "$1" -a 127.0.0.1 -p 1812 -s "$SECRET" -M 00:50:00:00:02:00 -N"87:s:${3:-Ethernet1}" -t 8 >"$WORK/eapol-$2.log" 2>&1
 }
 
 # ---- Install the adapter and start the services ----
@@ -151,4 +154,25 @@ ok "nacd recovered: outage reject imported (source freeradius-outage-log); login
 
 api -XPOST "$API/api/v1/switches/$SW/verify" | jq -e '.status.verified.state == "yes"' >/dev/null || fail "verify"
 ok "switch verified (decision-only: no eAPI in this harness)"
+# ---- Aruba AOS-CX role enforcement through the real adapter ----
+api -XPUT "$API/api/v1/switches/$SW" -d '{"name":"e2e-switch","platform":"aruba-aos-cx","radius_source_ip":"127.0.0.1",
+  "segment_roles":{"corp":"nac-corp","quarantine":"nac-quarantine"},"access_vlan":10,"access_ports":["1/1/1"],"radius_server_ip":"127.0.0.1"}' >/dev/null \
+  || fail "re-register the switch as Aruba AOS-CX"
+since() { tail -n +"$1" "$WORK/radiusd.log"; }
+L=$(($(wc -l <"$WORK/radiusd.log") + 1))
+eap "$WORK/eap-good.conf" aruba-corp 1/1/1 || fail "Aruba: bound identity should authenticate"
+since "$L" | grep -q 'Aruba-User-Role = "nac-corp"' || fail "Aruba: Access-Accept did not carry Aruba-User-Role nac-corp"
+if since "$L" | grep -q 'Tunnel-Private-Group-Id'; then fail "Aruba: Access-Accept must carry no VLAN"; fi
+ASESS=$(api "$API/api/v1/sessions?state=active" | jq -r '.sessions[] | select(.nas_port_id == "1/1/1") | .id')
+api "$API/api/v1/sessions/$ASESS" | jq -e '.requested.role == "nac-corp" and .enforcement.strategy == "role" and .observed.freshness == "unavailable"' >/dev/null \
+  || fail "Aruba: session view lacks the role contract"
+ok "Aruba role switch: Access-Accept with Aruba-User-Role nac-corp and no Tunnel-* attributes"
+
+api -XPOST "$API/api/v1/sessions/$ASESS/quarantine" >/dev/null || fail "Aruba: quarantine request"
+L=$(($(wc -l <"$WORK/radiusd.log") + 1))
+eap "$WORK/eap-good.conf" aruba-quarantine 1/1/1 || fail "Aruba: quarantined identity should still authenticate"
+since "$L" | grep -q 'Aruba-User-Role = "nac-quarantine"' || fail "Aruba: re-authentication did not return the quarantine role"
+if since "$L" | grep -q 'Tunnel-Private-Group-Id'; then fail "Aruba: quarantine must not move the VLAN"; fi
+ok "Aruba: operator quarantine (CoA unanswered here) applies at the next login as Aruba-User-Role nac-quarantine, VLAN unchanged"
+
 echo "ALL $pass CHECKS PASSED (FreeRADIUS $(freeradius -v | sed -n 's/.*Version \([0-9.]*\).*/\1/p' | head -1))"
