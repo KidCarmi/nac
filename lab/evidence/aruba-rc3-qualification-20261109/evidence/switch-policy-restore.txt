@@ -1,0 +1,9 @@
+Client: 00:50:00:00:3e:00, wired-endpoint-01
+Port: 1/1/1
+VLANs Assigned: 10
+Access: 10
+Status: dot1x Authenticated
+Auth Precedence: dot1x - Authenticated, mac-auth - Not attempted
+Auth History: dot1x - Authenticated, 20s ago
+Role: corp
+Status (authorization): Applied

@@ -1,7 +1,7 @@
 {
   "candidate_commit": "d96bb741e8f36019af4c6d5152491c2e0a874fe6",
   "candidate_binary_sha256": "01e88d8b03bfbbe1b2c55388e6ef48b51d98b096df8b5a77822e3b0f5d97ae6a",
-  "file_count": 60,
+  "file_count": 77,
   "files": [
     {
       "path": "Aruba-Role-ACL-1007.unl",
@@ -20,13 +20,13 @@
     },
     {
       "path": "aruba_rc3_auth_analyze.py",
-      "size": 2590,
-      "sha256": "b08b42592b729786c1009c2843d0e60a44244a15240ebaeebb8128de8f9a278b"
+      "size": 2661,
+      "sha256": "6538b97039287ada14482eb61143b9a4a9ab0b3a4fd6bbf57fbb086a3b770924"
     },
     {
       "path": "aruba_rc3_auth_capture_guest.py",
-      "size": 1131,
-      "sha256": "a9a2168ea443d405e72fd3302da15f2699110c2cb385d91e4ce39426bfe66aef"
+      "size": 1328,
+      "sha256": "21a234ffabcb8240bff243ca74b0018056de1003ce9b4f8bc4149416e482c462"
     },
     {
       "path": "aruba_rc3_coa_capture_guest.py",
@@ -57,6 +57,26 @@
       "path": "evidence/A11-ui-restore-state.json",
       "size": 61620,
       "sha256": "2c3af4c5d9cad0200d54e4b8ef14867ed96f6da9b8c8ee12e3477f2be5fd7844"
+    },
+    {
+      "path": "evidence/A12-invalid-cert-state.json",
+      "size": 30302,
+      "sha256": "8dd452d7e5a49c531e14e6e711fb51446ee2e321dac616cb1e60399a77a8e389"
+    },
+    {
+      "path": "evidence/A13-policy-published-before-reauth-state.json",
+      "size": 44227,
+      "sha256": "dacc27768565ed1c47d7d0ca268b9067f0cf549bedad278f00a5df25f18d1f24"
+    },
+    {
+      "path": "evidence/A13-policy-quarantine-state.json",
+      "size": 49610,
+      "sha256": "b1c643c0be0917b75194f81a5fef613fd860aa572d1a181c89fc39119a39dd86"
+    },
+    {
+      "path": "evidence/A13-policy-restored-state.json",
+      "size": 54836,
+      "sha256": "16293dd02c059a3f2021cd083fc73e6eb2cd533808d17124781920c1a473d8d9"
     },
     {
       "path": "evidence/A5-accounting-reconnect-state.json",
@@ -214,6 +234,31 @@
       "sha256": "0802ff76a8eb98d458a884c3c90fed71399acab2e0e472360edd94612901c3d8"
     },
     {
+      "path": "evidence/invalid-candidate-radius.pcap",
+      "size": 5191,
+      "sha256": "8fb4b4fa12d9c86c5934d515bac3d7f191463cf5e94b364ed0f4edb9d78ca0db"
+    },
+    {
+      "path": "evidence/invalid-endpoint-eapol.pcap",
+      "size": 4114,
+      "sha256": "9bb638260409f763058cace2d41c1d411d0b4ea9ad89337838af4363e975e6a2"
+    },
+    {
+      "path": "evidence/invalid-switch-eapol.pcap",
+      "size": 4114,
+      "sha256": "42d1bc96d8d2e1cd13f391de1db32a9c51baff91ac086d6bd34b855abfb14e26"
+    },
+    {
+      "path": "evidence/invalid-switch-radius.pcap",
+      "size": 5191,
+      "sha256": "01ff3d8652dab58fbd5fc24461ccaed5ed54835a4b42c143e2750d2d32483964"
+    },
+    {
+      "path": "evidence/invalid-switch-state.txt",
+      "size": 439,
+      "sha256": "54c84c3c09d214e9b807d3774503ee4dfd5cc34f4887ae2f110d56e7a1f5cde0"
+    },
+    {
       "path": "evidence/peer-endpoint.pcap",
       "size": 814,
       "sha256": "bacdc2ab1e022b79c01e17ed0549146abe38cacea57f9d1f233dc91407bcbdc7"
@@ -224,6 +269,36 @@
       "sha256": "5ad3a6093e10c3c3780bc108906522cdcf83784e92319243557552e6399c249b"
     },
     {
+      "path": "evidence/policy-quarantine-endpoint-eapol.pcap",
+      "size": 4995,
+      "sha256": "a1ec671fa7dad3d955ecbc8fffacdab2e7c93bf052d13a0eaaf5e8d7a04876a7"
+    },
+    {
+      "path": "evidence/policy-quarantine-probes.jsonl",
+      "size": 11927,
+      "sha256": "8e8cb865c7c432e8f1fd0cecbb8c44d1a5e5da23233ea514b92fbdb98c9421ab"
+    },
+    {
+      "path": "evidence/policy-quarantine-switch-radius.pcap",
+      "size": 6865,
+      "sha256": "578bcacd752bcf43a324710907378f7e1785ec9dc08b5b6fbdfe156a7f86e056"
+    },
+    {
+      "path": "evidence/policy-restore-endpoint-eapol.pcap",
+      "size": 4995,
+      "sha256": "f25714bb29bccafb4bfaa19e057878ae62bd5486e5ec247c7a6fea5170df76db"
+    },
+    {
+      "path": "evidence/policy-restore-probes.jsonl",
+      "size": 11926,
+      "sha256": "69c00d55aa04ece46ffbc34fcf9166ac317d7274c7dfd36c5fbedea7efe27cf2"
+    },
+    {
+      "path": "evidence/policy-restore-switch-radius.pcap",
+      "size": 6859,
+      "sha256": "067687ed2e164ae7f1f931728f528e177e24d331ff1ce5cffa432c2b7acdefb5"
+    },
+    {
       "path": "evidence/reload-chaos.log",
       "size": 4500,
       "sha256": "f510bdf28f90e4bb8e2f3253714da9286938ffab7b8a0f36122965d72f1594a7"
@@ -232,6 +307,16 @@
       "path": "evidence/switch-after-auth.txt",
       "size": 311,
       "sha256": "e9a56edd64d2a1278cf0814b52fd688453f9b778decf26aafe20564308e25011"
+    },
+    {
+      "path": "evidence/switch-policy-quarantine.txt",
+      "size": 283,
+      "sha256": "2060cb2570401784cf1c69238de7a9528c6804292f5009cca2da28c356dc7a1e"
+    },
+    {
+      "path": "evidence/switch-policy-restore.txt",
+      "size": 277,
+      "sha256": "e8866a49a3a6088aaef50dd140c20e763fc0a1bff5cfbadc10d7b6497f063860"
     },
     {
       "path": "evidence/switch-ui-quarantine.txt",
@@ -295,8 +380,8 @@
     },
     {
       "path": "README.md",
-      "size": 13359,
-      "sha256": "8b86d32f6b2f7cbdfe058770da4427fe2e4f351b447052461c66647bd35a0b5e"
+      "size": 16078,
+      "sha256": "40ff9c685509fc029ee6b9f26cef441e6c6c3454f92ff7801345e10ef8dd4e94"
     },
     {
       "path": "sanitized-switch-config.txt",

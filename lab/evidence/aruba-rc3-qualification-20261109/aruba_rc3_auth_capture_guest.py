@@ -1,11 +1,15 @@
 """Start bounded EAPOL and RADIUS captures for the isolated rc3 switch."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import time
 
-directory = Path('/root/aruba-rc3-auth-20261109')
+phase = os.environ.get('ARUBA_AUTH_PHASE', 'valid')
+if phase not in ('valid', 'invalid', 'policy-quarantine', 'policy-restore'):
+    raise SystemExit('invalid ARUBA_AUTH_PHASE')
+directory = Path('/root/aruba-rc3-auth-20261109-' + phase)
 directory.mkdir(mode=0o700, exist_ok=True)
 captures = [
     ('endpoint-eapol', 'vunl0_62_0', 'ether proto 0x888e'),

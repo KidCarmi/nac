@@ -1,0 +1,9 @@
+2026-11-09T20:00:06Z isolated port 1/1/1, endpoint MAC 00:50:00:00:3e:00
+Client: invalid-wired-01
+Authentication status: Authentication Failed, Server-Reject
+Precedence: dot1x Held; mac-auth Not attempted
+Assigned VLAN: none
+Role: none
+Fresh endpoint corp HTTP: timed out (curl HTTP code 000)
+After the diagnostic, the invalid supplicant was stopped, port 1/1/1 was
+cycled by the operator and the valid supplicant restored; corp HTTP 200.

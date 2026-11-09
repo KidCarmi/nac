@@ -53,7 +53,8 @@ def radius(packet):
 
 
 directory = Path(sys.argv[1])
-for name in ('auth-endpoint-eapol.pcap', 'auth-switch-radius.pcap'):
+prefix = (sys.argv[2] + '-') if len(sys.argv) > 2 else 'auth-'
+for name in (prefix + 'endpoint-eapol.pcap', prefix + 'switch-radius.pcap'):
     path = directory / name
     print(name)
     count = 0
