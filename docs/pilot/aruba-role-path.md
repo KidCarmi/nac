@@ -49,6 +49,7 @@ other IPv4" (evidence in the
 | **Packet isolation** | **not met**: a peer's inbound SYN still reached the endpoint |
 | **Tear down existing TCP state** | **did not happen**: after Restore the same connection resumed, and data queued during quarantine was delivered |
 | IPv6 | only endpoint-initiated same-subnet fresh TCP was tested (denied). Everything else is unverified |
+| IPv4 UDP, endpoint-initiated | corp **denied**, remediation allowed (direct role CoA, no nacd; [`f441a25`](https://github.com/KidCarmi/nac/tree/f441a25b217fad4c1a4977da339c03d872c91da6/lab/evidence/aruba-udp-reference-20261109), 8/8 manifest entries verified here). Under quarantine, 3 corp datagrams were on the endpoint tap and 0 at the corp service tap; remediation 3/3 requests and replies. After restore, corp and remediation each 3/3. Peer-initiated, routed-ingress and IPv6 UDP, and already-open UDP state, are not tested |
 | DHCP (one Linux client, one server) | **kept working under the role** (direct role CoA, no nacd; [`b0e5f47`](https://github.com/KidCarmi/nac/tree/b0e5f47d242ad15c04085f727b9d00c52e8f42f7/lab/evidence/aruba-dhcp-reference-20261109), 10/10 manifest entries verified here). Ubuntu 22.04.5 systemd-networkd, BusyBox udhcpd 1.30.1, 120 s lease / T1 60 / T2 105. Under quarantine the T1 unicast renewal got no reply, and the T2 broadcast rebind got an ACK; the address stayed usable past the original expiry. Same address, route and DNS through quarantine and restore. First corp SYN after the quarantine ACK was denied (+0.797 s); first corp HTTP 200 after the restore ACK at +0.533 s. 0 EAPOL and 0 new RADIUS authentications in both CoA windows. Other clients, servers and lease lengths are unverified |
 
 ## Setup
@@ -158,40 +159,131 @@ evidence, and it was gathered without nacd.
 - a fresh database, in the separate Aruba topology
 - `pilot-rc10` and its topology stay untouched
 
-**Install workflow** (pins in [qualification status](qualification-status.md)):
-1. **Build** at the pinned commit:
+### Exact pins (`pilot-aruba-rc2`)
+
+| What | Value |
+|---|---|
+| Commit | `9f0dba137dd4b284abaaab090d32bf3fe3a21ada` |
+| nacd (`/usr/local/bin/nacd`; `BUNDLE-MANIFEST.txt` and `/etc/nac/install-report.txt` `nacd_sha256`) | `333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0` |
+| `freeradius_adapter_sha256` line in `/etc/nac/install-report.txt` | `3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32` |
+| Running commit (install report, `GET /version`) | `9f0dba1` |
+
+The installer copies these files verbatim, so the installed files have the
+same SHA-256 as at the commit:
+
+| Installed as | Source in the bundle | SHA-256 |
+|---|---|---|
+| `/etc/freeradius/3.0/sites-available/nac` | `deployments/freeradius/sites-available/nac` | `d992840840bad3647c7bbb71afae59eaf4bd0981303b9465d7469c0306b75d1e` |
+| `/etc/freeradius/3.0/mods-available/nac_eap` | `deployments/freeradius/mods-available/nac_eap` | `ffcf910c2bdda8b792e5f6073c00cfc10a5792c5b337eab2f4f26a87a7d2b8cc` |
+| `/etc/freeradius/3.0/mods-available/nac_rest` | `deployments/freeradius/mods-available/nac_rest` | `168ae4550ff79b9cfb5065a2113f66b5655ba2993ca93665beb77dcfb5078546` |
+| `/etc/freeradius/3.0/mods-available/nac_json` | `deployments/freeradius/mods-available/nac_json` | `6008b75fa581390d0beb46a4d7645b816ba537e73959d539413b20ae5724cefc` |
+| `/etc/freeradius/3.0/mods-available/nac_outage` | `deployments/freeradius/mods-available/nac_outage` | `c483927350e1b70e688d1180bfb382aa324bed3f1890e4631556b60dcb5a8095` |
+| `/usr/local/sbin/nac-freeradius-reload` | `deployments/pilot/nac-freeradius-reload` | `32d0399af1f43043ddaa3e4411a61edd3fcbf8885ae8fac91ac91199465469f8` |
+| `/usr/local/sbin/nac-reset-password` | `deployments/pilot/nac-reset-password` | `a5c17570fc0d488e508f73a1d1b7a25124a0c6b9fa2ae50c43b40b4a24618a10` |
+| `/etc/systemd/system/nac-freeradius-reload.path` | `deployments/pilot/systemd/nac-freeradius-reload.path` | `fc1dd669de91bda5d3a4c709f5e61dd702b081c46e43e7cf39dfcb6b03e74495` |
+| `/etc/systemd/system/nac-freeradius-reload.service` | `deployments/pilot/systemd/nac-freeradius-reload.service` | `a005278bd1600e0cddccaa150f45b67b85598dad13fc58ab38a3b2ec30ee2f51` |
+| `/etc/systemd/system/nacd.service` | `deployments/pilot/systemd/nacd.service` | `162f610a20a7f5923543cf052e839ca41d199b0bb7bf16be3f2e0753ad6307eb` |
+| — (installer itself) | `deployments/pilot/install.sh` | `a80fe96707b05a7e5cc2b25edee6e4dcfb299e5669b905ee5d68ae73a8b76a5c` |
+| — (FreeRADIUS setup step) | `deployments/pilot/freeradius-setup.sh` | `4d838f3e8303f9aaae22fffb3fab777d66c0912463036e3bbe221f7dfba6d124` |
+
+The bundle tarball's own hash changes with file times; verify nacd and the
+files above instead.
+
+### Clean install (fresh Ubuntu 24.04 control node)
+
+1. **Build** the bundle (Go toolchain `go1.25.0` is fetched if needed):
    ```bash
    git checkout 9f0dba137dd4b284abaaab090d32bf3fe3a21ada
    make pilot-bundle VERSION=pilot-aruba-rc2
    ```
-   `BUNDLE-MANIFEST.txt` must show `nacd_sha256:
-   333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0`.
-   Pin nacd and the files, not the tarball: its hash varies with file
-   times.
-2. **Control node:** a fresh Ubuntu 24.04 guest in the Aruba topology,
-   reachable from the switch's RADIUS source IP. Stop, or point away from,
-   the reference FreeRADIUS used for the platform runs, so that exactly one
-   RADIUS server answers the switch.
-3. **Install** from the extracted bundle, with the CA that issued the
-   endpoint certificate. The earlier lab CA mismatch was a setup error.
+   `nac-pilot-pilot-aruba-rc2/BUNDLE-MANIFEST.txt` inside the tarball must
+   show the nacd hash above.
+2. **Copy** `dist/nac-pilot-pilot-aruba-rc2.tar.gz` to the control node,
+   then extract it:
+   ```bash
+   tar -xzf nac-pilot-pilot-aruba-rc2.tar.gz && cd nac-pilot-pilot-aruba-rc2
+   ```
+3. **Install** with the CA that issued the endpoint's certificate, and a
+   server certificate for FreeRADIUS. Add `--proxy URL` if apt needs one.
    ```bash
    sudo ./deployments/pilot/install.sh --ca ca.pem --server-cert radius.pem --server-key radius.key
    ```
-   Then check:
-   - `/etc/nac/install-report.txt` shows the pinned `nacd_sha256` and the
-     running commit `9f0dba1`
-   - `sha256sum /usr/local/sbin/nac-freeradius-reload` gives
-     `32d0399af1f43043ddaa3e4411a61edd3fcbf8885ae8fac91ac91199465469f8`
-   - `/etc/freeradius/3.0/sites-available/nac` gives `d9928408…` (above)
-4. **Register** the switch in the console (Platform **Aruba AOS-CX**, roles
-   `corp` and `quarantine` as configured on the switch, access VLAN 10, port
-   `1/1/1`, dotted-IPv4 source). **Wait for Configured: yes** (Loaded by
-   FreeRADIUS). Then point the switch's `radius-server host` and
-   `dyn-authorization client` at the control node with the same secret.
-5. **Bind and publish:** create the device record, bind the certificate
-   from its first (denied) session, and publish a `bound → corp` rule, as
-   in the [operator walkthrough](operator-walkthrough.md).
-6. **Lab state:** the Aruba endpoint is on DHCP in the corp role. After any
+   `--test-pki` generates a disposable CA instead, and the endpoint would
+   then need a client certificate from it.
+4. **Verify the install:**
+   - `/etc/nac/install-report.txt`: `nacd_sha256`,
+     `freeradius_adapter_sha256` and `running nacd: commit 9f0dba1`
+   - the file hashes above, with `sha256sum`
+   - `systemctl status nacd freeradius nac-freeradius-reload.path` (all
+     active)
+   - `curl -fs http://127.0.0.1:8080/readyz` returns ready
+5. **Sign in** at `https://<control-node>:8443/` with the credentials in
+   `/root/nac-initial-admin.txt`, then change the password (**Account**).
+
+### Aruba switch onboarding
+
+1. **One RADIUS server only.** Stop the reference FreeRADIUS used for the
+   platform runs. Later, remove its `radius-server host` and
+   `radius dyn-authorization client` entries from the switch.
+2. **Register the switch** (console **Switches**):
+
+   | Field | Value |
+   |---|---|
+   | Platform | Aruba AOS-CX |
+   | Name | any |
+   | RADIUS source IP | the switch address FreeRADIUS sees, in dotted IPv4. With `vrf mgmt`, that is the management interface address |
+   | NAS-IP-Address for CoA | leave empty if it is the same address |
+   | RADIUS shared secret | 16+ characters |
+   | Corp role, Quarantine role | the role names **as they exist on the switch** (`corp`, `quarantine` in the reference topology) |
+   | Access VLAN | 10 |
+   | Access ports | `1/1/1` |
+   | FreeRADIUS address | the control node's IP; it is also the CoA source |
+   | CoA UDP port | 3799 |
+
+3. **Wait for Configured: yes** ("Loaded by FreeRADIUS"). `pending`
+   settles within about 12 s in the chaos runs; `no` states the reason.
+4. **Apply the generated configuration.** On the **Switch** page, use
+   **Show with secret** (audited), or copy it and replace
+   `<RADIUS_SHARED_SECRET>`. For the reference values it reads:
+   ```
+   radius-server host <control-node> key plaintext <secret> vrf mgmt
+   aaa authentication port-access dot1x authenticator
+       enable
+   radius dyn-authorization enable
+   radius dyn-authorization client <control-node> vrf mgmt secret-key plaintext <secret>
+   port-access role corp
+       vlan access 10
+   port-access role quarantine
+       vlan access 10
+   interface 1/1/1
+       no shutdown
+       no routing
+       vlan access 10
+       aaa authentication port-access dot1x authenticator
+           enable
+   ```
+   - Compare it with the running configuration and apply what differs.
+   - The role blocks only set `vlan access`. They do **not** remove the
+     existing `q-policy` association on `quarantine`, and that association
+     must stay.
+   - If the switch reaches the control node outside the management VRF,
+     drop `vrf mgmt` from both RADIUS lines.
+   - Finish with `write memory`.
+5. **First login** (unbound): **Sessions** shows the endpoint denied, with
+   the validated certificate serial and issuer.
+6. **Bind and publish:**
+   - **Devices**: add the record (MAC `00:50:00:00:3e:00`).
+   - **Session**: **Bind**.
+   - **Policy**: rule `identity.bound eq true` → allow `corp`, then
+     **Preview**, then **Publish**.
+7. **Re-authenticate** with switch-local `port-access reauthenticate` (as
+   in the reference runs), or reconnect the endpoint.
+   - The session shows role `corp`, strategy `role`, and the switch "not
+     observed".
+   - FreeRADIUS sends `Aruba-User-Role = "corp"` and no Tunnel-\*
+     attributes.
+   - The switch shows `corp` in `show port-access clients`.
+8. **Lab state:** the endpoint is on DHCP in the corp role. After any
    component reboot, restart the transient `aruba-lab-dhcp.service` on the
    corp service before testing.
 
