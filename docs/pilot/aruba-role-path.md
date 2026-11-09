@@ -120,28 +120,33 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc3`: IN PROGRESS. Interim reported by ASTRA (2026-11-09); evidence package not yet published
+### `pilot-aruba-rc3`: D1 PASS, A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`1fa1ffd`](https://github.com/KidCarmi/nac/tree/1fa1ffde1c486156195300cb4e0642705b2d6738/lab/evidence/aruba-rc3-qualification-20261109), 60/60 manifest entries verified here)
 
 **Scope.** Exact `d96bb741e8f36019af4c6d5152491c2e0a874fe6`, nacd
-`01e88d8b…`, real systemd and FreeRADIUS, ArubaOS-CX Virtual 10.07, one-NIC
-Linux DHCP endpoint. Actions went **through the product API**: the console
-remains blocked at the self-signed certificate warning. Nothing below is
-verified here until ASTRA publishes the package. The candidate stays **in
-progress** until then.
+`01e88d8b…` (independently built; the installed hashes matched the pins),
+real systemd, FreeRADIUS 3.2.5, ArubaOS-CX Virtual 10.07.0004, one-NIC Linux
+DHCP endpoint. This result is kept **separate from rc2, which stays FAIL**.
 
-| Case | Reported result |
+**One finding: D2, operator-status wording** (`U1` in ASTRA's package). The
+liveness note said "NAC receives no RADIUS accounting" after a real
+accounting Start. It is fixed in `pilot-aruba-rc4`, a nacd-only change.
+**No enforcement defect was found.**
+
+| Case | Result (ASTRA) |
 |---|---|
-| Clean install and onboarding | Documented clean install and switch onboarding passed |
-| **D1 chaos, real systemd** | **20/20**: bursts, secret rotations, process kill and recovery, outage. This supersedes the `pilot-aruba-rc2` D1 failure for this candidate. rc2 stays **FAIL** |
-| A1 admission | Valid bound EAP-TLS admitted to `corp`; unbound certificate denied |
-| A2–A4 Quarantine / Restore (API) | CoA corp → quarantine → corp ACKed. Fresh endpoint TCP followed each change, with no re-authentication, no EAPOL and no DHCP address change. From the switch ACK: corp denied +0.220 s, remediation reachable +0.225 s, corp restored +0.611 s |
-| A5 persistence | The quarantine override survived accounting Stop/Start, a nacd restart and a control-guest reboot (not a whole EVE restart) |
-| A6 NAK | Switch NAK, Error-Cause 506: the old `corp` role and reachability stayed; the pending override applied at the next authentication |
-| A7 timeout | Real network silence: 3 attempts over 9 s; the switch stayed `quarantine`; the pending Restore applied at the next authentication |
-| A8 stale session | Action on an ended session rejected with `422`, no re-targeting |
-| A9 traffic limits | An established TCP flow stopped delivering during quarantine and resumed on restore. Peer → endpoint fresh TCP was blocked, but the peer's SYN reached the endpoint and the SYN-ACK was suppressed: the same limits as the reference, not packet isolation |
-| Not claimed | Console-only workflow (certificate interstitial); A10 Arista regression; Windows; physical Aruba |
-
+| Clean install and onboarding | **PASS.** Fresh guest, `--test-pki`; binary, adapter and config hashes matched the pins |
+| **D1 chaos, real systemd** | **PASS, 20/20.** Eight rapid registrations, eight secret rotations and cleanup converged to the exact current file hash; process kill and recovery; outage. Supersedes the rc2 D1 failure for this code |
+| A1 admission | **PASS.** No authentication: corp timed out. Valid but unbound certificate: denied. After binding the validated issuer and serial and publishing v2: admitted to `corp` |
+| A2–A4 Quarantine / Restore, **API** | **PASS.** Quarantine ACK 19:21:15.166296Z: first blocked corp SYN +0.220 s, first remediation HTTP 200 +0.225 s; Restore: corp back at +0.611 s. No re-authentication, no EAPOL, no DHCP address change |
+| Quarantine / Restore, **console** | **PASS** (same session, signed in). Quarantine ACK 19:50:24.612334Z: first denied corp SYN +0.301 s; 29 corp successes before, 0 after; remediation continued. Restore ACK 19:52:36.429036Z: first corp HTTP 200 +0.168 s. No EAPOL, no authentication, no address change |
+| A5 persistence | **PASS.** The quarantine stayed applied after accounting Stop/Start created a new session, after a nacd restart and after a control-guest reboot (not a full EVE restart) |
+| A6 NAK | **PASS.** Quarantine mapped to a nonexistent role: NAK, Error-Cause 506. The switch and fresh TCP stayed `corp`, and the pending override applied at the next authentication |
+| A7 timeout | **PASS.** Only candidate → switch UDP/3799 dropped: 3 requests over 6 s, none reached the switch. Reported as timeout; the pending Restore applied at the next authentication |
+| A8 stale session | **PASS.** Quarantine on an ended session: `422` "session is ended, not active", no re-targeting |
+| A9 traffic limits | As the reference: an established corp TCP socket delivered 0 of 8 payloads during quarantine (no FIN or RST) and resumed after Restore. Peer → endpoint fresh TCP was blocked, although the peer's SYN reached the endpoint and the SYN-ACK was suppressed. Not packet isolation |
+| Session status wording | **FAIL (D2):** "NAC receives no RADIUS accounting" despite a real Start. Fixed in rc4 |
+| Not run | Invalid client certificate, rule-only policy change, the full clean-instance console workflow, a full EVE restart, and the Arista regression on this exact candidate |
+| Blocked | Windows 10/11, physical Aruba (none authorized); MAB is outside this pilot |
 
 ### `pilot-aruba-rc2`: candidate FAIL (D1); A1–A3 PASS via API (ASTRA, 2026-11-09, [`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109), 17/17 manifest entries verified here)
 
