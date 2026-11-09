@@ -1,0 +1,81 @@
+
+
+switch# 
+
+switch# configure terminal
+
+switch(config)# 
+
+switch(config)# interface 1/1/1
+
+switch(config-if)# 
+
+switch(config-if)# apply access-list ip deny-corp in
+
+switch(config-if)# 
+
+switch(config-if)# end
+
+switch# 
+
+switch# show running-config interface 1/1/1
+
+interface 1/1/1 
+
+    no shutdown 
+
+    apply access-list ip deny-corp in
+
+    no routing
+
+    vlan access 10
+
+    aaa authentication port-access preauth-role quarantine
+
+    aaa authentication port-access mac-auth
+
+        enable
+
+    exit
+
+switch# 
+
+switch# show access-list ip deny-corp
+
+Type       Name                                              
+
+  Sequence Comment                                           
+
+           Action                          L3 Protocol       
+
+           Source IP Address               Source L4 Port(s) 
+
+           Destination IP Address          Destination L4 Port(s)
+
+           Additional Parameters                             
+
+-------------------------------------------------------------------------------
+
+IPv4       deny-corp
+
+        10 
+
+           deny                            tcp 
+
+           any                             
+
+           10.70.10.10                      =  8080
+
+        20 
+
+           permit                          any  
+
+           any                             
+
+           any                             
+
+-------------------------------------------------------------------------------
+
+switch# 
+
+switch# 

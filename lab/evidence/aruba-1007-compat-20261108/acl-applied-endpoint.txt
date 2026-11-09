@@ -1,0 +1,23 @@
+
+
+root@nac-endpoint:~# 
+
+root@nac-endpoint:~# date -u +%Y-%m-%dT%H:%M:%SZ; ip -br addr show ens3; ip route; curl -sS --max-time 2 -o /dev/null -w corp=%{http_code} http://10.70.10.10:8080/; echo; curl -sS --max-time 2 -o /dev/null -w remediation=%{http_code} http://10.70.20.10:8080/; echo
+
+2026-11-08T19:18:11Z
+
+ens3             UP             10.70.10.50/24 fe80::250:ff:fe00:3e00/64 
+
+default via 10.70.10.1 dev ens3 
+
+10.70.10.0/24 dev ens3 proto kernel scope link src 10.70.10.50 
+
+curl: (28) Connection timed out after 2001 milliseconds
+
+corp=000
+
+remediation=200
+
+root@nac-endpoint:~# 
+
+root@nac-endpoint:~# 

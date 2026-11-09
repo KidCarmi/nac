@@ -1,0 +1,119 @@
+{
+  "experiment": "Aruba-CX-10.07-EAP-TLS-reference-role-enforcement",
+  "date_utc": "2026-11-09",
+  "eos_version": "ArubaOS-CX Virtual.10.07.0004",
+  "eos_build_sha": "64b88cbfc38a48a03d7b8b6229137e37f59c9310",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "files": [
+    {
+      "path": "aruba-reference-20261109-baseline/endpoint-tap.pcap",
+      "bytes": 5897,
+      "sha256": "8f97dc5a485e3a74285d034315360f81b6439ce1ee71a2d3c07ec4ce4475b0ba"
+    },
+    {
+      "path": "aruba-reference-20261109-baseline/server-tap.pcap",
+      "bytes": 7683,
+      "sha256": "06697f412f7f432ac61950f2057b5fda2498f35f2b76a800a5e41834589c0192"
+    },
+    {
+      "path": "aruba-reference-20261109-baseline/switch-access-tap.pcap",
+      "bytes": 5897,
+      "sha256": "f9d5dee119d5c35ab3f3ae5d06da60b01bd410320fea1286e2d21f26f0bf489f"
+    },
+    {
+      "path": "aruba-reference-20261109-baseline/switch-control-tap.pcap",
+      "bytes": 7683,
+      "sha256": "3fdd94ac7293f75b1e93e02c6d63d3fc9796c1926652afb51c2b5c1ab8868fe4"
+    },
+    {
+      "path": "aruba-reference-20261109-pre-global/endpoint-tap.pcap",
+      "bytes": 92,
+      "sha256": "73ab054e49d196412613b948176a65232f742d88cc04c8ac3a2c3fd0d76a6c1f"
+    },
+    {
+      "path": "aruba-reference-20261109-pre-global/server-tap.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "aruba-reference-20261109-pre-global/switch-access-tap.pcap",
+      "bytes": 92,
+      "sha256": "32b474f916ec753d14564dbcdfd7c8088ae83ec03c6ede0b91faa30eae18eb89"
+    },
+    {
+      "path": "aruba-reference-20261109-pre-global/switch-control-tap.pcap",
+      "bytes": 24,
+      "sha256": "704e5e5b3234433c01fcfd1b20a306e77e985038120492dc53965c3edd38a4ea"
+    },
+    {
+      "path": "aruba-reference-20261109-quarantine/endpoint-tap.pcap",
+      "bytes": 5863,
+      "sha256": "9fa5222f39a2bb85dddff9aafff841e3577721cfce9256be8e1085a26f71940b"
+    },
+    {
+      "path": "aruba-reference-20261109-quarantine/server-tap.pcap",
+      "bytes": 7791,
+      "sha256": "ce1f58250bd77b0898101a77b44884aabb8b6aa2b13336a6d72ed1bf696f9eb6"
+    },
+    {
+      "path": "aruba-reference-20261109-quarantine/switch-access-tap.pcap",
+      "bytes": 5863,
+      "sha256": "7ac7c69589916753171767320ca19caf014e639b05a426a0c243e6b3f788ea89"
+    },
+    {
+      "path": "aruba-reference-20261109-quarantine/switch-control-tap.pcap",
+      "bytes": 7791,
+      "sha256": "0c284aa4f398daf08dc51f88bfd7ee770581dd6dfa2b7ab8c5e7ff89532171e3"
+    },
+    {
+      "path": "aruba-reference-20261109-restore/endpoint-tap.pcap",
+      "bytes": 5863,
+      "sha256": "e6b62523d3e60ca98cce0a1bcd2c8bd0fb1ee6b903e43e2e6d1bf9eaacf909ef"
+    },
+    {
+      "path": "aruba-reference-20261109-restore/server-tap.pcap",
+      "bytes": 7755,
+      "sha256": "fa24622560ba8feb752ef7c1805f641c9adbe299db1a4a7843e21464fa963ca9"
+    },
+    {
+      "path": "aruba-reference-20261109-restore/switch-access-tap.pcap",
+      "bytes": 5863,
+      "sha256": "8560716e5991e716e164c79939e89c0794f883a63976392e51fc3a46f15e9924"
+    },
+    {
+      "path": "aruba-reference-20261109-restore/switch-control-tap.pcap",
+      "bytes": 7755,
+      "sha256": "d96a0a712d2f87835a6ed4fadc51a55f6c26d2e0439d20297c26ff6d49a8c0e2"
+    },
+    {
+      "path": "Aruba-Role-ACL-1007.unl",
+      "bytes": 5014,
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94"
+    },
+    {
+      "path": "pcaps.tar.gz",
+      "bytes": 11010,
+      "sha256": "be0c257dda1755a2266663bbe7b2931afe6f81680bd1f57cabc0125bd8355d5c"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7072,
+      "sha256": "46331e8542f08b2a3ed163a4d0fefa4d546383913f5462101b06dcf4c5dcc941"
+    },
+    {
+      "path": "rerun.md",
+      "bytes": 2832,
+      "sha256": "045cb3f93c05ee2802146ce88f7481a3df41775f3369770f8c9fd2d08958761c"
+    },
+    {
+      "path": "sanitized-config.md",
+      "bytes": 2144,
+      "sha256": "2e90a405598dac21d52563b8091117c033cc6f23c79e7855af5aba257f3d32d9"
+    },
+    {
+      "path": "test-results.md",
+      "bytes": 2732,
+      "sha256": "4ccf47e9389fe2d1328b0e87403b59a3c9bfada8f90f3ad76b0fc12388470f9e"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "experiment": "Aruba-CX-10.07-static-ACL-and-role-compatibility",
+  "date_utc": "2026-11-08",
+  "topology": "Aruba-Role-ACL-1007.unl",
+  "switch_version": "ArubaOS-CX Virtual.10.07.0004",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "files": {
+    "acl-applied-endpoint.txt": {
+      "sha256": "d5e459750b73bf4984fcd547c0790f5f638ba3baa00d17aa70b709487b3f80be",
+      "bytes": 639
+    },
+    "acl-applied-switch.txt": {
+      "sha256": "ff36224c9febbf1b9cc8f1fd97d17e5888e8341413a5072b5685ded4090b6a36",
+      "bytes": 1536
+    },
+    "acl-removed-endpoint.txt": {
+      "sha256": "e1d3d259650906f8c48290cacfd8b2121da24d97eb29f0b4844b304017f51cb3",
+      "bytes": 580
+    },
+    "acl-removed-switch.txt": {
+      "sha256": "9f953712e62cda406df4be8d36489efaa55a4bcb3cd58aa0b9e9a1d387fc494b",
+      "bytes": 613
+    },
+    "Aruba-Role-ACL-1007.unl": {
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94",
+      "bytes": 5014
+    },
+    "baseline-endpoint.txt": {
+      "sha256": "51656ef04dbdec63785acd1275c219a13184c6048216c6860080060b436cc5fd",
+      "bytes": 580
+    },
+    "mab-radius-observation.txt": {
+      "sha256": "6a383340206e6acb82c65f8198a01c8b837f0ee3a0d1a83b3c0ec7495e890272",
+      "bytes": 234
+    },
+    "mab-switch.txt": {
+      "sha256": "80975f737b5f9080230d15c3733ce4e7cb0b17bfbb5cc63daa11d859ca7fb636",
+      "bytes": 740
+    },
+    "README.md": {
+      "sha256": "2168af021cd147b5c7cf44e029846ea5236bfbdbb4c3d1f24941fd3ebd233f80",
+      "bytes": 8544
+    },
+    "role-session-switch.txt": {
+      "sha256": "f2bda78e0be7ea8c6a36d7b3334770f3022281cc67987e9b0ec867dfa5242170",
+      "bytes": 1610
+    }
+  }
+}

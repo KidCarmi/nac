@@ -1,0 +1,79 @@
+
+
+switch# 
+
+switch# show version
+
+-----------------------------------------------------------------------------
+
+ArubaOS-CX
+
+(c) Copyright Hewlett Packard Enterprise Development LP
+
+-----------------------------------------------------------------------------
+
+Version      : Virtual.10.07.0004                                            
+
+Build Date   :                                                               
+
+Build ID     : ArubaOS-CX:Virtual.10.07.0004:64b88cbfc38a:202104201605       
+
+Build SHA    : 64b88cbfc38a48a03d7b8b6229137e37f59c9310                      
+
+Active Image :                               
+
+Service OS Version :                               
+
+BIOS Version       :                               
+
+switch# 
+
+switch# show port-access clients
+
+No port-access clients are found 
+
+switch# 
+
+switch# show port-access policy q-policy
+
+Access Policy Details:
+
+======================
+
+Policy Name   : q-policy
+
+Policy Type   : Local
+
+Policy Status : Applied
+
+SEQUENCE    CLASS                        TYPE ACTION
+
+----------- ---------------------------- ---- ----------------------------------
+
+10          allow-rem                    ipv4 permit                            
+
+100         deny-all                     ipv4 drop 
+
+switch# 
+
+switch# show running-config interface 1/1/1
+
+interface 1/1/1 
+
+    no shutdown 
+
+    no routing
+
+    vlan access 10
+
+    aaa authentication port-access preauth-role quarantine
+
+    aaa authentication port-access mac-auth
+
+        enable
+
+    exit
+
+switch# 
+
+switch# 
