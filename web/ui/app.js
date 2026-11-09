@@ -194,13 +194,18 @@ async function overview() {
 async function switches() {
   const d = await api("GET", "/switches");
   show(h("h1", {}, "Switches"),
-    panel(null, table(["Name", "RADIUS source", "VLANs", "Configured", "Reachable", "Auth seen", "Verified (record)"],
-      d.switches.map((s) => ({ id: s.id, cells: [s.name, h("code", {}, s.radius_source_ip), vlans(s.segment_vlans),
+    panel(null, table(["Name", "RADIUS source", "Segments", "Configured", "Reachable", "Auth seen", "Verified (record)"],
+      d.switches.map((s) => ({ id: s.id, cells: [s.name, h("code", {}, s.radius_source_ip), segmentsOf(s),
         stateChip(s.status.configured.state), stateChip(s.status.reachable.state), stateChip(s.status.auth_request_seen.state),
         stateChip(s.status.verified.state)] })), (r) => go("#/switch/" + r.id))),
     switchForm(null));
 }
 const vlans = (m) => Object.entries(m || {}).sort((a, b) => a[1] - b[1]).map(([k, v]) => k + "=" + v).join(", ");
+const isRole = (sw) => sw?.enforcement === "role";
+// A role switch maps segments to local roles; its VLAN never changes.
+const segmentsOf = (sw) => isRole(sw)
+  ? "roles " + Object.entries(sw.segment_roles || {}).map(([k, v]) => k + "=" + v).join(", ")
+  : vlans(sw.segment_vlans);
 
 function switchForm(sw) {
   const f = {
@@ -208,6 +213,12 @@ function switchForm(sw) {
     src: h("input", { value: sw?.radius_source_ip || "", placeholder: "10.70.99.1" }),
     nas: h("input", { value: sw?.nas_ip || "", placeholder: "same as source" }),
     secret: h("input", { type: "password", autocomplete: "new-password", placeholder: sw ? "leave empty to keep" : "16+ random characters" }),
+    platform: h("select", {},
+      h("option", { value: "arista-eos", selected: (sw?.platform || "arista-eos") === "arista-eos" }, "Arista EOS (VLAN assignment)"),
+      h("option", { value: "aruba-aos-cx", selected: sw?.platform === "aruba-aos-cx" }, "Aruba AOS-CX (local role; VLAN and IP unchanged)")),
+    rcorp: h("input", { value: sw?.segment_roles?.corp || "nac-corp" }),
+    rquar: h("input", { value: sw?.segment_roles?.quarantine || "nac-quarantine" }),
+    avlan: h("input", { type: "number", min: 1, max: 4094, value: sw?.access_vlan ?? 10 }),
     corp: h("input", { type: "number", min: 1, max: 4094, value: sw?.segment_vlans?.corp ?? 10 }),
     quar: h("input", { type: "number", min: 1, max: 4094, value: sw?.segment_vlans?.quarantine ?? 20 }),
     ports: h("input", { value: (sw?.access_ports || ["Ethernet1"]).join(", ") }),
@@ -220,25 +231,47 @@ function switchForm(sw) {
   // Segments other than corp/quarantine (added through the API) are not
   // editable here and must survive a save unchanged.
   const extraSegments = Object.fromEntries(Object.entries(sw?.segment_vlans || {}).filter(([k]) => k !== "corp" && k !== "quarantine"));
+  const extraRoles = Object.fromEntries(Object.entries(sw?.segment_roles || {}).filter(([k]) => k !== "corp" && k !== "quarantine"));
+  const aruba = () => f.platform.value === "aruba-aos-cx";
   const submit = async (e) => {
     e.preventDefault();
-    const body = { name: f.name.value.trim(), radius_source_ip: f.src.value.trim(), nas_ip: f.nas.value.trim(),
-      radius_secret: f.secret.value, coa_port: Number(f.coa.value), segment_vlans: { ...extraSegments, corp: Number(f.corp.value), quarantine: Number(f.quar.value) },
-      access_ports: f.ports.value.split(",").map((s) => s.trim()).filter(Boolean), radius_server_ip: f.server.value.trim(),
-      eapi_url: f.eapi.value.trim(), eapi_username: f.eu.value.trim(), eapi_password: f.ep.value, clear_eapi: false };
+    const body = { name: f.name.value.trim(), platform: f.platform.value, radius_source_ip: f.src.value.trim(), nas_ip: f.nas.value.trim(),
+      radius_secret: f.secret.value, coa_port: Number(f.coa.value),
+      access_ports: f.ports.value.split(",").map((s) => s.trim()).filter(Boolean), radius_server_ip: f.server.value.trim() };
+    if (aruba()) {
+      Object.assign(body, { segment_roles: { ...extraRoles, corp: f.rcorp.value.trim(), quarantine: f.rquar.value.trim() },
+        access_vlan: Number(f.avlan.value), clear_eapi: true });
+    } else {
+      Object.assign(body, { segment_vlans: { ...extraSegments, corp: Number(f.corp.value), quarantine: Number(f.quar.value) },
+        eapi_url: f.eapi.value.trim(), eapi_username: f.eu.value.trim(), eapi_password: f.ep.value, clear_eapi: false });
+    }
     const r = await act(() => sw ? api("PUT", "/switches/" + sw.id, body) : api("POST", "/switches", body),
-      sw ? "Switch updated." : "Switch registered. Apply the generated EOS configuration next.");
+      sw ? "Switch updated." : "Switch registered. Apply the generated switch configuration next.");
     if (r) go("#/switch/" + r.id);
   };
+  const vlanFields = h("div", { class: "form" }, field("Corp VLAN", f.corp), field("Quarantine VLAN", f.quar),
+    Object.keys(extraSegments).length ? field("Other segments (kept on save; edit through the API)",
+      h("div", { class: "mono" }, vlans(extraSegments))) : null,
+    field("eAPI URL (session observation)", f.eapi), field("eAPI username", f.eu), field("eAPI password", f.ep));
+  const roleFields = h("div", { class: "form" }, field("Corp role (local role on the switch)", f.rcorp),
+    field("Quarantine role (local role on the switch)", f.rquar), field("Access VLAN (unchanged by NAC)", f.avlan),
+    h("p", { class: "note" }, "NAC returns the role name in Aruba-User-Role. The role and its policy must exist on the switch; " +
+      "what the quarantine role blocks is switch configuration, not NAC. NAC does not observe AOS-CX sessions."));
+  const sync = () => {
+    vlanFields.style.display = aruba() ? "none" : ""; roleFields.style.display = aruba() ? "" : "none";
+    if (!sw && aruba() && f.ports.value === "Ethernet1") f.ports.value = "1/1/1";
+    if (!sw && !aruba() && f.ports.value === "1/1/1") f.ports.value = "Ethernet1";
+  };
+  f.platform.addEventListener("change", sync);
+  sync();
   return panel(sw ? "Edit switch" : "Register a switch",
     h("form", { onsubmit: submit },
       h("div", { class: "form" },
-        field("Name", f.name), field("RADIUS source IP (as FreeRADIUS sees it)", f.src), field("NAS-IP-Address for CoA", f.nas),
-        field("RADIUS shared secret", f.secret), field("Corp VLAN", f.corp), field("Quarantine VLAN", f.quar),
-        Object.keys(extraSegments).length ? field("Other segments (kept on save; edit through the API)",
-          h("div", { class: "mono" }, vlans(extraSegments))) : null,
+        field("Name", f.name), field("Platform", f.platform), field("RADIUS source IP (as FreeRADIUS sees it)", f.src), field("NAS-IP-Address for CoA", f.nas),
+        field("RADIUS shared secret", f.secret),
         field("Access ports (comma-separated)", f.ports), field("FreeRADIUS address for the switch config", f.server),
-        field("CoA UDP port", f.coa), field("eAPI URL (session observation)", f.eapi), field("eAPI username", f.eu), field("eAPI password", f.ep)),
+        field("CoA UDP port", f.coa)),
+      vlanFields, roleFields,
       h("p", {}, h("button", { class: "primary", type: "submit" }, sw ? "Save" : "Register"))));
 }
 
@@ -255,15 +288,15 @@ async function switchDetail(id) {
     h("div", { class: "grid" }, item("1. Configured", st.configured), item("2. Reachable (management)", st.reachable),
       item("3. Authentication request seen", st.auth_request_seen), item("4. Verified test (record)", st.verified)),
     panel("Actions", h("div", { class: "row" },
-      h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/probe"), "Probe finished.")) render(); } }, "Probe management (eAPI)"),
-      h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/observe"), "Switch state refreshed.")) render(); } }, "Refresh session observation"),
+      isRole(sw) ? null : h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/probe"), "Probe finished.")) render(); } }, "Probe management (eAPI)"),
+      isRole(sw) ? null : h("button", { onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/observe"), "Switch state refreshed.")) render(); } }, "Refresh session observation"),
       h("button", { class: "primary", onclick: async () => { if (await act(() => api("POST", "/switches/" + id + "/verify"), "Verification recorded.")) render(); } }, "Verify (after a test login)"),
       h("button", { class: "danger", onclick: async () => {
         if (!await ask("Delete switch " + sw.name + "? Its sessions are removed and FreeRADIUS stops accepting it.")) return;
         if (await act(() => api("DELETE", "/switches/" + id), "Switch deleted.") !== null) go("#/switches");
       } }, "Delete")),
       h("p", { class: "muted" }, "FreeRADIUS client file: ", txt(st.radius_client_file.detail))),
-    panel("Generated EOS configuration (validated on EOS 4.29.2F)",
+    panel(isRole(sw) ? "Generated AOS-CX reference configuration (lab: ArubaOS-CX Virtual 10.07)" : "Generated EOS configuration (validated on EOS 4.29.2F)",
       h("p", { class: "note" }, "The RADIUS key is a placeholder. Replace <RADIUS_SHARED_SECRET> with the secret you registered, or download the configuration with the key."),
       h("div", { class: "row" },
         h("button", { onclick: () => navigator.clipboard.writeText(cfg).then(() => flash("Copied.")) }, "Copy"),
@@ -313,9 +346,13 @@ async function sessionDetail(id) {
   const eps = epList.items || [];
   const ld = d.last_decision;
   const coaBusy = d.last_coa && ["requested", "sent"].includes(d.last_coa.state);
+  const role = d.enforcement?.strategy === "role";
   const coaBtn = (kind, label, cls) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
     const live = d.liveness.state === "connected" ? "" : "\n\nNote: " + d.liveness.note;
-    const pause = "\n\nThe switch re-authenticates the session. In the pilot lab (vEOS-lab 4.29.2F) this interrupted endpoint " +
+    const pause = role ? "\n\nThe CoA asks the switch to change this session's local role (Aruba-User-Role). The VLAN and the endpoint's " +
+      "address do not change and the switch does not re-authenticate. A CoA-ACK means the switch accepted the request; NAC does not " +
+      "observe AOS-CX sessions and does not verify that traffic is restricted. What the role blocks is switch configuration: in the lab, " +
+      "new connections to tested peers were denied, but existing TCP connections were not torn down. Check the switch and test traffic." : "\n\nThe switch re-authenticates the session. In the pilot lab (vEOS-lab 4.29.2F) this interrupted endpoint " +
       "traffic for up to about 58 s, also when the VLAN did not change. After a VLAN change the endpoint needs an address " +
       "in the new VLAN: in the lab, Windows Server 2025 got one within about 65 s, but a Linux (systemd-networkd) endpoint " +
       "only when its DHCP lease expired, which can take the remaining lease time. Check the endpoint, not only this page.";
@@ -345,7 +382,7 @@ async function sessionDetail(id) {
     h("h1", {}, "Session ", h("code", {}, d.mac), " on ", d.switch_name, " ", d.nas_port_id, " ", stateChip(d.state)),
     panel("Why", h("ul", {}, d.explanation.map((l) => h("li", {}, l)))),
     h("div", { class: "grid" },
-      panel("1. Switch authorization (requested by NAC)", kv([["Action", d.requested.action], ["Segment", d.requested.segment], ["VLAN", d.requested.vlan],
+      panel("1. Switch authorization (requested by NAC)", kv([["Action", d.requested.action], ["Segment", d.requested.segment], role ? ["Role", d.requested.role] : ["VLAN", d.requested.vlan],
         ["Override", d.override ? d.override + " by " + d.override_by : "none"], ["Decision", d.requested.decision_id], ["At", when(d.requested.at)]])),
       panel("2. Observed on the switch", kv([["Still connected?", h("span", {}, stateChip(d.liveness.state), " ", d.liveness.note)],
         ["Freshness", stateChip(d.observed.freshness)], ["Status", d.observed.status], ["VLAN", d.observed.vlan],
@@ -355,13 +392,17 @@ async function sessionDetail(id) {
       panel("Identity and device", kv([["Certificate CN", d.cert_cn], ["Serial", d.cert_serial ? h("code", {}, d.cert_serial) : "—"],
         ["Issuer", d.cert_issuer], ["Outer identity (untrusted)", d.user_name], ["Binding", d.binding ? d.binding.id + " rev " + d.binding.revision : "none"],
         ["Device", d.endpoint ? d.endpoint.mac + " " + (d.endpoint.hostname || "") : "none"], ["Session started", when(d.started_at)], ["Last auth", when(d.last_auth_at)]]))),
+    panel("Enforcement on this switch", kv([["Platform", d.enforcement.platform], ["Strategy", d.enforcement.strategy],
+      ["Mechanism", d.enforcement.mechanism], ["Observation", d.enforcement.observation],
+      ["Limitations", h("ul", {}, (d.enforcement.limitations || []).map((l) => h("li", {}, l)))]])),
     panel("Change access (CoA)", h("p", { class: "muted" },
       "The requested state is recorded first and applies at the next authentication even if the switch refuses the CoA. ",
-      "Changing the VLAN requires the endpoint to get a new IP address (DHCP). How soon depends on its DHCP client and lease; see the pilot's known limitations."),
+      role ? "On this switch NAC changes the session's local role; the VLAN and the endpoint's address stay the same. An ACK is not traffic verification."
+        : "Changing the VLAN requires the endpoint to get a new IP address (DHCP). How soon depends on its DHCP client and lease; see the pilot's known limitations."),
       h("div", { class: "row" }, coaBtn("quarantine", "Quarantine", "danger"), coaBtn("restore", "Restore", "primary"),
         coaBtn("reauthenticate", "Re-authenticate (apply active policy)", "")),
       d.coa_requests.length ? table(["Requested", "Action", "By", "State", "Attempts", "Error-Cause", "Detail"],
-        d.coa_requests.slice().reverse().map((c) => ({ cells: [when(c.created_at), c.kind + (c.requested_vlan ? " → VLAN " + c.requested_vlan : ""),
+        d.coa_requests.slice().reverse().map((c) => ({ cells: [when(c.created_at), c.kind + (c.requested_role ? " → role " + c.requested_role : c.requested_vlan ? " → VLAN " + c.requested_vlan : ""),
           c.created_by, stateChip(c.state), c.attempts, txt(c.error_cause), txt(c.detail)] }))) : null),
     bind,
     ld ? panel("Decision inputs (decision " + ld.id + ", policy version " + ld.policy_version + ")",
@@ -370,7 +411,9 @@ async function sessionDetail(id) {
       h("p", {}, "Result: ", stateChip(ld.result), " ", txt(ld.reason))) : null,
     panel("Timeline", h("ol", { class: "timeline" }, d.timeline.map((t) => h("li", {}, h("span", { class: "muted" }, when(t.at)), " ",
       chip(t.stage), " ", stateChip(t.result), " ", t.summary, " ", h("span", { class: "muted" }, "(" + t.source + ")"))))));
-  if (coaBusy || (d.last_coa && d.last_coa.state === "acked")) pollTimer = setInterval(render, 1500);
+  // A role CoA-ACK is final (no re-authentication follows), so only a VLAN
+  // CoA keeps polling after the ACK.
+  if (coaBusy || (!role && d.last_coa && d.last_coa.state === "acked")) pollTimer = setInterval(render, 1500);
 }
 
 // ---------- Devices ----------

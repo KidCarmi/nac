@@ -434,12 +434,13 @@ func (s *Service) correlateCoA(ctx context.Context, sess, prev *domain.Session, 
 	now := s.now().UTC()
 	switch {
 	case c.RequestedRole != "" && rec.Result == "accept" && rec.Role == c.RequestedRole:
-		// A role CoA does not cause a re-authentication; when one happens
-		// anyway (port flap, reauth timer, session replacement) and returns
-		// the requested role, the switch was handed that role again. This is
-		// still not traffic verification.
-		c.State, c.ObservedAt, c.ObservedDecisionID = domain.CoAObserved, &now, &rec.ID
-		c.Detail = fmt.Sprintf("re-authentication after CoA returned role %s (decision %s); not traffic verification", rec.Role, rec.ID)
+		// A role CoA does not cause a re-authentication, so one that happens
+		// later (port flap, reauth timer, session replacement) is not
+		// evidence that the CoA took effect: the state stays as it was
+		// (acked is final for a role CoA); only the detail records that the
+		// switch was handed the same role again.
+		c.Detail = fmt.Sprintf("%s A later re-authentication returned the same role %s (decision %s); this is not traffic verification.",
+			strings.TrimSpace(c.Detail), rec.Role, rec.ID)
 	case c.RequestedRole != "":
 		c.Detail = fmt.Sprintf("re-authentication after CoA returned %s/%s, not the requested role %s", rec.Result, rec.Segment, c.RequestedRole)
 	case rec.VLAN != nil && c.RequestedVLAN != nil && *rec.VLAN == *c.RequestedVLAN && rec.Result == "accept":
