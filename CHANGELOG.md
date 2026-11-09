@@ -6,6 +6,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-aruba-rc1 (proposed; owner-approved bounded Aruba integration; not lab-qualified; rc10 stays the baseline)
+- **Aruba AOS-CX role enforcement.**
+  - A switch has a `platform` (`arista-eos` | `aruba-aos-cx`) and an
+    `enforcement` (`vlan` | `role`).
+  - On a role switch the decision selects a configured local role, returned
+    as `Aruba-User-Role`, with no Tunnel-* attributes. The VLAN and the IP
+    never change.
+  - A missing mapping rejects; there is no fallback.
+- **Session-targeted role CoA for Quarantine, Restore and Re-authenticate.**
+  - `acked` is final, and never presented as traffic verification.
+  - A Restore or Re-authenticate the policy would turn into a deny is
+    refused (`422`), and the session keeps its override.
+- **The identity-scoped quarantine override persists** as on the VLAN path.
+- **Session API and console:** a new `enforcement` block (platform,
+  strategy, mechanism, observation, limitations) and `requested.role`.
+  Observation is `unavailable` for AOS-CX.
+- **Switch form:** platform choice, role fields and AOS-CX reference
+  configuration. Validation accepts AOS-CX port names (`1/1/1`).
+- **FreeRADIUS outage path** also strips `Aruba-User-Role`.
+- **Tests:**
+  - `test/integration/aruba_role_test.go`
+  - Aruba checks in `scripts/e2e-freeradius.sh`
+  - `scripts/ui-aruba-role.js`
+  - an Arista CoA regression assertion
+- **Migration `0006`:** adds the switch, decision, session and CoA columns.
+  Existing switches become `arista-eos` / `vlan`.
+- **Scope and lab plan:** `docs/pilot/aruba-role-path.md`. Known defect D1
+  is not fixed in this candidate.
+
 ### pilot-rc11 (proposed; not yet qualified; rc10 `b39649f` stays the tested baseline)
 - **Console CoA confirmation wording only.** The text no longer says
   "about 20 s" or "at its next DHCP renewal". It now states the measured

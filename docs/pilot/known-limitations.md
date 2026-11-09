@@ -78,6 +78,15 @@ node (scenarios C1–C3).
   from a result the reload unit records.
 - Decide the start-limit behavior from the chaos evidence.
 
+## Aruba AOS-CX role path (`pilot-aruba-rc1`, not lab-qualified)
+
+The bounded Aruba integration and its limits are in
+[aruba-role-path](aruba-role-path.md). In short:
+- NAC selects a local role, and the role's policy is switch configuration.
+- A CoA-ACK is not traffic verification, and NAC does not observe AOS-CX.
+- The demonstrated role is not packet isolation and does not tear down
+  TCP state.
+
 ## Scope
 
 - **One site, Arista EOS 4.29.2F only.** The generated configuration was
