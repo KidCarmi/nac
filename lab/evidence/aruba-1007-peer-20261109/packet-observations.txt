@@ -1,0 +1,11 @@
+Quarantine role; peer 10.70.10.11 to endpoint 10.70.10.50 TCP/8081.
+Endpoint-facing tap vunl0_62_0:
+2026-11-09 17:43:32.360707 IP 10.70.10.11.39442 > 10.70.10.50.8081: Flags [S]
+2026-11-09 17:43:32.360965 IP 10.70.10.50.8081 > 10.70.10.11.39442: Flags [S.]
+2026-11-09 17:43:33.364333 IP 10.70.10.11.39442 > 10.70.10.50.8081: Flags [S] retransmission
+2026-11-09 17:43:33.364770 IP 10.70.10.50.8081 > 10.70.10.11.39442: Flags [S.] retransmission
+Peer-facing tap vunl0_66_0:
+2026-11-09 17:43:32.360359 IP 10.70.10.11.39442 > 10.70.10.50.8081: Flags [S]
+2026-11-09 17:43:33.363991 IP 10.70.10.11.39442 > 10.70.10.50.8081: Flags [S] retransmission
+No SYN-ACK appeared on the peer-facing tap during the bounded capture.
+Peer curl: HTTP 000, connection timeout under quarantine; HTTP 200 before and after corp restoration.

@@ -1,0 +1,49 @@
+{
+  "experiment": "Aruba-CX-10.07-peer-initiated-traffic",
+  "date_utc": "2026-11-09",
+  "switch_version": "ArubaOS-CX Virtual.10.07.0004",
+  "switch_build_sha": "64b88cbfc38a48a03d7b8b6229137e37f59c9310",
+  "image_sha256_not_included": "e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25",
+  "files": [
+    {
+      "path": "aruba_peer_capture_guest.py",
+      "bytes": 863,
+      "sha256": "18453c18bc65eabf05b09bd094f2df41f9a6092be5f5dbd52d0d8b10edea64a1"
+    },
+    {
+      "path": "aruba-peer-inbound-20261109.tar.gz",
+      "bytes": 699,
+      "sha256": "b0b5f975e9141de4f0346f5cbec30c334cb15abba95943919e811625557abca3"
+    },
+    {
+      "path": "aruba-peer-inbound-20261109/endpoint-tap.log",
+      "bytes": 168,
+      "sha256": "a25c8376143b3b29e87049dadc0cbba053b8e306ee7105c3e8df9271939358e6"
+    },
+    {
+      "path": "aruba-peer-inbound-20261109/endpoint-tap.pcap",
+      "bytes": 654,
+      "sha256": "9942b1933bdd2f1b4671eb8d118dc0475377dcec6ab5d4a8ba5c9d0323903249"
+    },
+    {
+      "path": "aruba-peer-inbound-20261109/peer-tap.log",
+      "bytes": 168,
+      "sha256": "ceb6494d8576115e95e6f2046919a3c2eaa1b7c14e89275a4ddbc16e2cd864bf"
+    },
+    {
+      "path": "aruba-peer-inbound-20261109/peer-tap.pcap",
+      "bytes": 204,
+      "sha256": "4bb17a0f322cf4cdbfb1252a5cc8bcd61fc6684a0f68b9f075335028c6282418"
+    },
+    {
+      "path": "packet-observations.txt",
+      "bytes": 816,
+      "sha256": "378e01ca1301cb637453cc6bd4e7c949591e441913dbfb1e4c6ec0684e2393de"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3552,
+      "sha256": "2ce7690feefb3c8648fa0d16272971cab4e453d7987e3edb2cc45065fac02ac2"
+    }
+  ]
+}
