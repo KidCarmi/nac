@@ -110,7 +110,9 @@ node (scenarios C1–C3).
   Three layers make the reload converge:
   1. **The helper converges on its own.** It waits 1 s to coalesce a burst,
      reloads, then re-hashes the file. If the file changed, it reloads
-     again (at most 10 passes). A lock serializes runs.
+     again (at most 10 passes). A lock serializes runs. The helper's
+     children never inherit the lock, and the lock wait is bounded (120 s),
+     so a stuck run fails visibly instead of stalling every later reload.
   2. **No start-rate limit** on the reload service
      (`StartLimitIntervalSec=0`).
   3. **nacd backstop.** If the reload record still names another list 20 s
@@ -120,6 +122,16 @@ node (scenarios C1–C3).
      when the list content first changed, so a reload path that never
      answers ends in `no`, not an endless `pending`.
 - **Record precision.** The record's `at` now has milliseconds.
+- **Rehearsed here** with real nacd, the real helper and a real FreeRADIUS
+  process, behind a simulated path unit that **drops** every change landing
+  while a reload runs:
+  - **ASTRA's C2, C3 and cleanup** (8 changes each, back to back or 0.4 s
+    apart): each converged in 2.5–3.1 s. 21 of 28 triggers were dropped,
+    and the helper's re-hash caught every miss.
+  - **One trailing write, re-hash disabled:** recovered by the nacd
+    backstop in 24.7 s.
+  - **Not covered:** systemd itself. The lab run repeats this on real
+    units.
 - **Chaos runner ground truth (`pilot-rc13`).** "Loaded" requires all of:
   - FreeRADIUS is active
   - its main process started after the client file's last write (systemd

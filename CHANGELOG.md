@@ -12,7 +12,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and no further reload ran.
   - `nac-freeradius-reload` waits 1 s to coalesce a burst, reloads, then
     re-hashes the file and reloads again if it changed (at most 10 passes).
-    A lock serializes runs, and the record's `at` has milliseconds.
+    A lock serializes runs; children never inherit it, and the wait is
+    bounded at 120 s. The record's `at` has milliseconds.
   - `nac-freeradius-reload.service`: `StartLimitIntervalSec=0`,
     `TimeoutStartSec=5min`.
   - **nacd backstop:** a list still unconfirmed 20 s after it was written
