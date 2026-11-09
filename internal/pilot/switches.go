@@ -430,7 +430,10 @@ func (s *Service) WriteClientsFile(ctx context.Context) StatusItem {
 		s.clientsMu.Lock()
 		sws, err := s.store.ListSwitches(ctx)
 		if err == nil {
-			err = writeAtomic(s.cfg.ClientsFile, []byte(RenderClients(sws)), 0o640)
+			data := []byte(RenderClients(sws))
+			if err = writeAtomic(s.cfg.ClientsFile, data, 0o640); err == nil {
+				s.noteDesired(sha256Hex(data))
+			}
 		}
 		s.clientsMu.Unlock()
 		if err != nil {

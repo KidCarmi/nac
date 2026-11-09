@@ -41,8 +41,19 @@
   In the same run, C1–C3 reached a valid loaded state within 12 s, and C5
   recovered.
 - **Present in** `pilot-rc10`, `pilot-rc11` and `pilot-aruba-rc1`.
-- **Fixed in `pilot-rc12`** (proposed, not lab-run). That candidate changes
-  nothing else compared with rc11. See "The fix" below.
+- **`pilot-rc12` / `pilot-aruba-rc2`: partly fixed; retest FAILED.** ASTRA
+  ran the chaos test on exact `pilot-aruba-rc2` (clean Ubuntu 24.04.5,
+  FreeRADIUS 3.2.5, burst 8, settle 12 s): 17 PASS, 3 FAIL (C2 burst, C3
+  secret rotation, cleanup).
+  - **What failed:** after a burst, the record said `ok` for an older list.
+    FreeRADIUS ran that older list, and no further reload followed.
+  - **What held:** nacd correctly said `pending`, never a false `yes`. C4
+    inputs got `422`; C6 (stopped) said `no`.
+  - **Runner flaw:** the runner's whole-second ground truth marked
+    same-second cases as loaded.
+- **Fixed in `pilot-rc13` / `pilot-aruba-rc3`** (proposed, not lab-run):
+  the missed trailing reload, plus the hash-based runner. See "The fix"
+  below.
 
 **The defect.** A switch's "Configured: yes" means nacd **wrote**
 `/var/lib/nac/freeradius-clients.conf`. It does not mean FreeRADIUS loaded
@@ -94,8 +105,30 @@ node (scenarios C1–C3).
 - **Recovery.** A FreeRADIUS that **failed** (for example on an earlier
   invalid list) is restarted once the list is valid. One that was
   **deliberately stopped** is left stopped and reported `no`.
-- **Start limit.** Not changed. C1–C3 settled within 12 s, and the status
-  now reports any list that is not loaded.
+- **Bursts (`pilot-rc13`).** A change that lands while a reload runs can be
+  missed by the systemd path unit, and a burst can hit a start-rate limit.
+  Three layers make the reload converge:
+  1. **The helper converges on its own.** It waits 1 s to coalesce a burst,
+     reloads, then re-hashes the file. If the file changed, it reloads
+     again (at most 10 passes). A lock serializes runs.
+  2. **No start-rate limit** on the reload service
+     (`StartLimitIntervalSec=0`).
+  3. **nacd backstop.** If the reload record still names another list 20 s
+     after the current list was written, nacd rewrites the identical file,
+     so the path unit fires again. It does this at most every 30 s, and
+     only while the list is unconfirmed. The 60 s grace period counts from
+     when the list content first changed, so a reload path that never
+     answers ends in `no`, not an endless `pending`.
+- **Record precision.** The record's `at` now has milliseconds.
+- **Chaos runner ground truth (`pilot-rc13`).** "Loaded" requires all of:
+  - FreeRADIUS is active
+  - its main process started after the client file's last write (systemd
+    microseconds against the file's nanosecond mtime)
+  - the reload record says `ok` for exactly the SHA-256 of the current file
+  - `freeradius -C` passes
+
+  Each scenario polls until loaded, up to `CHAOS_DEADLINE_SECONDS`
+  (default 60), and reports how long it took.
 
 **What is left:**
 - After a manual start of FreeRADIUS, the status says `no` until the next

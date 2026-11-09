@@ -92,8 +92,16 @@ type Service struct {
 	// newer one when switch changes run concurrently.
 	clientsMu         sync.Mutex
 	clientsFileStatus StatusItem
-	outageStatus      StatusItem
-	wg                sync.WaitGroup
+	// desiredSHA/desiredSince: the switch list nacd last wrote and when that
+	// CONTENT first appeared (not the last identical rewrite), so the reload
+	// grace period is not reset by the backstop's re-triggers. Under mu.
+	desiredSHA   string
+	desiredSince time.Time
+	// lastRetrigger/retriggerWarned: reload backstop state, under clientsMu.
+	lastRetrigger   time.Time
+	retriggerWarned string
+	outageStatus    StatusItem
+	wg              sync.WaitGroup
 }
 
 // New constructs the service with defaults filled in.
@@ -153,6 +161,9 @@ func (s *Service) Start(ctx context.Context) {
 	}
 	s.NormalizeStoredIPs(ctx)
 	s.WriteClientsFile(ctx)
+	if s.cfg.ClientsFile != "" {
+		go s.loop(ctx, reloadBackstopEvery, s.ReloadBackstop)
+	}
 	go s.loop(ctx, s.cfg.ObservationEvery, func(ctx context.Context) { s.ObserveAll(ctx) })
 	go s.loop(ctx, s.cfg.OutageImportPeriod, func(ctx context.Context) { s.ImportOutageLog(ctx) })
 }

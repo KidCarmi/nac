@@ -18,47 +18,78 @@
 # A FreeRADIUS that was deliberately stopped is NOT started (as before:
 # try-restart semantics); that is recorded as not_running. One that FAILED
 # (for example on an earlier invalid list) is restarted once the list is valid.
+# Bursts (ASTRA, pilot-aruba-rc2 chaos C2/C3): a change that lands while this
+# runs could be missed by the path unit, leaving FreeRADIUS on an older list.
+# So each run converges on its own: wait NAC_RELOAD_SETTLE to coalesce a burst,
+# reload, then re-hash the file; if it changed meanwhile, reload again (at most
+# NAC_RELOAD_MAX_PASSES times). nacd re-triggers a list that stays unconfirmed.
 set -u
 CLIENTS=${NAC_CLIENTS_FILE:-/var/lib/nac/freeradius-clients.conf}
 STATUS=${NAC_RELOAD_STATUS:-/var/lib/nac/freeradius-reload.status}
 RADDB=${NAC_RADDB:-/etc/freeradius/3.0}
+SETTLE=${NAC_RELOAD_SETTLE:-1}
+MAX_PASSES=${NAC_RELOAD_MAX_PASSES:-10}
+LOCK=${NAC_RELOAD_LOCK:-/run/nac-freeradius-reload.lock}
 
-# Hash first: if nacd rewrites the file during this run, the hash names the
-# older version, nacd shows "pending", and the path unit runs this again.
-sum=$(sha256sum "$CLIENTS" 2>/dev/null | cut -d' ' -f1)
+# One run at a time: systemd serialises the unit, this also covers a manual run.
+exec 9>"$LOCK" || exit 1
+flock 9
 
-record() { # record <result> <detail>
+hash_clients() { sha256sum "$CLIENTS" 2>/dev/null | cut -d' ' -f1; }
+
+record() { # record <result> <detail>: for the content hashed in $sum
 	tmp=$(mktemp "$(dirname "$STATUS")/.nac-reload-status.XXXXXX") || exit 1
 	printf 'result=%s\nclients_sha256=%s\nat=%s\ndetail=%s\n' \
-		"$1" "${sum:-none}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(printf '%s' "$2" | tr '\n' ' ' | cut -c1-400)" >"$tmp"
+		"$1" "${sum:-none}" "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$(printf '%s' "$2" | tr '\n' ' ' | cut -c1-400)" >"$tmp"
 	chmod 0644 "$tmp"
 	mv -f "$tmp" "$STATUS"
 }
 
-if [ -z "$sum" ]; then
-	record fail "client file $CLIENTS is missing or unreadable"
-	exit 1
-fi
-# -l stdout: without it, -C writes its errors to radius.log, not to us.
-if ! out=$(/usr/sbin/freeradius -C -l stdout -d "$RADDB" 2>&1); then
-	why=$(printf '%s\n' "$out" | grep -i -E 'error|invalid|failed' | head -n1 | sed 's/^.* : Error: //')
-	record fail "freeradius -C rejected the configuration, so FreeRADIUS was not restarted and still runs the previous client list (and will not start again until this is fixed): ${why:-see freeradius -C -l stdout}"
-	exit 1
-fi
-# active/activating/reloading: restart to load the list. failed: restart too,
-# so a FreeRADIUS that failed on an earlier invalid list recovers once the list
-# is valid again. inactive (deliberately stopped): leave it stopped.
-state=$(systemctl is-active freeradius.service 2>/dev/null)
-if [ "$state" = inactive ]; then
-	record not_running "FreeRADIUS is stopped, so the client list is not loaded (start it: systemctl start freeradius)"
-	exit 1
-fi
-if ! systemctl restart freeradius.service; then
-	record fail "systemctl restart freeradius failed: see journalctl -u freeradius"
-	exit 1
-fi
-if ! systemctl is-active --quiet freeradius.service; then
-	record fail "FreeRADIUS is not active after the restart: see journalctl -u freeradius"
-	exit 1
-fi
-record ok "FreeRADIUS restarted with this client list"
+reload_once() { # validate and restart for the content hashed in $sum; 0 = loaded
+	if [ -z "$sum" ]; then
+		record fail "client file $CLIENTS is missing or unreadable"
+		return 1
+	fi
+	# -l stdout: without it, -C writes its errors to radius.log, not to us.
+	if ! out=$(/usr/sbin/freeradius -C -l stdout -d "$RADDB" 2>&1); then
+		why=$(printf '%s\n' "$out" | grep -i -E 'error|invalid|failed' | head -n1 | sed 's/^.* : Error: //')
+		record fail "freeradius -C rejected the configuration, so FreeRADIUS was not restarted and still runs the previous client list (and will not start again until this is fixed): ${why:-see freeradius -C -l stdout}"
+		return 1
+	fi
+	# active/activating/reloading: restart to load the list. failed: restart
+	# too, so a FreeRADIUS that failed on an earlier invalid list recovers once
+	# the list is valid again. inactive (deliberately stopped): leave it.
+	state=$(systemctl is-active freeradius.service 2>/dev/null)
+	if [ "$state" = inactive ]; then
+		record not_running "FreeRADIUS is stopped, so the client list is not loaded (start it: systemctl start freeradius)"
+		return 1
+	fi
+	if ! systemctl restart freeradius.service; then
+		record fail "systemctl restart freeradius failed: see journalctl -u freeradius"
+		return 1
+	fi
+	if ! systemctl is-active --quiet freeradius.service; then
+		record fail "FreeRADIUS is not active after the restart: see journalctl -u freeradius"
+		return 1
+	fi
+	record ok "FreeRADIUS restarted with this client list"
+}
+
+pass=0
+while :; do
+	pass=$((pass + 1))
+	sleep "$SETTLE"
+	# Hash BEFORE the restart: if the file changes after this point, the
+	# record names the older list and the re-hash below runs another pass.
+	sum=$(hash_clients)
+	reload_once
+	rc=$?
+	if [ "$(hash_clients)" = "$sum" ]; then
+		exit "$rc"
+	fi
+	if [ "$pass" -ge "$MAX_PASSES" ]; then
+		echo "nac-freeradius-reload: client list still changing after $pass passes; nacd will re-trigger" >&2
+		exit 1
+	fi
+	echo "nac-freeradius-reload: client list changed during pass $pass; reloading again" >&2
+done

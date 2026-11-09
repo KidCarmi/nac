@@ -31,7 +31,8 @@ set -u
 
 NAC="${NAC_URL:-https://127.0.0.1:8443}"
 CLIENTS="${NAC_CLIENTS_FILE:-/var/lib/nac/freeradius-clients.conf}"
-SETTLE="${CHAOS_SETTLE_SECONDS:-20}"
+SETTLE="${CHAOS_SETTLE_SECONDS:-20}"     # fixed waits (C4, C6)
+DEADLINE="${CHAOS_DEADLINE_SECONDS:-60}" # max time for a change to be loaded
 BURST="${CHAOS_BURST:-8}"
 NET="${CHAOS_NET:-10.250.99}" # test switch source IPs: $NET.10..$NET.(10+BURST)
 : "${NAC_EMAIL:?set NAC_EMAIL}" "${NAC_PASSWORD:?set NAC_PASSWORD}"
@@ -79,10 +80,34 @@ check_nacd_agrees() { # check_nacd_agrees <scenario>: nacd's claim vs the ground
 }
 
 fr_active() { systemctl is-active --quiet freeradius; }
-fr_started_epoch() { date -d "$(systemctl show freeradius -p ActiveEnterTimestamp --value)" +%s 2>/dev/null || echo 0; }
-file_epoch() { stat -c %Y "$CLIENTS"; }
+# Ground truth, in nanoseconds and by content (ASTRA, pilot-aruba-rc2 retest:
+# whole-second timestamps marked same-second cases as loaded). "Loaded" now
+# needs ALL of:
+#   - FreeRADIUS active
+#   - its main process started after the clients file was last written
+#     (systemd microsecond timestamp vs nanosecond file mtime)
+#   - the reload record says ok for exactly the SHA-256 of the current file
+#   - the file passes freeradius -C
+RELOAD_STATUS="${NAC_RELOAD_STATUS:-/var/lib/nac/freeradius-reload.status}"
+fr_started_ns() {
+	local ts
+	ts=$(systemctl show --timestamp=us+utc -p ExecMainStartTimestamp --value freeradius 2>/dev/null)
+	[ -n "$ts" ] || ts=$(systemctl show -p ExecMainStartTimestamp --value freeradius)
+	date -d "$ts" +%s%N 2>/dev/null || echo 0
+}
+file_ns() { date -r "$CLIENTS" +%s%N; }
+file_sha() { sha256sum "$CLIENTS" | cut -d' ' -f1; }
+record_field() { sed -n "s/^$1=//p" "$RELOAD_STATUS" 2>/dev/null; }
 file_valid() { freeradius -C -d /etc/freeradius/3.0 >/dev/null 2>&1; }
-loaded() { fr_active && [ "$(fr_started_epoch)" -ge "$(file_epoch)" ] && file_valid; }
+loaded() {
+	fr_active && [ "$(fr_started_ns)" -gt "$(file_ns)" ] &&
+		[ "$(record_field result)" = ok ] && [ "$(record_field clients_sha256)" = "$(file_sha)" ] && file_valid
+}
+truth_detail() {
+	printf 'active=%s fr_start_ns=%s file_ns=%s file_sha=%.12s record=%s/%.12s@%s valid=%s' \
+		"$(fr_active && echo yes || echo no)" "$(fr_started_ns)" "$(file_ns)" "$(file_sha)" \
+		"$(record_field result)" "$(record_field clients_sha256)" "$(record_field at)" "$(file_valid && echo yes || echo no)"
+}
 units_state() {
 	printf 'path=%s/%s service=%s/%s restarts_fr=%s' \
 		"$(systemctl show nac-freeradius-reload.path -p ActiveState --value)" \
@@ -91,14 +116,20 @@ units_state() {
 		"$(systemctl show nac-freeradius-reload.service -p Result --value)" \
 		"$(systemctl show freeradius -p NRestarts --value)"
 }
-check_loaded() { # check_loaded <scenario>
-	sleep "$SETTLE"
-	if loaded; then
-		result PASS "$1" "FreeRADIUS active and restarted after the last clients-file write; $(units_state)"
-	else
-		result FAIL "$1" "FreeRADIUS does NOT have the current clients file (active=$(fr_active && echo yes || echo no) fr_start=$(fr_started_epoch) file=$(file_epoch) valid=$(file_valid && echo yes || echo no)); $(units_state)"
-		journalctl -u nac-freeradius-reload.service -u nac-freeradius-reload.path -u freeradius --since "-2min" --no-pager | tail -15
-	fi
+check_loaded() { # check_loaded <scenario>: poll until loaded, up to DEADLINE seconds
+	local t0 waited
+	t0=$(date +%s)
+	until loaded; do
+		waited=$(($(date +%s) - t0))
+		if [ "$waited" -ge "$DEADLINE" ]; then
+			result FAIL "$1" "FreeRADIUS does NOT have the current clients file after ${waited}s ($(truth_detail)); $(units_state)"
+			journalctl -u nac-freeradius-reload.service -u nac-freeradius-reload.path -u freeradius -u nacd --since "-3min" --no-pager | tail -25
+			check_nacd_agrees "$1"
+			return
+		fi
+		sleep 1
+	done
+	result PASS "$1" "loaded after $(($(date +%s) - t0))s: FreeRADIUS restarted after the last write with exactly the current list ($(truth_detail)); $(units_state)"
 	check_nacd_agrees "$1"
 }
 

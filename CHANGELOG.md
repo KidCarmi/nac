@@ -6,6 +6,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc13 (proposed; replacement for pilot-rc12 after ASTRA's D1 retest; not yet lab-run)
+- **Missed trailing reload fixed.** ASTRA's chaos run on `pilot-aruba-rc2`
+  failed C2, C3 and cleanup: FreeRADIUS kept an older list after a burst,
+  and no further reload ran.
+  - `nac-freeradius-reload` waits 1 s to coalesce a burst, reloads, then
+    re-hashes the file and reloads again if it changed (at most 10 passes).
+    A lock serializes runs, and the record's `at` has milliseconds.
+  - `nac-freeradius-reload.service`: `StartLimitIntervalSec=0`,
+    `TimeoutStartSec=5min`.
+  - **nacd backstop:** a list still unconfirmed 20 s after it was written
+    is rewritten identically, at most every 30 s, to fire the path unit
+    again. The status grace period counts from when the list content
+    changed, so a dead reload path still ends in `no`.
+- **`scripts/chaos-freeradius-reload.sh`:**
+  - "loaded" compares the record's SHA-256 with the current file, and the
+    FreeRADIUS start time (µs) with the file mtime (ns)
+  - each scenario polls up to `CHAOS_DEADLINE_SECONDS`, default 60, and
+    reports the time to converge
+- **Changed files versus rc12:**
+  - `deployments/pilot/nac-freeradius-reload`
+  - `deployments/pilot/systemd/nac-freeradius-reload.service`
+  - nacd
+
+  Re-run the installer.
+
 ### pilot-rc12 (proposed; replacement for the D1 reload-path defect; not yet lab-run; rc10 stays the tested baseline)
 - **Known defect D1 fixed** (ASTRA chaos run on rc10, `5eb1ff7`: C4 FAIL).
   - **Input:** `radius_source_ip` and `nas_ip` must be dotted IPv4.
