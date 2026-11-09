@@ -120,7 +120,7 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc3`: D1 PASS, A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`1fa1ffd`](https://github.com/KidCarmi/nac/tree/1fa1ffde1c486156195300cb4e0642705b2d6738/lab/evidence/aruba-rc3-qualification-20261109), 60/60 manifest entries verified here)
+### `pilot-aruba-rc3`: D1 PASS, A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109), 77/77 manifest entries verified here)
 
 **Scope.** Exact `d96bb741e8f36019af4c6d5152491c2e0a874fe6`, nacd
 `01e88d8b…` (independently built; the installed hashes matched the pins),
@@ -144,8 +144,10 @@ accounting Start. It is fixed in `pilot-aruba-rc4`, a nacd-only change.
 | A7 timeout | **PASS.** Only candidate → switch UDP/3799 dropped: 3 requests over 6 s, none reached the switch. Reported as timeout; the pending Restore applied at the next authentication |
 | A8 stale session | **PASS.** Quarantine on an ended session: `422` "session is ended, not active", no re-targeting |
 | A9 traffic limits | As the reference: an established corp TCP socket delivered 0 of 8 payloads during quarantine (no FIN or RST) and resumed after Restore. Peer → endpoint fresh TCP was blocked, although the peer's SYN reached the endpoint and the SYN-ACK was suppressed. Not packet isolation |
+| Invalid client certificate | **PASS.** Disposable self-signed client certificate on a freshly cleared port: Access-Reject, switch `Server-Reject` with no role, corp timed out. The valid certificate then authenticated again |
+| Rule-only policy change and restore (console) | **PASS.** The console changed only the existing rule's segment `corp` → `quarantine`; the preview predicted `allow corp` → `allow quarantine` for the active identity, and v3 was published. The existing corp session stayed reachable until a switch-local re-authentication: publication applies at the next authentication, by design. Then, for the same certificate and port: the v3 decision matched the same rule ID; the real Access-Accept carried `Aruba-User-Role` `quarantine`; the switch role was `quarantine` on VLAN 10; fresh corp and peer TCP timed out; remediation answered 78/78. The console restored v2, and quarantine persisted until a second switch-local re-authentication, after which NAC, RADIUS, the switch and the probes all returned to `corp` |
 | Session status wording | **FAIL (D2):** "NAC receives no RADIUS accounting" despite a real Start. Fixed in rc4 |
-| Not run | Invalid client certificate, rule-only policy change, the full clean-instance console workflow, a full EVE restart, and the Arista regression on this exact candidate |
+| Not run | The full clean-instance console workflow, a full EVE restart, and the Arista regression on this exact candidate |
 | Blocked | Windows 10/11, physical Aruba (none authorized); MAB is outside this pilot |
 
 ### `pilot-aruba-rc2`: candidate FAIL (D1); A1–A3 PASS via API (ASTRA, 2026-11-09, [`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109), 17/17 manifest entries verified here)
