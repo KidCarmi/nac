@@ -217,6 +217,19 @@ labelled separately from an integrated NAC pass.
   isolation, Aruba `role_acl` as tested cannot be selected for it, and the
   `vlan` strategy (or an egress policy, once demonstrated) stays the fail-safe.
 
+- **Q5. Established-flow requirement granularity.** On Aruba 10.07, the
+  role blocked data on an existing TCP flow while quarantined. It did not
+  tear down that flow: the same socket resumed after restore and delivered
+  the data queued during quarantine (`42be71f`). Proposed: split
+  `cut_established_flows` into:
+  - `block_established_flow_data`: no data passes while restricted
+  - `terminate_established_flows`: the session is torn down, so queued
+    data cannot arrive later
+
+  The owner states which one quarantine requires. Termination would need
+  another mechanism, for example a TCP reset from the enforcement point,
+  which has not been demonstrated.
+
 ### Alternatives considered
 - **Keep quarantine = VLAN and tune DHCP.** Measured: authoritative DHCP
   only moves recovery to T2, short timers failed in reverse, and the
