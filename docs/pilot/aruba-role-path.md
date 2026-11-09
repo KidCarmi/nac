@@ -116,6 +116,32 @@ What the states mean:
 
   Only Restore clears it, exactly as on the VLAN path.
 
+## Lab results (NAC-driven)
+
+### Interim: `pilot-aruba-rc2`, API actions (ASTRA, reported 2026-11-09; package to follow)
+
+**Scope.** This ran on `pilot-aruba-rc2`, which **FAILED its D1 retest**
+(missed trailing reload). ASTRA recorded a manual reload so that it could
+continue. Quarantine and Restore were **product API** actions: the console
+was blocked at the disposable certificate warning. The evidence package is
+not yet published, so nothing below is verified here yet. The role path is
+unchanged in `pilot-aruba-rc3`; only the reload path changed.
+
+| Step | Reported result |
+|---|---|
+| Clean install | PASS. Installed nacd `333feaa7…` and adapter `3c45063e…` match the pins |
+| Onboarding | ArubaOS-CX 10.07.0004 at `10.70.99.1` registered through the API, roles `corp`/`quarantine`; FreeRADIUS loaded = yes. Only the isolated switch's RADIUS moved to the candidate (`10.70.99.5`); the reference FreeRADIUS was stopped |
+| Unauthenticated port | corp blocked |
+| A1 first login | Valid EAP-TLS certificate rejected as unbound. The decision traced the authenticated issuer `/CN=NAC Test CA` and serial `5D3DC6EF4E31072E45ADABD4F8CC7338A2C0A963`. After session bind, publishing `bound-corp` (v2) and an endpoint re-authentication: Access-Accept with `Aruba-User-Role` `corp`, switch `Success` `corp`, fresh corp TCP HTTP 200 |
+| A2 Quarantine (API) | CoA-ACK at 18:58:49.235421Z; switch `quarantine`; endpoint kept `10.70.10.50` (DHCP). First fresh corp SYN after the ACK at +0.374 s, and 0 corp HTTP 200 thereafter. Remediation first HTTP 200 at +0.378 s. No EAPOL and no new RADIUS authentication |
+| A3 Restore (API) | CoA-ACK at 19:00:23.540160Z; switch `corp`; corp first HTTP 200 at +0.113 s. Same IP; no EAPOL and no authentication |
+| Contract | `endpoint_reachability` `not_observed`; AOS-CX switch observation `unavailable` |
+
+**Open:**
+- D1 retest on `pilot-aruba-rc3`
+- A2/A3 through the console
+- A4–A10
+
 ## Verified in the build session (no real switch)
 
 - **Integration tests**, PostgreSQL (`test/integration/aruba_role_test.go`):
