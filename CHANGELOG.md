@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-rc14 (proposed; operator-status wording fix D2; not yet lab-run)
+- **Session liveness wording (D2, ASTRA `pilot-aruba-rc3` console run).**
+  - With accounting enabled, an active session that had a stored accounting
+    Start still said "NAC receives no RADIUS accounting and no fresh switch
+    observation". That appeared in the session panel, "Why" and the CoA
+    confirmation.
+  - The note now states the latest accounting packet NAC **accepted** for
+    the session (Start or Interim-Update, its age and Acct-Session-Id, "no
+    Stop since"), and why that does not prove the endpoint is connected now.
+    The `basis` is `accounting Start, no Stop`.
+  - Without accounting it says "has received no RADIUS accounting", as
+    before. Packets ignored as stale don't count.
+- **Not changed:** liveness states, decisions, CoA, enforcement, the
+  adapter, the installer and the database schema. The change is in nacd
+  only.
+- **Tests:** a unit test for the wording cases; an integration assertion
+  through the API with a real accounting Start. That assertion fails on
+  rc13 with ASTRA's exact symptom.
+
 ### pilot-rc13 (proposed; replacement for pilot-rc12 after ASTRA's D1 retest; not yet lab-run)
 - **Missed trailing reload fixed.** ASTRA's chaos run on `pilot-aruba-rc2`
   failed C2, C3 and cleanup: FreeRADIUS kept an older list after a burst,

@@ -2324,7 +2324,14 @@ components:
         the session (accounting Stop, or a different certificate on the same
         port and MAC). `connected`: a fresh observation lists the MAC as
         authenticated on the port. `absent`: a fresh observation does not
-        list it. `unknown`: no accounting and no fresh observation.
+        list it. `unknown`: no fresh observation. `basis` and `note` then
+        state what NAC has: `last authentication only` (no RADIUS
+        accounting received), or `accounting Start, no Stop` /
+        `accounting Interim-Update, no Stop` (the latest accounting packet
+        NAC accepted for this session). Accounting without a Stop shows the
+        switch opened the session; it does not prove the endpoint is
+        connected now, because a lost Stop leaves NAC unaware of the
+        disconnect.
       required: [state, basis, note]
       properties:
         state: { type: string, enum: [ended, connected, absent, unknown] }
