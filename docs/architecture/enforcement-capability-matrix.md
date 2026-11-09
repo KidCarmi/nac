@@ -51,35 +51,54 @@ Not modelled. No capability record, so not selectable.
 
 ## Aruba AOS-CX simulator ArubaOS-CX Virtual.10.07.0004, strategy `role_acl`
 
-**Status: BLOCKED on this image.** Not selectable.
+**Status: qualification blocked; root cause unresolved.** Not selectable.
 
-**Build:**
-- build SHA `64b88cbfc38a48a03d7b8b6229137e37f59c9310`
-- image SHA-256 `e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25`
+This corrects an earlier version of this record, which said "BLOCKED on
+this image" and called per-session role/ACL unsupported. The evidence does
+not establish that.
 
-**Provenance:** the image is a third-party mirror supplied by the owner,
-**not vendor-verified**. This was a compatibility experiment.
+| | |
+|---|---|
+| Build SHA | `64b88cbfc38a48a03d7b8b6229137e37f59c9310` |
+| Image SHA-256 | `e60ef7d9679f664d1dafcaecb96f7443ec64e5b2abca26c41fdec26c57fafc25` |
+| Provenance | Third-party mirror supplied by the owner, **not vendor-verified**. A compatibility experiment in a separate six-node EVE topology; the rc10 NAC baseline was untouched |
+| Evidence | ASTRA, 2026-11-08. The sanitized package is held locally and not yet published to `astra/lab-evidence`, so it has not been verified here |
 
-**Topology:** a separate six-node EVE topology. The rc10 NAC baseline was
-untouched.
+There are two gates, recorded as separate facts:
 
-**Evidence:** ASTRA, 2026-11-08, sanitized package held locally by ASTRA.
-It is not yet published to `astra/lab-evidence`, so not verified here.
-Publish it with a manifest before this record is cited as verified.
+| # | Fact | Kind | What it does and does not show |
+|---|---|---|---|
+| 1 | No port-access client session formed. A local quarantine role/policy displayed "Applied" | **observed** | The **authentication / session-formation** gate failed in this configuration. The first missing protocol step (EAPOL → Access-Request → response → authenticated session) has not been identified. Configuration or integration error is not excluded |
+| 2 | MAC-auth trial: **zero RADIUS requests in the server-side capture**; corp stayed reachable | **observed** | No Access-Request reached the server capture. It does **not** show that the switch never sent one: there was no concurrent switch-side or uplink capture. MAB stays out of the product adapter |
+| 3 | HPE's 10.07.0004 simulator release notes say **classifier policy** is configurable but nonfunctional ([5200-8082](https://arubanetworking.hpe.com/techdocs/AOS-CX/10.07/OVA/5200-8082.pdf)) | **documented limitation** | It applies to classifier policies. HPE distinguishes these from port-access policies tied to roles. It does not, on its own, establish that role-based enforcement is unsupported |
+| 4 | Per-session data-plane enforcement: does an authenticated client's role restrict its traffic, and can it be changed by dynamic authorization while the client keeps its IP and VLAN? | **untested** | Never reached, because gate 1 failed |
+| 5 | A static ingress port ACL moved corp to timeout while remediation stayed HTTP 200; removing it restored both | **observed, not counted** | It is port-wide, not per-session, so it is not evidence for `role_acl` |
 
-| Requirement | Status | Observation |
-|---|---|---|
-| per-session role/ACL | **unsupported on this image** | <ul><li>a local quarantine role/policy displayed "Applied", but no port-access session formed</li><li>the HPE 10.07.0004 simulator release notes state classifier policy is **configurable but nonfunctional** ([5200-8082](https://arubanetworking.hpe.com/techdocs/AOS-CX/10.07/OVA/5200-8082.pdf))</li></ul> |
-| `deny_routed`, `allow` via a **static port ACL** | not counted | a static ingress port ACL changed corp to timeout while remediation stayed HTTP 200, and removing it restored both. It is **port-wide**, not per-session, so it is not evidence for `role_acl` |
-| MAC authentication (MAB) | unverified (inconclusive) | the MAC-auth trial produced **zero** RADIUS requests in a bounded capture; corp stayed reachable |
-| `deny_same_subnet_peers`, `cut_established_flows`, `ipv6`, phone+PC port | unverified | not reachable on this image |
-| NAC-integrated (RADIUS role + CoA) | **blocked** | no port-access session formed, so there was no RADIUS or CoA path to test |
+**Requirement status:** every ADR-0009 requirement for this strategy is
+**unverified**. That covers per-session, `deny_routed`, `allow`,
+`deny_same_subnet_peers`, `cut_established_flows`, `ipv6` and phone+PC
+port. NAC-integrated has not started.
 
-**Next valid gate:** physical AOS-CX hardware, with same-subnet peer probes,
-continuous traffic probes and the ADR-0009 requirement set. A
-vendor-provided simulator image could count only if its own release notes
-do not list classifier policy as nonfunctional, and even then it would
-need the same traffic proof.
+**Next step: ASTRA's bounded diagnostic run, set by the owner on PR #1.**
+- Reproduce HPE's reference 802.1X lab: one endpoint, one switch, reference
+  FreeRADIUS, no nacd.
+- Capture EAPOL and switch-to-RADIUS traffic at the same time.
+- Identify the first missing step.
+- Then test a minimal local port-access role: permit one service, deny
+  another.
+- Then test a role change through dynamic authorization while the client
+  keeps its IP and VLAN.
+- End with a verdict: configuration/integration defect, image/version
+  limitation, or unresolved, with the missing evidence named.
+- Physical hardware or another image comes in only if that verdict calls
+  for it. A newer image is not assumed to fix anything.
+
+**Downstream requirements still to qualify** once a session works:
+- shared phone + PC port
+- same-subnet peers
+- IPv4 and IPv6
+- established flows
+- remediation continuity
 
 ## Aruba AOS-CX, strategy `vlan`
 

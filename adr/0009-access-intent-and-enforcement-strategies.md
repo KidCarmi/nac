@@ -92,8 +92,9 @@ The records live in
 As of 2026-11-08:
 - Arista vEOS-lab `vlan` is the only NAC-integrated strategy with
   demonstrated entries.
-- Aruba AOS-CX simulator 10.07.0004 `role_acl` is **blocked**: per-session
-  classifier policy is nonfunctional on that image.
+- Aruba AOS-CX simulator 10.07.0004 `role_acl` is **qualification blocked;
+  root cause unresolved**. No client session formed, and the first missing
+  protocol step is not yet identified.
 
 ### 3. Selecting a strategy never weakens the intent
 
