@@ -239,18 +239,31 @@ both segments. The ACKs carried 3600 / 30 / 45.
   needed at all.
 - **First platform under test:** the Aruba AOS-CX simulator, a capability
   test owned by ASTRA.
-  - **Result on ArubaOS-CX Virtual.10.07.0004 (2026-11-08): per-session
-    role/ACL is BLOCKED.**
-    - The image came from a third-party mirror and is not vendor-verified.
-    - No port-access session formed.
-    - HPE's simulator release notes say classifier policy is configurable
-      but nonfunctional.
-    - A static port ACL worked, but it is port-wide, so it doesn't count as
-      per-session quarantine.
-    - The MAB trial was inconclusive: zero RADIUS requests.
-  - **Next valid gate:** physical AOS-CX hardware, with probes to peers in
-    the same subnet.
-  - The full record is in the ADR-0009 capability matrix on PR #2
+  - **Result on ArubaOS-CX Virtual.10.07.0004 (2026-11-08): qualification
+    blocked; root cause unresolved.** The image came from a third-party
+    mirror and is not vendor-verified. The facts are kept separate:
+    - **Observed:** no port-access session formed.
+    - **Observed:** the MAB trial saw zero RADIUS requests at the server
+      capture. Switch-side transmission was not captured, so it is not
+      established either way.
+    - **Documented:** HPE's simulator release notes call *classifier*
+      policy nonfunctional. HPE distinguishes that from role-associated
+      port-access policy.
+    - **Untested:** per-session data-plane enforcement. A static port ACL
+      worked, but it is port-wide and doesn't count.
+    - An earlier version of this page called per-session role/ACL
+      unsupported. The evidence doesn't establish that.
+  - **Next:** ASTRA's bounded diagnostic.
+    - Reproduce HPE's reference 802.1X lab without nacd.
+    - Capture EAPOL and RADIUS together.
+    - Find the first missing step.
+    - Then test a minimal role permit/deny.
+    - Then test a role change by CoA.
+    - End with a verdict: configuration defect, image limitation, or
+      unresolved.
+  - Physical hardware or another image comes in only if that verdict calls
+    for it.
+  - The record is in the ADR-0009 capability matrix on PR #2
     (`docs/architecture/enforcement-capability-matrix.md`).
 - **What it must show:**
   - permitted and denied traffic, measured with continuous probes, not a
