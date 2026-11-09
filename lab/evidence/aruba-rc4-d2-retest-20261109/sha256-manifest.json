@@ -1,0 +1,26 @@
+{
+  "candidate_commit": "0148bf88985c5da9086b54aafd002fbfbfe71b75",
+  "nacd_sha256": "dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7",
+  "files": [
+    {
+      "path": "A14-rc4-d2-state.json",
+      "sha256": "99968ee1689a3a3e3040370bfbbcdecc2527b5b3c559e2e683041bdb7d2fc2bd",
+      "bytes": 1099
+    },
+    {
+      "path": "A14-rc4-restore-state.json",
+      "sha256": "ebc104b3a4716a4a441dad47e6072b85e04cb0065d7434ad3ad2c20fdfc41d07",
+      "bytes": 1729
+    },
+    {
+      "path": "README.md",
+      "sha256": "7fb1e10a9e6425d9ee41bfbe069bd9946e2b250a4a7115edc0cd4d4f1312823a",
+      "bytes": 4661
+    },
+    {
+      "path": "switch-restored.txt",
+      "sha256": "ec194bdb50c9ed46619d2c889e4d8d88c08e0976f5b7546b8b9f567cc504394d",
+      "bytes": 189
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+show port-access clients interface 1/1/1
+1/1/1    00:50:00:00:3e:00 dot1x          Success     corp
+VLAN 10 and dot1x Authenticated from detailed switch transcript in rc4 run directory.

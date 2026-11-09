@@ -1,0 +1,44 @@
+{
+  "phase": "A14-rc4-restore",
+  "captured_at": "2026-11-09T22:14:43.243894+02:00",
+  "version": {
+    "build_date": "2026-11-09T19:57:53Z",
+    "commit": "0148bf8",
+    "version": "pilot-aruba-rc4"
+  },
+  "session": {
+    "id": "90c79ce7-24f8-4829-89f4-2dab6381fb72",
+    "state": "active",
+    "acct_session_id": "1794254508980",
+    "nas_port_id": "1/1/1",
+    "cert_serial": "15866D96C9295CB16DF5C204580B6E8975DDC10D",
+    "requested_role": "corp",
+    "liveness": {
+      "basis": "accounting Start, no Stop",
+      "note": "NAC received RADIUS accounting Start for this session 12m47s ago (Acct-Session-Id 1794254508980) and no Stop since. That shows the switch opened (or still reported) the session; it does not prove the endpoint is connected now: NAC learns of a disconnect only from an accounting Stop, which can be lost, and it has no fresh switch observation. Last authenticated 8m6s ago. A CoA still targets only this switch, port and MAC; if the endpoint left, the switch refuses it (Error-Cause 503).",
+      "state": "unknown"
+    },
+    "coa_requests": [
+      {
+        "kind": "quarantine",
+        "state": "acked",
+        "requested_role": "quarantine",
+        "requested_segment": "quarantine",
+        "sent_at": "2026-11-09T20:12:13.936801Z",
+        "responded_at": "2026-11-09T20:12:13.978285Z",
+        "attempts": 1,
+        "radius_id": 13
+      },
+      {
+        "kind": "restore",
+        "state": "acked",
+        "requested_role": "corp",
+        "requested_segment": "corp",
+        "sent_at": "2026-11-09T20:14:07.608185Z",
+        "responded_at": "2026-11-09T20:14:07.6173Z",
+        "attempts": 1,
+        "radius_id": 133
+      }
+    ]
+  }
+}
