@@ -223,6 +223,15 @@ node (scenarios C1–C3).
 
   Before `pilot-rc14` the note said "no RADIUS accounting" even when a Start
   was stored (ASTRA, `pilot-aruba-rc3` console run): defect D2, wording only.
+  - **D2 fix lab result** (reported by ASTRA; evidence package not yet
+    published): **PASS** in the API and the console, on exact
+    `pilot-aruba-rc4` nacd (`dd2b6137…`), which carries the rc14 code.
+  - **Method:** a targeted retest. nacd was swapped in place on the
+    existing rc3 guest, with the same adapter, switch and session; this was
+    not a clean install. Liveness stayed `unknown`; the basis read
+    "accounting Start, no Stop", and the console confirmation said a Start
+    was received, there was no Stop, and this does not prove a current
+    connection.
 - **Switch-observed state** comes only from eAPI (`show dot1x hosts | json`).
   The `fe7c981` lab run had no eAPI configured, so observation showed
   "unavailable" and **Verify** was "decision only". eAPI observation and
