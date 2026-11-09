@@ -118,16 +118,17 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### Interim: `pilot-aruba-rc2`, API actions (ASTRA, reported 2026-11-09; package to follow)
+### `pilot-aruba-rc2`: candidate FAIL (D1); A1–A3 PASS via API (ASTRA, 2026-11-09, [`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109), 17/17 manifest entries verified here)
 
 **Scope.** This ran on `pilot-aruba-rc2`, which **FAILED its D1 retest**
 (missed trailing reload). ASTRA recorded a manual reload so that it could
-continue. Quarantine and Restore were **product API** actions: the console
-was blocked at the disposable certificate warning. The evidence package is
-not yet published, so nothing below is verified here yet. The role path is
-unchanged in `pilot-aruba-rc3`; only the reload path changed.
+continue; that intervention is recorded and is not a pass. Quarantine and
+Restore were **product API** actions: the console was blocked at the
+disposable certificate warning. The package also preserves the failed chaos
+log, the install report, the A1–A3 CoA PCAPs and the endpoint probes. The
+role path is unchanged in `pilot-aruba-rc3`; only the reload path changed.
 
-| Step | Reported result |
+| Step | Result (ASTRA) |
 |---|---|
 | Clean install | PASS. Installed nacd `333feaa7…` and adapter `3c45063e…` match the pins |
 | Onboarding | ArubaOS-CX 10.07.0004 at `10.70.99.1` registered through the API, roles `corp`/`quarantine`; FreeRADIUS loaded = yes. Only the isolated switch's RADIUS moved to the candidate (`10.70.99.5`); the reference FreeRADIUS was stopped |
@@ -137,8 +138,17 @@ unchanged in `pilot-aruba-rc3`; only the reload path changed.
 | A3 Restore (API) | CoA-ACK at 19:00:23.540160Z; switch `corp`; corp first HTTP 200 at +0.113 s. Same IP; no EAPOL and no authentication |
 | Contract | `endpoint_reachability` `not_observed`; AOS-CX switch observation `unavailable` |
 
+**ASTRA's verdict:** **FAIL** (D1: C2, C3 and cleanup did not converge;
+after more than 60 s nacd reported `no`; a manual
+`systemctl start nac-freeradius-reload.service` restored `yes`).
+- **Mapped inputs:** `422`.
+- **Deliberately stopped FreeRADIUS:** reported `no`.
+- **Console actions:** BLOCKED.
+- **A5–A10:** not run on this candidate.
+- **Windows and physical Aruba:** not tested.
+
 **Open:**
-- D1 retest on `pilot-aruba-rc3`
+- D1 retest on `pilot-aruba-rc3` with real systemd (ASTRA, in progress)
 - A2/A3 through the console
 - A4–A10
 
