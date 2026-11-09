@@ -57,9 +57,13 @@ Use three independent dimensions:
 
 A source-backed entry with absent implementation is visible for planning and documentation, but cannot be executed. Offline fixtures do not turn an integration into a hardware-qualified integration. Existing evidence stays in its existing matrix; this ADR promotes no capability.
 
-A production-selectable operation requires an implemented driver, qualified coverage for the requested restrictions, matching device/configuration scope and authorized execution. Explicit experimental lab use is a separate deployment policy, visibly labelled and limited to approved lab targets. It never changes the catalog's qualification status.
+A production-selectable operation requires an implemented driver, qualified coverage for the requested restrictions, matching device/configuration scope and authorized execution. The same eligibility checks apply to admission replies and subsequent reauthentication, not only operator-triggered CoA. Failure to compile an eligible restricted assignment must reject that admission; never emit an unconstrained Access-Accept or reuse a broader cached assignment. Explicit experimental lab use is a separate deployment policy, visibly labelled and limited to approved lab targets. It never changes the catalog's qualification status.
 
 Capabilities are scoped by vendor, family, model, OS/build, physical/virtual form, operation, authentication method, configuration fingerprint and topology. Do not automatically extend one successful build to an entire major-version range.
+
+A configuration fingerprint must cover the security-relevant content: role/ACL definitions and referenced objects, implicit action, direction, VLAN membership/isolation, authentication host mode and fallback/critical-auth settings. A role name alone is not evidence of its contents. Define the canonicalization, observation source and freshness bound; exclude credentials and volatile counters. Out-of-band changes or unavailable/stale evidence make the affected coverage unknown and invalidate unexecuted plans. A role that still displays the same name must not retain a qualified badge after its rules change.
+
+When automatic configuration observation is unavailable, an explicitly approved, versioned operator attestation may be recorded with its age and limits, but it is not a live verification result. Production eligibility must declare whether such evidence is acceptable for the specific requirement; unknown evidence cannot silently satisfy it. Firmware or driver upgrades trigger compatibility re-evaluation rather than inheriting qualification automatically.
 
 ### 2. Keep policy out of drivers
 
@@ -148,6 +152,8 @@ Keep these distinct:
 
 Represent RADIUS attributes as an ordered list of typed values, including vendor ID/type and repeated attributes. A map of string to one string loses ACL entries and ordering. Bound values, counts and encoded packet size; reject untranslatable ACL predicates rather than dropping them. Reply values remain literal with FreeRADIUS expansion disabled.
 
+Each action recipe must define the minimum identifying attributes and their matching semantics. An operation labelled session-scoped is eligible only when those attributes select the intended session with the qualified platform behavior. Missing or ambiguous accounting/port identifiers block that operation; do not broaden a selector to User-Name or MAC alone to make a NAK disappear. Requested selector scope and demonstrated impact scope remain separate. Declared support for a RADIUS attribute at admission does not imply support in CoA or Disconnect.
+
 Vendor codecs own on-wire MAC formatting. Internally retain a canonical MAC plus the original source value. Outer EAP User-Name and MAC are correlation inputs, not replacements for validated certificate identity.
 
 ### 6. Immutable targeting and operation lifecycle
@@ -165,13 +171,23 @@ Management, RADIUS source and CoA addresses need not be equal. Resolve destinati
 
 Persist desired state and the pending action atomically before dispatch. Serialize changes for the same target, use compare-and-swap generations, and preserve application-level idempotency keys. Scope locking to the actual impact: a port-wide operation conflicts with operations for every session on that port.
 
+**Dispatch fencing:** authorization at plan creation is insufficient. Immediately before each target's first send, check current permissions/revocation, approval applicability, desired-state generation, policy/override state, target freshness and configuration/driver revisions. Atomically claim the queued action with its expected generation. A later quarantine cancels an older queued restore. Retries and reconciliation also stop when superseded; they must not revive an obsolete assignment. Consume a single-use approval once per execution, not once per packet; restarting a worker does not create a second execution.
+
+Persist worker ownership and lease/fencing state for recovery, even on a single-node deployment. Before another worker takes over, the previous sender must no longer be able to send. Database fencing cannot retract a packet already on the wire: use bounded send/receive lifetimes, record uncertain completion, and reconcile against current desired state. Do not claim exactly-once network effects or atomic changes across multiple devices. Partial completion is explicit; automatic compensation must not remove quarantine or restore stale permissions.
+
 A lost ACK is an uncertain outcome, not proof of failure to apply. Retries resend the exact request bytes to the same target within a bounded retry window. After restart or an expired window, reconcile first; do not blindly replay an old action against a replacement session. A stale target requires a new plan and authorization, not automatic retargeting.
+
+Pin the secret reference **and credential version** for one packet exchange. Identical request bytes cannot be retried or verified with a newly rotated secret. If the pinned version becomes unavailable/revoked, stop and reconcile before any new exchange; never expose or store the secret itself in the plan. Treat operation-specific response codes and authenticators as part of validation: a syntactically valid unrelated ACK is not success.
+
+Replay protection is a separate requirement from response verification. Record the platform's supported replay mechanism, clock requirements and retry window; do not disable replay checks to fix interoperability. RFC 5176 recommends Event-Timestamp when IPsec replay protection is absent, with an unchanged timestamp on retransmission. A recipe lacking a qualified replay configuration remains a documented security gap, not implicitly secure because it uses a shared secret.
 
 Keep request, delivery and verification separate:
 - planned / blocked / authorized / dispatched;
 - ACK / NAK / timeout / transport failure;
 - observed matching / mismatching / stale / unavailable;
 - endpoint traffic verified / failed / not observed.
+
+**Event reconciliation:** scope accounting correlation by registered NAS and session incarnation; Acct-Session-Id is not globally unique and may be reused after reboot. Duplicate Start/Interim/Stop events are idempotent. A delayed Stop for an older incarnation cannot terminate the replacement session or clear its override. Treat Accounting-On/Off and detected reboot as reconciliation triggers. Preserve event time and receipt time; do not let an old event overwrite a newer observation. Missing accounting means unknown liveness, not proof of disconnect.
 
 ACK does not imply matching role or permitted/denied traffic. A timeout does not clear quarantine. Restore recomputes the current authorized profile; it is not a blind rollback to an old VLAN.
 
@@ -187,9 +203,13 @@ ACK does not imply matching role or permitted/denied traffic. A timeout does not
 | NETCONF/RESTCONF | Future transport extension only when a concrete platform requires it |
 | Firewall API | Future distinct enforcement-point adapter; transit scope, IP-binding freshness and session handling differ from switch isolation |
 
-Secrets remain references to the existing sealed-secret service, decrypted only at execution. Catalogs, dry-runs, audit records and MCP outputs contain no secrets. Do not persist shared secrets in durable RADIUS action payloads.
+Secrets remain references to the existing sealed-secret service, decrypted only inside authorized transport I/O, including explicitly requested read-only probes. Catalogs, dry-runs, audit records and MCP outputs contain no secrets. Do not persist shared secrets in durable RADIUS action payloads.
 
 Per-device endpoint allowlists, TLS/SSH verification, redirect restrictions, bounded responses and credential separation apply. An authentication failure must not trigger insecure TLS, SNMPv2c or weaker credentials automatically. Existing lab exceptions are not global defaults.
+
+Treat management output, RADIUS attributes, role names and discovered device labels as untrusted data. Bound and validate parsing, escape UI/log rendering, and never interpolate them into shell commands or treat them as instructions in MCP results. Tie any future external reachability evidence to a trusted verifier, target, test scope, generation and timestamp; callers cannot set verified=true.
+
+Device deletion, management-address reassignment or certificate/host-key replacement invalidates pending plans and device-bound caches. Credential revocation must stop not-yet-sent work.
 
 Use deadlines, cancellation, per-device concurrency limits and bounded queues. Rate-limit polling and mutations separately; expose degraded observation without blocking every admission on a management API call.
 
@@ -260,13 +280,34 @@ Observe authentication state and active role independently of LLDP/FDB inventory
 
 Emit phase timing with defined clocks: API receipt, plan authorization, queue wait, dispatch, ACK, switch observation and optional external traffic evidence. Do not compare post-ACK lab bounds with end-to-end product latency. No universal vendor latency promise is introduced.
 
-### 10. What is authorized now and later
+### 10. Admission boundaries, shared ports and outages
+
+Transport extensibility does not authorize MAB. The current product's EAP-TLS path remains separate from any future restricted-MAB design. Invalid or revoked certificate authentication must not fall through to a broad MAC-based allow. A phone discovered by LLDP does not gain a trusted identity; voice-domain authorization and data-domain authorization require separate policy.
+
+Record switch-local behavior when RADIUS/NAC is unavailable: critical VLAN/role, cached authentication, guest/reject VLAN and server-dead actions. NAC rejecting new requests does not establish that the switch fails closed. These settings are prerequisites to any claimed outage guarantee; existing authorized sessions may continue until the switch enforces a new decision.
+
+The initial scope preserves ADR-0006's existing override identity/port semantics. Do not silently reinterpret it as a global device quarantine. A future device-wide override requires a separate identity-scope decision and a plan targeting every eligible active session; moving to another port is a qualification case, not an assumed invariant.
+
+An explicit recovery action may affect a port, voice domain or management uplink. Unknown topology is not proof of a single endpoint. Port-wide operations require fresh dependency evidence, explicit impact approval and an exclusion for management/uplink paths. No such operation is enabled by this ADR.
+
+### 11. What is authorized now and later
 
 **Now:** research, this ADR and source references only. No new Go implementation, equipment contact, scans, RADIUS traffic, EVE runs, configuration pushes or product support promotion were performed for this task. Existing independently authorized Aruba work continues separately.
 
 **After design acceptance:** implement the minimal ports around existing Arista/Aruba code, using offline fixtures and mocks. Do not build all transport packages in advance.
 
 **Before qualification:** ASTRA runs a separately authorized exact-candidate matrix: authentication, wrong identity, stale target, duplicate/NAK/timeout, session replacement/restart, IPv4/IPv6/UDP, new/established flows, DHCP renewals and shared voice/data ports. Unit tests and fake servers establish code behavior only.
+
+Required future offline acceptance cases (not executed in this documentation task):
+- Role contents change under the same name: coverage and pending approval become stale.
+- An admission compiler cannot represent the restriction: reject, never unconstrained accept.
+- A restore queues, then a newer quarantine arrives: the restore must not dispatch.
+- A selector matches two sessions or lacks required identifiers: block without selector broadening.
+- A credential rotates during retry: no mixed-secret exchange.
+- A delayed old-session Stop arrives after a replacement Start: preserve the new session and override.
+- A worker crashes after sending but before saving the ACK: recover as uncertain and reconcile, without blind replay.
+- Invalid EAP-TLS plus available MAB: no implicit authentication downgrade.
+- A valid response has the wrong operation code or a stale observation references an old generation: no success promotion.
 
 **Before production enablement:** record vendor/model/firmware and configuration scope, observed restrictions, recovery behavior and limitations. Do not require a new lab merely to add a disabled research catalog entry.
 
@@ -298,5 +339,13 @@ Reviewed 2026-11-09. PacketFence source links are pinned; online manuals can cha
 6. [Cisco base module](https://github.com/inverse-inc/packetfence/blob/1041248cc6856d99f66dd6eed01f36bf2186e058/lib/pf/Switch/Cisco.pm) — vendor action recipes including bounce-host-port.
 7. [NAC contract snapshot](https://github.com/KidCarmi/nac/tree/162e4eeaf99443927b431e7d7ab29cb9312b6a22) — ADRs and existing Go integration anchors.
 8. [Owner-approved bounded Aruba increment](https://github.com/KidCarmi/nac/pull/1#issuecomment-6747504651) — separate implementation scope; this ADR does not supersede that work.
+
+9. [RFC 5176](https://www.rfc-editor.org/rfc/rfc5176.html), sections 2.3, 3 and 6.3 — dynamic authorization matching, retransmission and replay considerations; exact platform behavior still needs qualification.
+
+## Architecture review record — 2026-11-09
+
+Manual review of the original draft identified and corrected missing contracts for admission eligibility, role-definition drift, ambiguous session selectors, stale queued approvals/restores, credential-version retries, accounting incarnation/reordering, and switch-local outage/MAB behavior. The review also made worker-crash uncertainty and multi-device partial completion explicit. These are design risks, not findings established against running product code.
+
+Validation: source-level comparison with existing ADR-0006/0008 and RADIUS integration anchors, RFC review, and saved-document comparison. No equipment or runtime tests; no claim of a CodeRabbit review. Acceptance of this ADR must reconcile the stricter fail-safe and evidence semantics with ADR-0009 before implementation; this proposed text does not silently override an accepted contract.
 
 Research limitation: representative integration architecture and four source modules were inspected, not the entire PacketFence driver catalog. No new platform or firmware compatibility has been validated.
