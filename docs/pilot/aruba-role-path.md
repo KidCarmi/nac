@@ -118,6 +118,29 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
+### `pilot-aruba-rc3`: IN PROGRESS. Interim reported by ASTRA (2026-11-09); evidence package not yet published
+
+**Scope.** Exact `d96bb741e8f36019af4c6d5152491c2e0a874fe6`, nacd
+`01e88d8b…`, real systemd and FreeRADIUS, ArubaOS-CX Virtual 10.07, one-NIC
+Linux DHCP endpoint. Actions went **through the product API**: the console
+remains blocked at the self-signed certificate warning. Nothing below is
+verified here until ASTRA publishes the package. The candidate stays **in
+progress** until then.
+
+| Case | Reported result |
+|---|---|
+| Clean install and onboarding | Documented clean install and switch onboarding passed |
+| **D1 chaos, real systemd** | **20/20**: bursts, secret rotations, process kill and recovery, outage. This supersedes the `pilot-aruba-rc2` D1 failure for this candidate. rc2 stays **FAIL** |
+| A1 admission | Valid bound EAP-TLS admitted to `corp`; unbound certificate denied |
+| A2–A4 Quarantine / Restore (API) | CoA corp → quarantine → corp ACKed. Fresh endpoint TCP followed each change, with no re-authentication, no EAPOL and no DHCP address change. From the switch ACK: corp denied +0.220 s, remediation reachable +0.225 s, corp restored +0.611 s |
+| A5 persistence | The quarantine override survived accounting Stop/Start, a nacd restart and a control-guest reboot (not a whole EVE restart) |
+| A6 NAK | Switch NAK, Error-Cause 506: the old `corp` role and reachability stayed; the pending override applied at the next authentication |
+| A7 timeout | Real network silence: 3 attempts over 9 s; the switch stayed `quarantine`; the pending Restore applied at the next authentication |
+| A8 stale session | Action on an ended session rejected with `422`, no re-targeting |
+| A9 traffic limits | An established TCP flow stopped delivering during quarantine and resumed on restore. Peer → endpoint fresh TCP was blocked, but the peer's SYN reached the endpoint and the SYN-ACK was suppressed: the same limits as the reference, not packet isolation |
+| Not claimed | Console-only workflow (certificate interstitial); A10 Arista regression; Windows; physical Aruba |
+
+
 ### `pilot-aruba-rc2`: candidate FAIL (D1); A1–A3 PASS via API (ASTRA, 2026-11-09, [`a764e52`](https://github.com/KidCarmi/nac/tree/a764e52f6118f09c8e3dabecbff22613e99db983/lab/evidence/aruba-rc2-qualification-20261109), 17/17 manifest entries verified here)
 
 **Scope.** This ran on `pilot-aruba-rc2`, which **FAILED its D1 retest**
