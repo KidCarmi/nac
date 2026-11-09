@@ -160,18 +160,15 @@ evidence, and it was gathered without nacd.
 - a fresh database, in the separate Aruba topology
 - `pilot-rc10` and its topology stay untouched
 
-### Exact pins
-
-**The values below are for `pilot-aruba-rc2` (superseded).** The
-`pilot-aruba-rc3` pins are in [qualification status](qualification-status.md).
+### Exact pins (`pilot-aruba-rc3`)
 
 
 | What | Value |
 |---|---|
-| Commit | `9f0dba137dd4b284abaaab090d32bf3fe3a21ada` |
-| nacd (`/usr/local/bin/nacd`; `BUNDLE-MANIFEST.txt` and `/etc/nac/install-report.txt` `nacd_sha256`) | `333feaa70191e4e07c83cf089e4058d46b057e8e4b2eb2ff0aa1da08366a23f0` |
+| Commit | `d96bb741e8f36019af4c6d5152491c2e0a874fe6` |
+| nacd (`/usr/local/bin/nacd`; `BUNDLE-MANIFEST.txt` and `/etc/nac/install-report.txt` `nacd_sha256`) | `01e88d8b03bfbbe1b2c55388e6ef48b51d98b096df8b5a77822e3b0f5d97ae6a` |
 | `freeradius_adapter_sha256` line in `/etc/nac/install-report.txt` | `3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32` |
-| Running commit (install report, `GET /version`) | `9f0dba1` |
+| Running commit (install report, `GET /version`) | `d96bb74` |
 
 The installer copies these files verbatim, so the installed files have the
 same SHA-256 as at the commit:
@@ -183,10 +180,10 @@ same SHA-256 as at the commit:
 | `/etc/freeradius/3.0/mods-available/nac_rest` | `deployments/freeradius/mods-available/nac_rest` | `168ae4550ff79b9cfb5065a2113f66b5655ba2993ca93665beb77dcfb5078546` |
 | `/etc/freeradius/3.0/mods-available/nac_json` | `deployments/freeradius/mods-available/nac_json` | `6008b75fa581390d0beb46a4d7645b816ba537e73959d539413b20ae5724cefc` |
 | `/etc/freeradius/3.0/mods-available/nac_outage` | `deployments/freeradius/mods-available/nac_outage` | `c483927350e1b70e688d1180bfb382aa324bed3f1890e4631556b60dcb5a8095` |
-| `/usr/local/sbin/nac-freeradius-reload` | `deployments/pilot/nac-freeradius-reload` | `32d0399af1f43043ddaa3e4411a61edd3fcbf8885ae8fac91ac91199465469f8` |
+| `/usr/local/sbin/nac-freeradius-reload` | `deployments/pilot/nac-freeradius-reload` | `a8a31d6d1b5b576df4856317d4b65de8cd25e56aabd2889451b209ba6161a113` |
 | `/usr/local/sbin/nac-reset-password` | `deployments/pilot/nac-reset-password` | `a5c17570fc0d488e508f73a1d1b7a25124a0c6b9fa2ae50c43b40b4a24618a10` |
 | `/etc/systemd/system/nac-freeradius-reload.path` | `deployments/pilot/systemd/nac-freeradius-reload.path` | `fc1dd669de91bda5d3a4c709f5e61dd702b081c46e43e7cf39dfcb6b03e74495` |
-| `/etc/systemd/system/nac-freeradius-reload.service` | `deployments/pilot/systemd/nac-freeradius-reload.service` | `a005278bd1600e0cddccaa150f45b67b85598dad13fc58ab38a3b2ec30ee2f51` |
+| `/etc/systemd/system/nac-freeradius-reload.service` | `deployments/pilot/systemd/nac-freeradius-reload.service` | `c738690d8a3940ed934733df2dde31b20b17409b377be23376390649584b59e4` |
 | `/etc/systemd/system/nacd.service` | `deployments/pilot/systemd/nacd.service` | `162f610a20a7f5923543cf052e839ca41d199b0bb7bf16be3f2e0753ad6307eb` |
 | — (installer itself) | `deployments/pilot/install.sh` | `a80fe96707b05a7e5cc2b25edee6e4dcfb299e5669b905ee5d68ae73a8b76a5c` |
 | — (FreeRADIUS setup step) | `deployments/pilot/freeradius-setup.sh` | `4d838f3e8303f9aaae22fffb3fab777d66c0912463036e3bbe221f7dfba6d124` |
@@ -198,15 +195,15 @@ files above instead.
 
 1. **Build** the bundle (Go toolchain `go1.25.0` is fetched if needed):
    ```bash
-   git checkout 9f0dba137dd4b284abaaab090d32bf3fe3a21ada
-   make pilot-bundle VERSION=pilot-aruba-rc2
+   git checkout d96bb741e8f36019af4c6d5152491c2e0a874fe6
+   make pilot-bundle VERSION=pilot-aruba-rc3
    ```
-   `nac-pilot-pilot-aruba-rc2/BUNDLE-MANIFEST.txt` inside the tarball must
+   `nac-pilot-pilot-aruba-rc3/BUNDLE-MANIFEST.txt` inside the tarball must
    show the nacd hash above.
-2. **Copy** `dist/nac-pilot-pilot-aruba-rc2.tar.gz` to the control node,
+2. **Copy** `dist/nac-pilot-pilot-aruba-rc3.tar.gz` to the control node,
    then extract it:
    ```bash
-   tar -xzf nac-pilot-pilot-aruba-rc2.tar.gz && cd nac-pilot-pilot-aruba-rc2
+   tar -xzf nac-pilot-pilot-aruba-rc3.tar.gz && cd nac-pilot-pilot-aruba-rc3
    ```
 3. **Install** with the CA that issued the endpoint's certificate, and a
    server certificate for FreeRADIUS. Add `--proxy URL` if apt needs one.
@@ -217,7 +214,7 @@ files above instead.
    then need a client certificate from it.
 4. **Verify the install:**
    - `/etc/nac/install-report.txt`: `nacd_sha256`,
-     `freeradius_adapter_sha256` and `running nacd: commit 9f0dba1`
+     `freeradius_adapter_sha256` and `running nacd: commit d96bb74`
    - the file hashes above, with `sha256sum`
    - `systemctl status nacd freeradius nac-freeradius-reload.path` (all
      active)
