@@ -239,31 +239,31 @@ both segments. The ACKs carried 3600 / 30 / 45.
   needed at all.
 - **First platform under test:** the Aruba AOS-CX simulator, a capability
   test owned by ASTRA.
-  - **Result on ArubaOS-CX Virtual.10.07.0004 (2026-11-08): qualification
-    blocked; root cause unresolved.** The image came from a third-party
-    mirror and is not vendor-verified. The facts are kept separate:
-    - **Observed:** no port-access session formed.
-    - **Observed:** the MAB trial saw zero RADIUS requests at the server
-      capture. Switch-side transmission was not captured, so it is not
-      established either way.
-    - **Documented:** HPE's simulator release notes call *classifier*
-      policy nonfunctional. HPE distinguishes that from role-associated
-      port-access policy.
-    - **Untested:** per-session data-plane enforcement. A static port ACL
-      worked, but it is port-wide and doesn't count.
-    - An earlier version of this page called per-session role/ACL
-      unsupported. The evidence doesn't establish that.
-  - **Next:** ASTRA's bounded diagnostic.
-    - Reproduce HPE's reference 802.1X lab without nacd.
-    - Capture EAPOL and RADIUS together.
-    - Find the first missing step.
-    - Then test a minimal role permit/deny.
-    - Then test a role change by CoA.
-    - End with a verdict: configuration defect, image limitation, or
-      unresolved.
-  - Physical hardware or another image comes in only if that verdict calls
-    for it.
-  - The record is in the ADR-0009 capability matrix on PR #2
+  - **Result on ArubaOS-CX Virtual.10.07.0004 (ASTRA, 2026-11-09,
+    [`a8c8207`](https://github.com/KidCarmi/nac/tree/a8c820741e475556095452869f682c0c56a89d2d/lab/evidence/aruba-1007-reference-20261109), verified here): per-session IPv4 role enforcement
+    works with a reference RADIUS server. It is not NAC-integrated.**
+    - **Image provenance:** third-party mirror, not vendor-verified.
+    - **Root cause of the 2026-11-08 failure: configuration, not the
+      image.** The global 802.1X authenticator was not enabled, and there
+      was no interface-specific supplicant.
+    - **What was shown.** FreeRADIUS returned `Aruba-User-Role=quarantine`,
+      with no nacd involved. On the same IP and VLAN:
+      - corp was blocked
+      - a healthy same-subnet peer was blocked for traffic the endpoint
+        started
+      - remediation stayed reachable
+      - the `corp` role restored all three
+    - **Still unverified:**
+      - role change by **CoA**: each change used switch-local
+        re-authentication
+      - peer-initiated same-subnet traffic
+      - established-flow cutting
+      - IPv6
+      - DHCP
+      - shared phone+PC ports
+      - the NAC-integrated pass
+  - **Not selectable.** The full record is in the ADR-0009 capability
+    matrix on PR #2
     (`docs/architecture/enforcement-capability-matrix.md`).
 - **What it must show:**
   - permitted and denied traffic, measured with continuous probes, not a
