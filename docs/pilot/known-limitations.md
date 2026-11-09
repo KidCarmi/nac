@@ -272,8 +272,14 @@ both segments. The ACKs carried 3600 / 30 / 45.
       - So this role blocks same-subnet sessions in both directions, but it
         does **not** provide full bidirectional packet isolation.
       - Inbound UDP and IPv6 were not tested.
+    - **Established flows ([`42be71f`](https://github.com/KidCarmi/nac/tree/42be71fadd3e88466d626cce56c168ecc995f878/lab/evidence/aruba-1007-established-flow-20261109), verified here): data
+      blocked, flows not torn down.**
+      - While quarantined, an existing TCP connection passed no data.
+      - After restore, the **same connection resumed** (+24.8 s, no new
+        handshake).
+      - It then delivered the messages queued during quarantine.
+      - So the role blocks traffic but does not terminate sessions.
     - **Still unverified:**
-      - established-flow cutting
       - IPv6
       - DHCP
       - shared phone+PC ports
