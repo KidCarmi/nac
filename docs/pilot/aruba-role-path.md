@@ -120,7 +120,7 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc4`: targeted D2 retest PASS (reported by ASTRA, 2026-11-09; package not yet published). **Not fully qualified**
+### `pilot-aruba-rc4`: targeted D2 retest PASS (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
 
 **Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, built with
 Go 1.25.0, linux/amd64, CGO off; the nacd SHA-256 matched `dd2b6137…`.
@@ -128,11 +128,11 @@ Go 1.25.0, linux/amd64, CGO off; the nacd SHA-256 matched `dd2b6137…`.
 same FreeRADIUS adapter, switch and session. This was not a clean rc4
 install.
 
-| Check | Reported result |
+| Check | Result (ASTRA) |
 |---|---|
 | D2 wording, API and console | **PASS.** An accepted accounting Start (Acct-Session-Id `1794254508980`): liveness `unknown`, basis "accounting Start, no Stop". The console action confirmation says a Start was received, there was no Stop, and this does not prove a current connection |
-| Regression smoke: console Quarantine / Restore | Both ACKed. Fresh endpoint corp HTTP went 200 → timeout → 200; remediation stayed 200. Final switch session: dot1x `Success`, role `corp`, VLAN 10 |
-| Not verified on rc4 | A clean rc4 install, a full restart, the Arista regression, Windows. rc4 is **not** fully qualified; the unchanged code's rc3 results are in the next section |
+| Regression smoke: console Quarantine / Restore | **PASS within the observed scope.** Quarantine ACK 20:12:13.978 UTC: corp fresh TCP timed out, remediation 200. Restore ACK 20:14:07.617 UTC: corp 200, remediation 200. Final switch session: dot1x `Success`, role `corp`, VLAN 10 on 1/1/1 |
+| Not run on rc4 (BLOCKED in ASTRA's package) | A clean rc4 install, admission, policy, chaos, restart, Arista, Windows and physical-switch regression. rc4 is **not** fully qualified; the unchanged code's rc3 results are in the next section |
 
 , A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109), 77/77 manifest entries verified here)
 
