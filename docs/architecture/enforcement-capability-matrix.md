@@ -51,7 +51,7 @@ Changes address: **yes**.
 | `deny_same_subnet_peers` | unverified | the endpoint moves to another subnet; peers *inside* the quarantine VLAN were not probed |
 | `ipv6` | unverified | IPv4 only |
 | phone+PC port | unverified | one endpoint per port |
-| NAC-integrated | demonstrated | nacd → FreeRADIUS → vEOS, VLAN-bearing CoA. Again with the `pilot-aruba-rc4` binary ([`ee/f655`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e145946b7fa37820e7aed/lab/evidence/arista-rc4-regression-20261110), 18/18 verified): admission, rejection, rule-only change and API Quarantine/Restore; old segment denied +0.473 to +0.754 s. Each new-segment address came from a manual reconnect ~35 s after the CoA, before the 120 s lease's T2, so automatic re-addressing was not established |
+| NAC-integrated | demonstrated | nacd → FreeRADIUS → vEOS, VLAN-bearing CoA. Again with the `pilot-aruba-rc4` binary ([`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e145946b7fa37820e7aed/lab/evidence/arista-rc4-regression-20261110), 18/18 verified): admission, rejection, rule-only change and API Quarantine/Restore; old segment denied +0.473 to +0.754 s. Each new-segment address came from a manual reconnect ~35 s after the CoA, before the 120 s lease's T2, so automatic re-addressing was not established |
 | caveats | — | <ul><li>an accepted VLAN-bearing CoA interrupts forwarding for up to about 58 s (`7b34ef5`)</li><li>re-addressing time depends on the DHCP client and server ("Recovery boundary" in `docs/pilot/known-limitations.md`)</li></ul> |
 
 ## Arista vEOS-lab 4.29.2F, strategy `role_acl`
