@@ -19,7 +19,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nothing else. Merged, not re-implemented. On the Aruba path, Configured
   also follows what FreeRADIUS loaded.
 
-### pilot-aruba-rc1 (proposed; owner-approved bounded Aruba integration; not lab-qualified; rc10 stays the baseline)
+### pilot-aruba-rc1 (superseded; owner-approved bounded Aruba integration; carries D1)
 - **Aruba AOS-CX role enforcement.**
   - A switch has a `platform` (`arista-eos` | `aruba-aos-cx`) and an
     `enforcement` (`vlan` | `role`).

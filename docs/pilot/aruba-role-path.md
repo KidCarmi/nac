@@ -1,8 +1,10 @@
 # Aruba AOS-CX role path (`pilot-aruba-rc4`)
 
 **Status: owner-approved bounded integration, not lab-qualified.**
-- `pilot-rc10` (`b39649f`) stays the tested baseline. This candidate does
-  not replace it.
+- **No candidate is release-cleared.** `pilot-aruba-rc4` is the frozen
+  candidate under qualification (acceptance matrix below). `pilot-rc10`
+  (`b39649f`) is historical evidence, not a release-safe fallback: known
+  defects D1 and D2 were found after it.
 - `pilot-aruba-rc4` is `pilot-aruba-rc3` plus the D2 session-liveness
   wording fix (`pilot-rc14`), merged, and nothing else. `pilot-aruba-rc3` is
   `pilot-aruba-rc1` plus the known defect D1 fix and its reload-race fix
@@ -373,31 +375,91 @@ files above instead.
    component reboot, restart the transient `aruba-lab-dhcp.service` on the
    corp service before testing.
 
-**Cases.** Each is an uninterrupted run. Record:
-- the product action time
-- CoA request, ACK/NAK and its time
-- `show port-access clients`
-- endpoint address, VLAN and route
-- fresh TCP to corp, remediation and a peer
-- the console and API state
+### Acceptance matrix: `pilot-aruba-rc4` (frozen)
 
-| # | Case | Expected |
+**Frozen artifact.**
+- Candidate commit `0148bf8`, nacd `dd2b6137…`, install-report adapter
+  `3c45063e…`, with the installed-file hashes above.
+- Every later commit on the branch changes Markdown only (checked:
+  `git diff 0148bf8 HEAD` outside `*.md` is empty). Documentation commits
+  do not change the candidate.
+- **A code fix gets a new candidate** and an explicit list of affected
+  rows to rerun; this one is not modified.
+
+**Prerequisites.**
+- **P1.** A fresh, isolated Ubuntu 24.04 control guest, installed from the
+  pinned bundle. The hashes match the pins and the install report.
+- **P2.** The existing isolated EVE topology:
+  - ArubaOS-CX 10.07.0004 with local roles `corp` and `quarantine` and its
+    `q-policy`
+  - a one-NIC Linux endpoint on DHCP: BusyBox udhcpd, 120 s lease, T1
+    60 s, T2 105 s
+  - corp, remediation and peer services
+- **P3.** PKI:
+  - the CA that issued the endpoint certificate
+  - a second, untrusted client certificate for the rejection case
+  - a console certificate the lab browser trusts (`--https-cert`). If
+    the browser interstitial is accepted instead, record it as an explicit
+    prerequisite.
+- **P4.** Switch accounting enabled
+  (`aaa accounting port-access start-stop group radius`).
+- **P5.** Continuous, independent fresh-TCP probes to corp, remediation and
+  peer, with bounded captures on the endpoint and control taps. Timestamps
+  come from one clock, and its uncertainty is stated.
+- **P6** (row 5 only). The isolated vEOS 4.29.2F topology, with **the same
+  candidate binary** in a disposable instance.
+
+Each row is reported **PASS / FAIL / BLOCKED / NOT RUN**, with the exact
+artifact identity, topology and configuration, timestamps and sanitized
+evidence hashes. **Any CLI or bootstrap step a row needs is recorded as
+such. A failed console workflow is not silently repaired.**
+
+| Row | Case | Expected outcome |
 |---|---|---|
-| A1 | corp login | Access-Accept with `Aruba-User-Role=nac-corp`, no Tunnel-*; console shows role `nac-corp`, strategy `role`, switch not observed |
-| A2 | Quarantine (console) | CoA with `nac-quarantine` to the session; CoA-ACK; switch role `nac-quarantine`; **DHCP address and VLAN unchanged**; corp denied, remediation allowed; console `acked` and says it is not traffic verification |
-| A3 | Restore (console) | CoA with `nac-corp`; ACK; corp reachable; address and VLAN unchanged |
-| A4 | ACK versus endpoint reachability | Record any gap between the ACK and the first denied / first successful probe. NAC claims only the ACK |
-| A5 | Override persistence | Quarantine, then: switch-local re-authentication; accounting Stop/Start (endpoint reconnect); nacd restart; full restart. The endpoint gets `nac-quarantine` each time until Restore |
-| A6 | CoA NAK | Make the switch refuse, e.g. with the wrong CoA secret or a wrong NAS-Port-Id. Console shows `nak` (or `timeout`, if the switch drops it silently) and never applied; the override applies at the next login. **Also record**, without assuming, what the switch answers for a role name it does not have |
-| A7 | CoA timeout | Block UDP/3799. Console shows `timeout`; same override rule |
-| A8 | Stale session | Disconnect the endpoint (accounting Stop), then Quarantine. Expect `422`, or a CoA `failed` without re-targeting |
-| A9 | Traffic limitations | Repeat the established-flow and peer-initiated checks through NAC. Expected: the same limits as the reference (not packet isolation, no TCP teardown) |
-| A10 | Arista regression | On the rc10 vEOS topology, with this candidate in a disposable instance only: `scripts/ui-walkthrough.js` plus one Quarantine/Restore. VLAN behavior identical to rc10 |
+| **1. Console administrator workflow** | | |
+| 1.1 | First sign-in, then the Account password change | The initial password works; the change succeeds; the old password and the pre-change session are rejected (401) |
+| 1.2 | Switch onboarding in the console (Platform Aruba AOS-CX, roles `corp`/`quarantine`, dotted-IPv4 source) | **Configured** goes `pending` → `yes`. "Loaded by FreeRADIUS" is `yes`, and `/var/lib/nac/freeradius-reload.status` names the current client-file SHA-256 with `result=ok`, after FreeRADIUS restarted |
+| 1.3 | Policy publication in the console (`bound → corp`, preview, then publish) | The preview predicts the change; publish creates the version; existing sessions change only at their next authentication |
+| 1.4 | Valid EAP-TLS admission (after binding the session) | Access-Accept with `Aruba-User-Role` `corp`, no Tunnel-\*; switch `Success`, role `corp`; corp reachable |
+| 1.5 | Invalid client certificate (fresh port) | Access-Reject; switch reject, no role; corp unreachable; the console shows the EAP-TLS reason |
+| 1.6 | Quarantine and Restore in the console | As in row 3, through the console |
+| **2. D1 / D2 on the installed candidate, real systemd** | | |
+| 2.1 | `scripts/chaos-freeradius-reload.sh` (C1–C6): rapid registrations, secret rotations, delete/cleanup, process kill, deliberately broken reload path (FreeRADIUS stopped; outage) | Every scenario converges to the **loaded** state: the record's SHA-256 equals the current file, and FreeRADIUS started after the last write. nacd **never** says `yes` while not loaded; a broken path reads `no` with the reason and recovers once it is fixed. Mapped inputs get `422` |
+| 2.2 | D2: an accepted accounting Start, then API and console | Liveness `unknown`, basis "accounting Start, no Stop". The note says a Start is evidence of receipt, not proof of a current connection |
+| **3. corp → quarantine → corp, API and console** | | |
+| 3.1 | Quarantine | CoA-ACK; switch role `quarantine`; corp denied and remediation allowed on fresh TCP; **VLAN and DHCP IP unchanged**; no EAPOL and no new authentication; NAC shows `acked`, not "verified" |
+| 3.2 | Restore | CoA-ACK; role `corp`; corp reachable; VLAN and IP unchanged |
+| 3.3 | Missing role mapping | Registering a role switch without `quarantine` gets `422`. A decision for a segment with no role gets Access-Reject, never an unrestricted accept |
+| 3.4 | Restore that the policy would deny | `422`; nothing recorded; **the session stays quarantined** (the restriction is not released) |
+| **4. Persistence and failure** | | |
+| 4.1 | Quarantine, then: switch-local re-authentication; accounting Stop/Start with session replacement; nacd restart; FreeRADIUS restart | The quarantine applies after each one, until Restore |
+| 4.2 | CoA NAK (e.g. an unknown role) | `nak` with the Error-Cause, never shown as applied; the switch keeps its old role; the pending change applies at the next authentication |
+| 4.3 | CoA timeout (UDP/3799 dropped) | `timeout` after the retries; the same pending rule |
+| 4.4 | Stale session (after accounting Stop) | `422`, no re-targeting |
+| 4.5 | **Planned full isolated EVE restart** | Recovery documented step by step (DHCP service restart included); the quarantine state of the identity survives |
+| 4.6 | nacd unavailable | **Already-authorized session:** record whether it stays up until re-authentication. **New endpoint:** Access-Reject, no cache. **Record the switch's actual local fallback behavior**; don't assume it |
+| **5. Arista regression, same candidate binary** | | |
+| 5.1 | EAP-TLS admission and rejection | Bound → VLAN 10; invalid certificate rejected |
+| 5.2 | API and console Quarantine/Restore | VLAN 20 / 10 through CoA; old segment denied. The known DHCP-convergence limits stay as documented: **no hook or port bounce** to obtain a PASS |
 
-**Verdict:**
-- **PASS** needs A1–A8 and A10 as expected.
-- A9 records limits; it does not fail the candidate unless the behavior is
-  worse than the reference.
-- A pass qualifies only this role/policy combination on this image. It
-  does not qualify packet isolation, IPv6 beyond what was tested, MAB,
-  DHCP on other servers, or physical AOS-CX.
+**Rerun list when a successor candidate is needed** (by what changed):
+- **nacd:** every row whose path the change touches, plus 1.2, 2.1 and
+  3.1–3.2 as smoke.
+- **The reload helper or units:** 1.2 and 2.1.
+- **The FreeRADIUS adapter:** 1.4, 1.5, 3, 4.6 and 5.
+- **The installer:** P1 and 1.1–1.2.
+
+**Coverage gaps, named, not blocking:** Windows 10/11 endpoints and a
+physical switch. These are reported as such; they don't stop the runnable
+Linux and EVE rows.
+
+**After this gate** (ASTRA's second priority, not part of PASS):
+- a bounded repeated Quarantine/Restore timing campaign (sample count,
+  median, P95, maximum)
+- DHCP renewal and rebinding while restricted, through the NAC-integrated
+  path
+- shared phone+PC port, IPv6 and UDP, where the platform supports them
+
+Ingress filtering, inbound packet isolation, blocking existing-flow data
+and transport teardown stay **separate claims**.
+
