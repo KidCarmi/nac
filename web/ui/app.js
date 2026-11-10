@@ -355,7 +355,10 @@ async function sessionDetail(id) {
   const ld = d.last_decision;
   const coaBusy = d.last_coa && ["requested", "sent"].includes(d.last_coa.state);
   const role = d.enforcement?.strategy === "role";
-  const coaBtn = (kind, label, cls) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
+  // On a role switch nothing re-authenticates: the action sends a role CoA
+  // for the role the active policy selects, so it is labelled for what it does.
+  const reauthLabel = role ? "Apply active policy" : "Re-authenticate (apply active policy)";
+  const coaBtn = (kind, label, cls, question) => h("button", { class: cls, disabled: d.state !== "active" || coaBusy, onclick: async () => {
     const live = d.liveness.state === "connected" ? "" : "\n\nNote: " + d.liveness.note;
     const pause = role ? "\n\nThe CoA asks the switch to change this session's local role (Aruba-User-Role). The VLAN and the endpoint's " +
       "address do not change and the switch does not re-authenticate. A CoA-ACK means the switch accepted the request; NAC does not " +
@@ -364,7 +367,7 @@ async function sessionDetail(id) {
       "traffic for up to about 58 s, also when the VLAN did not change. After a VLAN change the endpoint needs an address " +
       "in the new VLAN: in the lab, Windows Server 2025 got one within about 65 s, but a Linux (systemd-networkd) endpoint " +
       "only when its DHCP lease expired, which can take the remaining lease time. Check the endpoint, not only this page.";
-    if (!await ask(label + " this session on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live + pause, label)) return;
+    if (!await ask((question || label + " this session") + " on " + d.switch_name + " " + d.nas_port_id + " (" + d.mac + ")?" + live + pause, label)) return;
     if (await act(() => api("POST", "/sessions/" + id + "/" + kind), "Requested. Following the CoA…")) render();
   } }, label);
 
@@ -408,7 +411,7 @@ async function sessionDetail(id) {
       role ? "On this switch NAC changes the session's local role; the VLAN and the endpoint's address stay the same. An ACK is not traffic verification."
         : "Changing the VLAN requires the endpoint to get a new IP address (DHCP). How soon depends on its DHCP client and lease; see the pilot's known limitations."),
       h("div", { class: "row" }, coaBtn("quarantine", "Quarantine", "danger"), coaBtn("restore", "Restore", "primary"),
-        coaBtn("reauthenticate", "Re-authenticate (apply active policy)", "")),
+        coaBtn("reauthenticate", reauthLabel, "", role ? "Apply the active policy to this session" : null)),
       d.coa_requests.length ? table(["Requested", "Action", "By", "State", "Attempts", "Error-Cause", "Detail"],
         d.coa_requests.slice().reverse().map((c) => ({ cells: [when(c.created_at), c.kind + (c.requested_role ? " → role " + c.requested_role : c.requested_vlan ? " → VLAN " + c.requested_vlan : ""),
           c.created_by, stateChip(c.state), c.attempts, txt(c.error_cause), txt(c.detail)] }))) : null),
@@ -511,7 +514,7 @@ async function policy() {
             r.override_applies ? " (operator quarantine override applies; policy alone: " + (r.policy_changed ? "changes" : "unchanged") + ")" : ""),
           (r.insufficient_evidence || []).join(", ") || "—",
           (r.stale_inputs || []).join(", ") || "—"] }))),
-      h("p", { class: "muted" }, "Publishing applies to authentications from now on. Existing sessions keep their access until they re-authenticate; use Re-authenticate on a session to apply it now."),
+      h("p", { class: "muted" }, "Publishing applies to authentications from now on. Existing sessions keep their access until they re-authenticate; use Re-authenticate on a session (Apply active policy on a role switch) to apply it now."),
       !draft.differs_from_active ? h("p", { class: "warn" }, "The draft is identical to the active version: edit a rule before publishing.") : null,
       h("div", { class: "row" }, note, h("button", { class: "primary", disabled: !p.validation.valid || !draft.differs_from_active, onclick: async () => {
         if (!await ask("Publish the previewed draft as a new active version?")) return;

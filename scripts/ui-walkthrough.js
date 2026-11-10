@@ -77,6 +77,8 @@ const results = []; const step = (name, ok, extra = '') => { results.push([ok ? 
     const sv = await p.textContent('main');
     step('Session: authorization / observed / reachability shown separately',
       sv.includes('1. Switch authorization') && sv.includes('2. Observed on the switch') && sv.includes('not_observed'));
+    step('Session (VLAN switch): the policy action is labelled Re-authenticate',
+      await p.isVisible('button:has-text("Re-authenticate (apply active policy)")'));
     await p.click('button.danger:has-text("Quarantine")'); await p.waitForSelector('#confirm-dialog[open]');
     const warn = await p.textContent('#confirm-dialog .dialog-msg');
     await p.click('#confirm-ok'); await p.waitForTimeout(1500);
