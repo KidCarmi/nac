@@ -122,12 +122,13 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc4`: clean qualification IN PROGRESS. Interim reported by ASTRA (2026-11-10); evidence package pending
+### `pilot-aruba-rc4`: clean qualification, published (ASTRA, 2026-11-10, [`ef64a48`](https://github.com/KidCarmi/nac/tree/ef64a48a91fdd884bc2a1c516a893df16a111639/lab/evidence/aruba-rc4-clean-20261110), 26/26 manifest entries verified here). **Not release-cleared**
 
 **Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, nacd `dd2b6137…`
-(independently built and running), on a **fresh, recoverable Ubuntu guest**
-installed with the documented installer. The candidate stays frozen.
-Nothing below is verified here until the package is published.
+(independently built and running; the package manifest names the same
+candidate and nacd), on a **fresh, recoverable Ubuntu guest** installed with
+the documented installer. The candidate stays frozen. ASTRA's README in the
+package has the exact timings and every manual intervention.
 
 | Matrix row | Reported result |
 |---|---|
@@ -138,7 +139,11 @@ Nothing below is verified here until the package is published.
 | 2.2 D2 | **PASS** in a clean console: liveness `unknown` (accounting Start, no Stop); switch observation unavailable; endpoint reachability `not_observed` |
 | 4.6 nacd outage | **Existing corp session:** HTTP 200 with nacd stopped. **Fresh login:** Access-Reject, switch `Fail`, corp TCP unreachable. **After recovery:** fresh login Access-Accept, `Success`, role `corp`, TCP 200 |
 | **4.5 planned full EVE restart** | **FAIL for automatic lab recovery; product regression after repair PASS. No product defect established.**<br>• **Product:** all product services and the installed hashes survived; policy v2, the session and the override persisted.<br>• **Lab:** recovery failed before any valid endpoint probe, for five causes, each with taps and diagnostics, and each repaired by an explicit, recorded intervention (lab prerequisite P7 below).<br>• **After repair:** the same product accepted EAP-TLS with v2 `corp`. Console Quarantine/Restore ACKed twice, with switch role changes and fresh TCP (quarantine: corp timeout, remediation 200; restore: corp 200). Second pair: CoA `0x18` at 07:47:20.130736 UTC and `0x25` at 07:49:53.244821 UTC. First blocked corp SYN +0.067 s after the request; first restored corp SYN-ACK +0.611 s (EVE clock). No EAP or RADIUS during these CoAs |
-| Remaining | The rest of rows 4–5 and the evidence package are still running |
+| UI/API role CoA | **PASS for the observed console path.** API negative cases were not run again in this package (they passed on the same role code in rc3, `148e196`) |
+| Interactive password change on this guest | **BLOCKED.** Not performed on the rc4 guest; the earlier rc10 Account-page evidence does not qualify rc4 |
+| 5 Arista regression, same binary | **NOT RUN.** The isolated vEOS topology still needs nacd `dd2b6137…` wired in; earlier vEOS results are historical, not an rc4 pass |
+| Windows 10/11, physical switch | **BLOCKED.** None authorized in this run |
+| Remaining | ASTRA is running the remaining independent checks |
 
 **Console wording note U2 (not a defect in enforcement).** On a role switch,
 the button "Re-authenticate (apply active policy)" sends a **role CoA**;
@@ -148,7 +153,7 @@ mislead an operator. It is **not changed during the freeze.**
   policy" on role switches.
 - **Rows to rerun:** 1.6 and 3.1–3.2.
 
- (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
+### `pilot-aruba-rc4`: targeted D2 retest PASS (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
 
 **Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, built with
 Go 1.25.0, linux/amd64, CGO off; the nacd SHA-256 matched `dd2b6137…`.
@@ -162,7 +167,7 @@ install.
 | Regression smoke: console Quarantine / Restore | **PASS within the observed scope.** Quarantine ACK 20:12:13.978 UTC: corp fresh TCP timed out, remediation 200. Restore ACK 20:14:07.617 UTC: corp 200, remediation 200. Final switch session: dot1x `Success`, role `corp`, VLAN 10 on 1/1/1 |
 | Not run on rc4 (BLOCKED in ASTRA's package) | A clean rc4 install, admission, policy, chaos, restart, Arista, Windows and physical-switch regression. rc4 is **not** fully qualified; the unchanged code's rc3 results are in the next section |
 
-, A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109), 77/77 manifest entries verified here)
+### `pilot-aruba-rc3`: D1 PASS, A1–A9 PASS, operator-status wording FAIL (ASTRA, 2026-11-09, [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109), 77/77 manifest entries verified here)
 
 **Scope.** Exact `d96bb741e8f36019af4c6d5152491c2e0a874fe6`, nacd
 `01e88d8b…` (independently built; the installed hashes matched the pins),
