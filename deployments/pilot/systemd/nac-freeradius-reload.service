@@ -1,0 +1,14 @@
+[Unit]
+Description=Restart FreeRADIUS to load switches registered in nacd
+# FreeRADIUS 3 reads clients only at start (a HUP does not reload them).
+# The helper records the outcome in /var/lib/nac/freeradius-reload.status;
+# nacd reports a switch as configured only from that record.
+# No start-rate limit: a burst of switch changes must never leave the unit
+# refusing to start. The helper bounds its own passes and serialises runs.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/nac-freeradius-reload
+# Up to NAC_RELOAD_MAX_PASSES restarts of FreeRADIUS during a burst.
+TimeoutStartSec=5min

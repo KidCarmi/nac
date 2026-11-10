@@ -9,10 +9,19 @@ operators manage devices and policies through an authenticated REST API.
 
 > **Status:** Foundation release. The control-plane API, policy engine,
 > persistence, authentication/authorization, observability, and deployment
-> tooling are implemented, tested, and documented. The React web console is a
-> placeholder (`/web`) and tracked as future work.
+> tooling are implemented, tested, and documented. A minimal operator console
+> for the wired pilot is embedded in nacd at `/ui/` (`/web`).
 
 ---
+
+## Wired pilot
+
+The pilot (EAP-TLS on Arista EOS 4.29.2F, corp/quarantine VLANs, FreeRADIUS
+3.2.5, operator console) is documented in [`docs/pilot/`](docs/pilot):
+[installation](docs/pilot/installation.md),
+[operator walkthrough](docs/pilot/operator-walkthrough.md),
+[known limitations](docs/pilot/known-limitations.md) and the
+[lab API/evidence contract](docs/pilot/astra-contract.md).
 
 ## Why this exists
 

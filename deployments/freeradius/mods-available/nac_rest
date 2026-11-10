@@ -1,0 +1,90 @@
+# NAC decision service (nacd) over HTTP. Installed by deploy/install.sh.
+#
+# Every call identifies the switch by the RADIUS packet source address
+# (?client=...), never by NAS-IP-Address. nacd answers HTTP 200 with a
+# decision; anything else (connection refused, timeout, 4xx, 5xx) is treated
+# by sites-available/nac as "decision service unavailable" (fail closed).
+
+rest nac_authorize {
+	$INCLUDE ${confdir}/nac/nac-url.conf
+	connect_timeout = 2.0
+	post-auth {
+		uri = "${..connect_uri}/api/v1/radius/authorize?client=%{Packet-Src-IP-Address}"
+		method = 'post'
+		body = 'json'
+		auth = 'basic'
+		require_auth = yes
+		username = "freeradius"
+		$INCLUDE ${confdir}/nac/nac-token.conf
+		timeout = 3.0
+		# Large attributes (EAP-Message, certificate fields) must fit one
+		# chunk, or rlm_rest truncates the JSON body.
+		chunk = 16384
+	}
+	pool {
+		start = 0
+		min = 0
+		max = 32
+		spare = 4
+		uses = 0
+		retry_delay = 1
+		lifetime = 0
+		idle_timeout = 60
+	}
+}
+
+rest nac_reject {
+	$INCLUDE ${confdir}/nac/nac-url.conf
+	connect_timeout = 2.0
+	post-auth {
+		uri = "${..connect_uri}/api/v1/radius/reject?client=%{Packet-Src-IP-Address}"
+		method = 'post'
+		body = 'json'
+		auth = 'basic'
+		require_auth = yes
+		username = "freeradius"
+		$INCLUDE ${confdir}/nac/nac-token.conf
+		timeout = 3.0
+		# Large attributes (EAP-Message, certificate fields) must fit one
+		# chunk, or rlm_rest truncates the JSON body.
+		chunk = 16384
+	}
+	pool {
+		start = 0
+		min = 0
+		max = 16
+		spare = 2
+		uses = 0
+		retry_delay = 1
+		lifetime = 0
+		idle_timeout = 60
+	}
+}
+
+rest nac_accounting {
+	$INCLUDE ${confdir}/nac/nac-url.conf
+	connect_timeout = 2.0
+	accounting {
+		uri = "${..connect_uri}/api/v1/radius/accounting?client=%{Packet-Src-IP-Address}"
+		method = 'post'
+		body = 'json'
+		auth = 'basic'
+		require_auth = yes
+		username = "freeradius"
+		$INCLUDE ${confdir}/nac/nac-token.conf
+		timeout = 3.0
+		# Large attributes (EAP-Message, certificate fields) must fit one
+		# chunk, or rlm_rest truncates the JSON body.
+		chunk = 16384
+	}
+	pool {
+		start = 0
+		min = 0
+		max = 16
+		spare = 2
+		uses = 0
+		retry_delay = 1
+		lifetime = 0
+		idle_timeout = 60
+	}
+}

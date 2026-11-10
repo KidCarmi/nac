@@ -1,18 +1,113 @@
 openapi: 3.1.0
 info:
   title: NAC Platform API
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
-    REST API for the enterprise Network Access Control (NAC) platform.
+    REST API for the enterprise Network Access Control (NAC) platform: endpoint
+    inventory, versioned access policy, the FreeRADIUS decision adapter, switch
+    onboarding, session troubleshooting and Change of Authorization (CoA).
+
+    This document is the integration contract for API clients (for example an
+    external operator frontend). Everything a client needs is reachable through
+    the operations documented here; the embedded console at `/ui/` uses the same
+    `/api/v1` operations and has no private API.
+
+    ## Versioning and compatibility
+    - `info.version` versions this document. The URL prefix `/api/v1` is the
+      compatibility boundary.
+    - Within `/api/v1`, changes are **additive only**: new endpoints, new
+      optional request fields, new response fields, and new values in string
+      sets that are documented as open (for example event `stage`, `result`
+      and `source`).
+    - Removing or renaming a field or endpoint, changing a field's type, or
+      changing the meaning of an existing field or status code requires a new
+      prefix (`/api/v2`), served alongside `/api/v1` during a migration period.
+    - Clients **must ignore unknown response fields** and must tolerate unknown
+      values in open string sets.
+    - Clients should treat a `null` array as an empty array: several list
+      fields are encoded as `null` rather than `[]` when empty (marked
+      nullable below).
+    - Request bodies are decoded strictly: an unknown field, a body with
+      trailing data, or malformed JSON is rejected with `400`. Send only the
+      fields documented for the operation.
+    - Unversioned system paths (`/healthz`, `/readyz`, `/version`, `/metrics`,
+      `/openapi.yaml`) and the console (`/`, `/ui/`) are operational
+      surfaces, not part of the `/api/v1` contract.
 
     ## Authentication
-    - **Operator endpoints** use a bearer JWT obtained from `POST /api/v1/auth/login`.
-    - **The access-evaluation endpoint** (`POST /api/v1/access/evaluate`) is
-      called by trusted network enforcement points and authenticates with a
-      static service token presented as a bearer token.
+    - **Operator endpoints** (`operatorJWT`) use a bearer JWT obtained from
+      `POST /api/v1/auth/login` (or returned by `POST /api/v1/auth/password`).
+      The token is only a claim: on every request the server loads the
+      operator record and rejects the token (`401`) if the operator was
+      deleted or disabled, or if the token was issued before the operator's
+      last password change (each password change revokes all earlier
+      sessions). The operator's **current** role from the database is
+      enforced, not the role embedded in the token.
+    - **Enforcement-point endpoints** (`serviceToken`) are
+      `POST /api/v1/access/evaluate` and
+      `POST /api/v1/radius/{authorize,reject,accounting}`. They authenticate
+      with the static service token (`NAC_SERVICE_TOKEN`), presented as
+      `Authorization: Bearer <token>`; the RADIUS adapter routes also accept
+      HTTP Basic with the token as the password (the username is ignored),
+      which is how FreeRADIUS `rlm_rest` authenticates. Operator JWTs are not
+      accepted there, and the service token is not accepted on operator
+      endpoints.
+    - Failed authentication returns `401` with
+      `WWW-Authenticate: Bearer realm="nac"` and no detail about the cause.
+
+    ## Authorization
+    - All authorization is enforced **server-side, per request**. Each
+      operator operation requires one RBAC permission, listed in the operation
+      as the `x-required-permission` extension. A missing permission yields
+      `403`. Operations without `x-required-permission` are unauthenticated,
+      service-token operations, or self-service operations available to any
+      authenticated operator.
+    - The operator's identity is taken from the token's subject and the
+      operator record, **never from request bodies**: no request field can
+      name the actor.
+    - Every mutating operation is attributed to that operator: in the audit
+      log (`GET /api/v1/audit`, `actor_id`/`actor_email`) and in the records it
+      creates (`created_by`, `activated_by`, `override_by`, which hold the
+      operator's email).
+    - A client should read `GET /api/v1/auth/me` (`permissions`) to decide what
+      to offer, rather than hard-coding a role-to-permission mapping. The
+      current matrix is:
+
+      | Permission | admin | operator | viewer |
+      |---|---|---|---|
+      | `endpoint:read` | yes | yes | yes |
+      | `endpoint:write` | yes | yes | no |
+      | `policy:read` | yes | yes | yes |
+      | `policy:write` | yes | yes | no |
+      | `audit:read` | yes | yes | yes |
+      | `network:read` | yes | yes | yes |
+      | `network:write` | yes | yes | no |
+      | `session:act` | yes | yes | no |
+      | `access:evaluate` | yes | yes | no |
+      | `operator:manage` | yes | no | no |
+
+      `access:evaluate` and `operator:manage` are defined but no `/api/v1`
+      operation currently requires them.
 
     ## Errors
-    All errors are returned as RFC 7807 `application/problem+json` documents.
+    All API errors are RFC 7807 `application/problem+json` documents
+    (schema `Problem`). `instance` carries the request ID (also returned in
+    the `X-Request-Id` response header) for correlation with server logs.
+    - `400` malformed request: unparseable body or strict-decoding failure,
+      bad path or query parameter, body larger than the configured limit
+      (`NAC_HTTP_MAX_BODY_BYTES`, default 1 MiB).
+    - `401` missing or invalid credentials. `403` missing permission.
+    - `404` the resource does not exist. `409` a uniqueness or state conflict
+      (`detail` explains it). `422` validation failed: `detail` carries the
+      reasons; `errors` (field to message) is present only where the server
+      reports field-level errors.
+    - `429` the per-client-IP rate limit (`NAC_HTTP_RATE_LIMIT_PER_MIN`,
+      default 600 per minute) was exceeded. It can be returned by **any**
+      route.
+    - `500` unexpected error; no internal detail is returned.
+
+    Requests to unregistered paths or methods get Go's default plain-text
+    `404`/`405`, not a problem document.
   license:
     name: Apache-2.0
 servers:
@@ -20,30 +115,79 @@ servers:
     description: Local development
 tags:
   - name: System
+    description: Unauthenticated health, build and metrics endpoints.
   - name: Authentication
+    description: Operator sign-in, identity and password change.
   - name: Endpoints
+    description: Device inventory (endpoint records keyed by MAC).
   - name: Policies
+    description: |
+      Rules of the editable policy **draft**. Edits never affect live
+      decisions until the draft is published (see Policy versions).
+  - name: Policy versions
+    description: |
+      Draft validation, preview, atomic publication, immutable versions,
+      restoration and activation history. Publishing or restoring applies at
+      the next authentication; it sends no CoA and never clears session
+      overrides.
   - name: Access
+    description: Legacy access-evaluation API for enforcement points (service token).
   - name: Audit
+    description: Append-only audit log of security-relevant actions.
+  - name: Switches
+    description: RADIUS clients (Arista switches) and their onboarding status.
+  - name: Identity bindings
+    description: Certificate identity (issuer + serial) to device bindings.
+  - name: Sessions
+    description: Authenticated sessions (switch + NAS-Port-Id + MAC) and their explanation.
+  - name: CoA
+    description: Operator session actions that send a RADIUS Change of Authorization.
+  - name: Events
+    description: Authentication timeline events and decision records.
+  - name: RADIUS adapter
+    description: |
+      FreeRADIUS `rlm_rest` integration (service token) and the operator-facing
+      RADIUS health summary.
+  - name: Console
+    description: The embedded operator console (static files, not part of the API contract).
+
 paths:
+  # ------------------------------------------------------------------ System
   /healthz:
     get:
       tags: [System]
+      operationId: getHealthz
       summary: Liveness probe
+      description: Returns 200 whenever the process can serve requests. Performs no dependency checks.
       security: []
       responses:
-        "200": { description: Service is alive }
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
   /readyz:
     get:
       tags: [System]
+      operationId: getReadyz
       summary: Readiness probe
+      description: Checks that the database is reachable (2 s timeout).
       security: []
       responses:
-        "200": { description: Service is ready }
-        "503": { description: A critical dependency is unavailable }
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReadyStatus" }
+        "503":
+          description: A critical dependency is unavailable (`status` is `unavailable`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReadyStatus" }
   /version:
     get:
       tags: [System]
+      operationId: getVersion
       summary: Build metadata
       security: []
       responses:
@@ -55,22 +199,77 @@ paths:
   /metrics:
     get:
       tags: [System]
+      operationId: getMetrics
       summary: Prometheus metrics
+      description: Prometheus text exposition format. Unauthenticated; restrict it at the network layer.
       security: []
       responses:
-        "200": { description: Prometheus exposition format }
+        "200":
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema: { type: string }
   /openapi.yaml:
     get:
       tags: [System]
+      operationId: getOpenAPI
       summary: This OpenAPI document
+      description: The contract embedded in the running binary, so it always matches the deployed version.
       security: []
       responses:
-        "200": { description: The OpenAPI specification }
+        "200":
+          description: The OpenAPI specification
+          content:
+            application/yaml:
+              schema: { type: string }
 
+  # ------------------------------------------------------------------ Console
+  /:
+    get:
+      tags: [Console]
+      operationId: getRoot
+      summary: Redirect to the console
+      description: Informational. Only the exact path `/` matches; it redirects to `/ui/`.
+      security: []
+      responses:
+        "302":
+          description: Redirect to `/ui/`
+          headers:
+            Location:
+              schema: { type: string, const: /ui/ }
+  /ui/:
+    get:
+      tags: [Console]
+      operationId: getConsole
+      summary: Operator console (static files)
+      description: |
+        Informational. Serves the embedded single-page console and its static
+        assets under `/ui/` (for example `/ui/app.js`). Serving it requires no
+        authentication; every action it takes goes through the documented
+        `/api/v1` operations and their authorization.
+      security: []
+      responses:
+        "200":
+          description: Console HTML or a static asset
+          content:
+            text/html:
+              schema: { type: string }
+        "404":
+          description: No such asset (plain text)
+
+  # ------------------------------------------------------------------ Authentication
   /api/v1/auth/login:
     post:
       tags: [Authentication]
+      operationId: login
       summary: Authenticate an operator and obtain a JWT
+      description: |
+        Unknown email, wrong password and disabled operator all return the
+        same `401` (no user-enumeration oracle). The token expires at
+        `expires_at`; there is no refresh operation, sign in again. Every
+        login is audited as `operator.login`: success with the operator id,
+        failure with the submitted email and one generic reason for all
+        failure causes (so the audit log is not an enumeration oracle either).
       security: []
       requestBody:
         required: true
@@ -82,31 +281,96 @@ paths:
           description: Authentication succeeded
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LoginResponse" }
-        "400": { $ref: "#/components/responses/Problem" }
-        "401": { $ref: "#/components/responses/Problem" }
-        "429": { $ref: "#/components/responses/Problem" }
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getMe
+      summary: The authenticated operator
+      description: |
+        Self-service; any authenticated operator (no permission required).
+        Returns the operator as the server sees it now: the current role and
+        permissions from the operator record, not from the token.
+      responses:
+        "200":
+          description: The authenticated operator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/auth/password:
+    post:
+      tags: [Authentication]
+      operationId: changePassword
+      summary: Change the authenticated operator's own password
+      description: |
+        Self-service; any authenticated operator, for their own account only
+        (the account is the token's subject). Requires the current password.
+        On success every earlier token of this operator is revoked (including
+        the one used for this request) and a fresh token is returned; the
+        client must replace its stored token. A wrong current password returns
+        `403` (the session itself stays valid). The new password must be
+        12-256 characters and differ from the current password and from the
+        account email (`422` otherwise). Audited as `operator.password_change`
+        (success and failure).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordChangeRequest" }
+      responses:
+        "200":
+          description: Password changed; a new token for this session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: The current password is incorrect (title `Current password incorrect`)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
 
+  # ------------------------------------------------------------------ Endpoints
   /api/v1/endpoints:
     get:
       tags: [Endpoints]
+      operationId: listEndpoints
       summary: List endpoints
+      x-required-permission: endpoint:read
       parameters:
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
-        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
-        - { name: access_status, in: query, schema: { $ref: "#/components/schemas/AccessStatus" } }
-        - { name: q, in: query, schema: { type: string }, description: MAC or hostname prefix }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: access_status
+          in: query
+          schema: { $ref: "#/components/schemas/AccessStatus" }
+        - name: q
+          in: query
+          description: MAC or hostname prefix
+          schema: { type: string }
       responses:
         "200":
           description: A page of endpoints
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EndpointList" }
-        "401": { $ref: "#/components/responses/Problem" }
-        "403": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Endpoints]
+      operationId: createEndpoint
       summary: Create an endpoint
+      description: |
+        The MAC is normalised to lower-case colon form. New endpoints start
+        with `access_status` `unknown`; an `access_status` in the request is
+        ignored on create. Setting `posture` records `posture_source` and
+        `posture_observed_at`. Audited as `endpoint.create`.
+      x-required-permission: endpoint:write
       requestBody:
         required: true
         content:
@@ -118,24 +382,40 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Endpoint" }
-        "409": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
   /api/v1/endpoints/{id}:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - $ref: "#/components/parameters/IdPath"
     get:
       tags: [Endpoints]
+      operationId: getEndpoint
       summary: Get an endpoint
+      x-required-permission: endpoint:read
       responses:
         "200":
           description: The endpoint
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Endpoint" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Endpoints]
+      operationId: updateEndpoint
       summary: Update an endpoint
+      description: |
+        The MAC is immutable (`mac` in the body is ignored). `ip`, `hostname`,
+        `device_type` and `attributes` are replaced by the request values
+        (omitting them clears them). `posture` and `access_status` are changed
+        only when non-empty; every posture write refreshes
+        `posture_observed_at`. Audited as `endpoint.update`.
+      x-required-permission: endpoint:write
       requestBody:
         required: true
         content:
@@ -147,31 +427,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Endpoint" }
-        "404": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
     delete:
       tags: [Endpoints]
+      operationId: deleteEndpoint
       summary: Delete an endpoint
+      description: Audited as `endpoint.delete`.
+      x-required-permission: endpoint:write
       responses:
         "204": { description: Deleted }
-        "404": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
+  # ------------------------------------------------------------------ Policies (draft rules)
   /api/v1/policies:
     get:
       tags: [Policies]
-      summary: List policies
+      operationId: listPolicies
+      summary: List draft rules
+      x-required-permission: policy:read
       parameters:
-        - { name: limit, in: query, schema: { type: integer } }
-        - { name: offset, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
       responses:
         "200":
-          description: A page of policies
+          description: A page of draft rules
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PolicyList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Policies]
-      summary: Create a policy
+      operationId: createPolicy
+      summary: Add a rule to the draft
+      description: |
+        Edits the draft only; live decisions do not change until the draft is
+        published. Condition fields must come from `GET /api/v1/policy-inputs`.
+        Rule names are unique (`409`). Audited as `policy.create`.
+      x-required-permission: policy:write
       requestBody:
         required: true
         content:
@@ -183,24 +483,38 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Policy" }
-        "409": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
   /api/v1/policies/{id}:
     parameters:
-      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - $ref: "#/components/parameters/IdPath"
     get:
       tags: [Policies]
-      summary: Get a policy
+      operationId: getPolicy
+      summary: Get a draft rule
+      x-required-permission: policy:read
       responses:
         "200":
-          description: The policy
+          description: The rule
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Policy" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Policies]
-      summary: Update a policy
+      operationId: updatePolicy
+      summary: Replace a draft rule
+      description: |
+        Full replacement of the rule: omitted fields take their zero value
+        (for example `enabled` becomes false). Draft only. Audited as
+        `policy.update`.
+      x-required-permission: policy:write
       requestBody:
         required: true
         content:
@@ -212,18 +526,255 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Policy" }
-        "404": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
     delete:
       tags: [Policies]
-      summary: Delete a policy
+      operationId: deletePolicy
+      summary: Remove a rule from the draft
+      description: Draft only. Audited as `policy.delete`.
+      x-required-permission: policy:write
       responses:
         "204": { description: Deleted }
-        "404": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
+  # ------------------------------------------------------------------ Policy versions
+  /api/v1/policy-inputs:
+    get:
+      tags: [Policy versions]
+      operationId: listPolicyInputs
+      summary: Decision inputs and operators a rule may use
+      description: |
+        The authoritative catalog of condition fields, the only evidence
+        sources allowed to supply each, and the match operators. Fields
+        prefixed `attr.` are custom endpoint attributes. On missing or stale
+        evidence `eq`, `ne` and `in` never match (the rule is skipped and
+        reported as insufficient evidence), `exists` is false and `absent` is
+        true.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Input catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyInputs" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/policy-draft:
+    get:
+      tags: [Policy versions]
+      operationId: getPolicyDraft
+      summary: The draft with digest and validation
+      description: |
+        `digest` identifies exactly this draft (rules + default action).
+        Validation errors block publication; warnings do not.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyDraft" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/policy-draft/settings:
+    put:
+      tags: [Policy versions]
+      operationId: updatePolicyDraftSettings
+      summary: Set the draft's default action
+      description: |
+        Sets the action applied when no rule matches, for the next publish.
+        Only `deny` passes draft validation on the RADIUS path (use an
+        explicit catch-all rule otherwise). Returns the updated draft.
+        Audited as `policy.draft.settings`.
+      x-required-permission: policy:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DraftSettingsRequest" }
+      responses:
+        "200":
+          description: The updated draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyDraft" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/policy-draft/preview:
+    get:
+      tags: [Policy versions]
+      operationId: previewPolicyDraft
+      summary: Predict the effect of publishing the draft
+      description: |
+        A **prediction**, not a guarantee: the latest recorded decision inputs
+        of each session (last 30 days) are evaluated under the active version
+        and under the draft. Inputs may have changed since they were recorded;
+        actual decisions are made at the next authentication. A session under
+        an operator quarantine override is quarantined under both
+        (`override_applies`). `rows` lists only changed cases and cases with
+        insufficient evidence. Pass `draft_digest` to publish as
+        `expected_digest`.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: The preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Preview" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No active policy version exists
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+  /api/v1/policy-draft/publish:
+    post:
+      tags: [Policy versions]
+      operationId: publishPolicyDraft
+      summary: Publish the draft as a new active version
+      description: |
+        Atomically snapshots the draft into a new immutable version and
+        activates it. `expected_digest` is required and must equal the
+        draft's current digest (the one previewed): if the draft changed
+        since, or it is identical to the active version, the publish is
+        refused with `409`. A missing `expected_digest` or validation errors
+        yield `422`.
+
+        Applies to authentications from now on. Existing sessions keep their
+        authorization until they re-authenticate; **no CoA is sent** (use the
+        session `reauthenticate` action). Session overrides are never
+        cleared. Audited as `policy.publish` (success and failure); the
+        version's `created_by` and the activation's `activated_by` are the
+        operator.
+      x-required-permission: policy:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublishRequest" }
+      responses:
+        "201":
+          description: Published
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/policy-versions:
+    get:
+      tags: [Policy versions]
+      operationId: listPolicyVersions
+      summary: List immutable policy versions
+      description: Newest first; the active version has `active` true.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: All versions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyVersionList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/policy-versions/{number}:
+    parameters:
+      - $ref: "#/components/parameters/VersionNumberPath"
+    get:
+      tags: [Policy versions]
+      operationId: getPolicyVersion
+      summary: Get one policy version
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: The version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyVersion" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/policy-versions/{number}/restore:
+    parameters:
+      - $ref: "#/components/parameters/VersionNumberPath"
+    post:
+      tags: [Policy versions]
+      operationId: restorePolicyVersion
+      summary: Re-activate an earlier version
+      description: |
+        Re-activates the version as a **new activation** (kind `restore`);
+        history is never rewritten. The version is re-validated against
+        today's switches (`422` if no longer valid); restoring the active
+        version is `409`. By default the draft is reset to the restored
+        version's rules (`reset_draft`). The body is optional.
+
+        Applies to authentications from now on; **no CoA is sent**. Sessions
+        under an operator quarantine override stay quarantined until restored
+        individually. Audited as `policy.restore` (success and failure).
+      x-required-permission: policy:write
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreRequest" }
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/policy-activations:
+    get:
+      tags: [Policy versions]
+      operationId: listPolicyActivations
+      summary: Activation history
+      description: Append-only, newest first.
+      x-required-permission: policy:read
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum entries (1-500; default 100 when absent or out of range).
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Activations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyActivationList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ------------------------------------------------------------------ Access (service token)
   /api/v1/access/evaluate:
     post:
       tags: [Access]
+      operationId: evaluateAccess
       summary: Evaluate an access request (enforcement-point facing)
+      description: |
+        Legacy decision API. Evaluates the **active** policy version (not the
+        draft) against the request and the endpoint record. Service token as
+        Bearer only. `422` carries field-level `errors` for `mac` and
+        `posture`. Audited as `access.evaluate` with the decided action as
+        outcome.
       security:
         - serviceToken: []
       requestBody:
@@ -237,74 +788,765 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AccessDecision" }
-        "401": { $ref: "#/components/responses/Problem" }
-        "422": { $ref: "#/components/responses/Problem" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
 
+  # ------------------------------------------------------------------ Audit
   /api/v1/audit:
     get:
       tags: [Audit]
+      operationId: listAudit
       summary: List audit events
+      description: Newest first.
+      x-required-permission: audit:read
       parameters:
-        - { name: limit, in: query, schema: { type: integer } }
-        - { name: offset, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
       responses:
         "200":
           description: A page of audit events
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuditList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ------------------------------------------------------------------ Switches
+  /api/v1/switches:
+    get:
+      tags: [Switches]
+      operationId: listSwitches
+      summary: List switches with onboarding status
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: All switches
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Switches]
+      operationId: createSwitch
+      summary: Register a switch
+      description: |
+        Registers a RADIUS client and rewrites the FreeRADIUS client file
+        (FreeRADIUS restarts, about a second). `radius_secret` is required.
+        `segment_vlans` must include `quarantine`. `nas_ip` defaults to
+        `radius_source_ip`, `coa_port` to 3799. Secrets are write-only.
+        Name and RADIUS source IP are unique (`409`). Audited as
+        `switch.create`.
+      x-required-permission: network:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SwitchInput" }
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/switches/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Switches]
+      operationId: getSwitch
+      summary: Get a switch with onboarding status
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: The switch
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Switches]
+      operationId: updateSwitch
+      summary: Replace a switch's settings
+      description: |
+        Full replacement of the settings, except: an empty `radius_secret` or
+        `eapi_password` keeps the stored value, and `clear_eapi` true removes
+        the eAPI URL, username and password. Rewrites the FreeRADIUS client
+        file. Audited as `switch.update`.
+      x-required-permission: network:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SwitchInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Switches]
+      operationId: deleteSwitch
+      summary: Remove a switch
+      description: Rewrites the FreeRADIUS client file. Audited as `switch.delete`.
+      x-required-permission: network:write
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/switches/{id}/config:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Switches]
+      operationId: getSwitchConfig
+      summary: Generated EOS configuration
+      description: |
+        Plain-text EOS configuration validated on EOS 4.29.2F. The RADIUS key
+        is the placeholder `<RADIUS_SHARED_SECRET>` unless
+        `include_secret=true`, which additionally requires `network:write`
+        (`403` otherwise) and is audited as `switch.config.reveal_secret`.
+      x-required-permission: network:read
+      parameters:
+        - name: include_secret
+          in: query
+          description: "`true` to embed the shared secret (requires `network:write`)."
+          schema: { type: string, enum: ["true", "false"] }
+      responses:
+        "200":
+          description: The configuration
+          content:
+            text/plain:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/switches/{id}/probe:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [Switches]
+      operationId: probeSwitch
+      summary: Probe switch management reachability (eAPI)
+      description: |
+        Runs `show version` over eAPI and records the result in
+        `status.reachable`. Without eAPI configured it returns the switch
+        unchanged (`reachable` is `unknown`). No request body.
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: The switch after the probe
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/switches/{id}/observe:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [Switches]
+      operationId: observeSwitch
+      summary: Refresh switch-observed session state now (eAPI)
+      description: |
+        Polls `show dot1x hosts` and updates `observed` on the switch's active
+        sessions. `422` when the switch has no eAPI access configured; an
+        eAPI failure is a `500`. No request body.
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: The switch after observation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/switches/{id}/verify:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [Switches]
+      operationId: verifySwitch
+      summary: Record a verified test authentication
+      description: |
+        Requires an endpoint granted a VLAN through this switch within the
+        verify window. With eAPI the switch must also report SUCCESS on the
+        requested VLAN; without eAPI the verification is "decision only"
+        (stated in `status.verified.detail`). `422` with the reason otherwise.
+        No request body. Audited as `switch.verify`.
+      x-required-permission: network:write
+      responses:
+        "200":
+          description: The switch, verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ------------------------------------------------------------------ Identity bindings
+  /api/v1/identity-bindings:
+    get:
+      tags: [Identity bindings]
+      operationId: listIdentityBindings
+      summary: List identity bindings
+      x-required-permission: network:read
+      parameters:
+        - name: endpoint_id
+          in: query
+          description: Only bindings to this endpoint.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bindings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BindingList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Identity bindings]
+      operationId: createIdentityBinding
+      summary: Bind a certificate identity to a device
+      description: |
+        Binds issuer DN + certificate serial (normalised to upper-case hex
+        without leading zeros) to an existing endpoint. Takes effect at the
+        next authentication. A certificate can be bound once (`409`). A
+        non-existent `endpoint_id` is `422`. Prefer
+        `POST /api/v1/sessions/{id}/bind`, which copies the identity from a
+        validated session. Audited as `binding.create`.
+      x-required-permission: network:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BindingInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/identity-bindings/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    delete:
+      tags: [Identity bindings]
+      operationId: deleteIdentityBinding
+      summary: Remove an identity binding
+      description: Takes effect at the next authentication (no CoA is sent). Audited as `binding.delete`.
+      x-required-permission: network:write
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ------------------------------------------------------------------ Sessions
+  /api/v1/sessions:
+    get:
+      tags: [Sessions]
+      operationId: listSessions
+      summary: List sessions with requested vs observed state
+      description: Newest authentication first, at most 200.
+      x-required-permission: network:read
+      parameters:
+        - name: state
+          in: query
+          schema: { $ref: "#/components/schemas/SessionState" }
+        - name: switch_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          description: Substring of MAC, certificate CN or NAS-Port-Id (case-insensitive).
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sessions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/sessions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Sessions]
+      operationId: getSession
+      summary: Full explanation of one session
+      description: |
+        The session with its switch, device, binding, decisions (with inputs
+        and rule trace), CoA requests, chronological timeline (the newest
+        1000 events) and an operator-language `explanation`.
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: Session detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/sessions/{id}/bind:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [Identity bindings]
+      operationId: bindSession
+      summary: Bind the session's certificate to a device
+      description: |
+        Creates an identity binding from the certificate this session
+        authenticated with (issuer, serial and CN as validated by EAP-TLS).
+        `422` if the session has no EAP-TLS-validated certificate or the
+        endpoint does not exist; `409` if the certificate is already bound.
+        Takes effect at the next authentication. Audited as `binding.create`.
+      x-required-permission: network:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BindSessionRequest" }
+      responses:
+        "201":
+          description: Binding created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ------------------------------------------------------------------ CoA
+  /api/v1/sessions/{id}/quarantine:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [CoA]
+      operationId: quarantineSession
+      summary: Quarantine a session (override + CoA)
+      description: |
+        Records an operator `quarantine` override on the session **first**,
+        then sends a CoA-Request asking the switch to apply the quarantine
+        VLAN. The override takes precedence over policy at every
+        authentication of this identity on this port (switch + port + MAC +
+        certificate issuer and serial) until restored, even if the CoA
+        fails. Policy publish/restore never clears it. If the switch replaces
+        the session (accounting Stop, then a new authentication, or a
+        reconnect), the new session inherits the override and a CoA is
+        reported on the session whose re-authentication observed it.
+
+        `202` means the request is recorded, not enforced: follow
+        `coa.state` (`requested`, `sent`, then `acked`/`nak`/`timeout`/`failed`,
+        then `observed`) via `GET /api/v1/sessions/{id}`. The session must be
+        `active` (`422` otherwise) and only one CoA may be in flight per
+        session (`409`). No request body. Audited as `session.quarantine`;
+        `override_by` and `created_by` are the operator.
+      x-required-permission: session:act
+      responses:
+        "202": { $ref: "#/components/responses/CoAAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/sessions/{id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [CoA]
+      operationId: restoreSession
+      summary: Clear a quarantine override (override + CoA)
+      description: |
+        Clears the session's quarantine override, then sends a CoA so the
+        re-authentication receives what the active policy decides. `422` if
+        the session has no override (use `reauthenticate`) or is not
+        `active`; `409` if a CoA is already in flight. No request body.
+        Audited as `session.restore`.
+      x-required-permission: session:act
+      responses:
+        "202": { $ref: "#/components/responses/CoAAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/sessions/{id}/reauthenticate:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    post:
+      tags: [CoA]
+      operationId: reauthenticateSession
+      summary: Re-authenticate a session now (CoA)
+      description: |
+        Sends a CoA so the session is re-decided now under the active policy
+        (the override, if any, still applies), e.g. to apply a newly
+        published version to a connected endpoint. Does not change the
+        override. `422` if not `active`; `409` if a CoA is already in flight.
+        No request body. Audited as `session.reauthenticate`.
+      x-required-permission: session:act
+      responses:
+        "202": { $ref: "#/components/responses/CoAAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ------------------------------------------------------------------ Events
+  /api/v1/decisions/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Events]
+      operationId: getDecision
+      summary: Get one decision record
+      description: The decision ID is also returned to the switch as `Class=nac:<id>`.
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: The decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DecisionRecord" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/auth-events:
+    get:
+      tags: [Events]
+      operationId: listAuthEvents
+      summary: List timeline events across sessions
+      description: Newest first. Filters are exact matches.
+      x-required-permission: network:read
+      parameters:
+        - name: stage
+          in: query
+          description: e.g. `eap-tls`, `nac-decision`, `outage`, `coa`, `observation`, `accounting`, `operator`.
+          schema: { type: string }
+        - name: result
+          in: query
+          description: e.g. `accept`, `reject`, `info`.
+          schema: { type: string }
+        - name: mac
+          in: query
+          description: Normalised MAC (lower-case, colon-separated).
+          schema: { type: string }
+        - name: limit
+          in: query
+          description: 1-1000; default 200 when absent or out of range.
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthEventList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ------------------------------------------------------------------ RADIUS adapter
+  /api/v1/radius/health:
+    get:
+      tags: [RADIUS adapter]
+      operationId: getRadiusHealth
+      summary: RADIUS integration summary (operator)
+      description: |
+        Operator-facing (JWT), despite the `/radius/` prefix. Last decision,
+        last EAP-TLS reject, last imported outage reject, outage-log import
+        and client-file status, and the outage semantics (no authorization
+        cache).
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: Health summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RadiusHealth" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/radius/authorize:
+    post:
+      tags: [RADIUS adapter]
+      operationId: radiusAuthorize
+      summary: FreeRADIUS post-auth decision
+      description: |
+        Called by FreeRADIUS after EAP-TLS succeeded. `200` always carries a
+        decision: `control:Tmp-String-1` is `nac-accept` (with Tunnel VLAN
+        attributes and `reply:Class` = `nac:<decision_id>`) or `nac-reject`
+        (with `reply:Reply-Message`); an unregistered switch is a
+        `nac-reject`. Any non-200 means the decision service could not decide
+        and FreeRADIUS applies its outage reject. No authorization is cached.
+      security:
+        - serviceToken: []
+        - serviceTokenBasic: []
+      parameters:
+        - $ref: "#/components/parameters/RadiusClient"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeRADIUSRequest" }
+      responses:
+        "200":
+          description: Decision in rlm_rest attribute format
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FreeRADIUSReply" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/radius/reject:
+    post:
+      tags: [RADIUS adapter]
+      operationId: radiusReject
+      summary: Record a FreeRADIUS reject not decided by NAC
+      description: Certificate failures and other rejects in Post-Auth-Type REJECT; recorded as `eap-tls` timeline events.
+      security:
+        - serviceToken: []
+        - serviceTokenBasic: []
+      parameters:
+        - $ref: "#/components/parameters/RadiusClient"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeRADIUSRequest" }
+      responses:
+        "204": { description: Recorded }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/radius/accounting:
+    post:
+      tags: [RADIUS adapter]
+      operationId: radiusAccounting
+      summary: Record RADIUS accounting
+      description: |
+        Accounting Stop ends the session. Accounting from an unregistered
+        switch or for an unknown session is ignored (`204`). An error status
+        means the record was not persisted.
+      security:
+        - serviceToken: []
+        - serviceTokenBasic: []
+      parameters:
+        - $ref: "#/components/parameters/RadiusClient"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeRADIUSRequest" }
+      responses:
+        "204": { description: Accepted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
 components:
   securitySchemes:
-    bearerAuth:
+    operatorJWT:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Operator session token from `POST /api/v1/auth/login`.
     serviceToken:
       type: http
       scheme: bearer
-      description: Static service token for network enforcement points.
-  security:
-    - bearerAuth: []
+      description: Static service token for network enforcement points (`NAC_SERVICE_TOKEN`).
+    serviceTokenBasic:
+      type: http
+      scheme: basic
+      description: The service token as the HTTP Basic password (username ignored); RADIUS adapter routes only.
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: Resource UUID. A malformed UUID is `400`.
+      schema: { type: string, format: uuid }
+    VersionNumberPath:
+      name: number
+      in: path
+      required: true
+      description: Policy version number (positive integer; otherwise `400`).
+      schema: { type: integer, minimum: 1 }
+    Limit:
+      name: limit
+      in: query
+      description: Page size (default 50 when absent or not positive; values above 200 are clamped to 200).
+      schema: { type: integer, minimum: 1, maximum: 200 }
+    Offset:
+      name: offset
+      in: query
+      description: Items to skip (negative values are treated as 0).
+      schema: { type: integer, minimum: 0 }
+    RadiusClient:
+      name: client
+      in: query
+      required: true
+      description: The RADIUS packet source IP (FreeRADIUS `%{Packet-Src-IP-Address}`); identifies the switch.
+      schema: { type: string, examples: ["10.70.99.1"] }
+
   responses:
     Problem:
       description: RFC 7807 problem document
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
+    BadRequest:
+      description: Malformed request (unparseable body, unknown field, bad parameter)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Unauthorized:
+      description: Missing or invalid credentials (also revoked or expired token, disabled operator)
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, examples: ['Bearer realm="nac"'] }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Forbidden:
+      description: The operator lacks the required permission
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: The resource does not exist
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Conflict:
+      description: Uniqueness or state conflict; `detail` explains it
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    ValidationFailed:
+      description: Validation failed; `detail` carries the reasons
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    InternalError:
+      description: Unexpected error (no internal detail)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    CoAAccepted:
+      description: Requested state recorded and CoA started
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CoAResponse" }
+
   schemas:
+    # ---------------------------------------------------------------- common
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: Stable problem type URI reference, e.g. `/problems/validation`.
+          examples: ["/problems/not-found"]
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance:
+          type: string
+          description: Request ID (same as the `X-Request-Id` header).
+        errors:
+          type: object
+          description: Field-level validation messages (422 only, when reported).
+          additionalProperties: { type: string }
     Version:
       type: object
+      required: [version, commit, build_date]
       properties:
         version: { type: string }
         commit: { type: string }
         build_date: { type: string }
-    Problem:
+    HealthStatus:
       type: object
+      required: [status, version]
       properties:
-        type: { type: string }
-        title: { type: string }
-        status: { type: integer }
-        detail: { type: string }
-        instance: { type: string }
-        errors:
-          type: object
-          additionalProperties: { type: string }
-    LoginRequest:
+        status: { type: string, const: ok }
+        version: { $ref: "#/components/schemas/Version" }
+    ReadyStatus:
       type: object
-      required: [email, password]
+      required: [status]
       properties:
-        email: { type: string, format: email }
-        password: { type: string, format: password }
-    LoginResponse:
+        status: { type: string, enum: [ready, unavailable] }
+    PageMeta:
       type: object
+      required: [limit, offset, count]
       properties:
-        token: { type: string }
-        expires_at: { type: string, format: date-time }
-        role: { $ref: "#/components/schemas/Role" }
+        limit:
+          type: integer
+          description: The page size actually applied (after the default and the maximum).
+        offset: { type: integer }
+        count:
+          type: integer
+          description: Number of items in this page.
+    Attributes:
+      type: object
+      additionalProperties: { type: string }
     Role:
       type: string
       enum: [admin, operator, viewer]
+    Permission:
+      type: string
+      enum: [endpoint:read, endpoint:write, policy:read, policy:write, access:evaluate, audit:read, operator:manage, network:read, network:write, session:act]
     AccessStatus:
       type: string
       enum: [unknown, authorized, quarantined, denied]
@@ -316,20 +1558,63 @@ components:
       enum: [allow, deny, quarantine]
     MatchOperator:
       type: string
-      enum: [eq, ne, in, exists]
-    Attributes:
+      enum: [eq, ne, in, exists, absent]
+
+    # ---------------------------------------------------------------- auth
+    LoginRequest:
       type: object
-      additionalProperties: { type: string }
-    Endpoint:
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    TokenResponse:
       type: object
+      required: [token, expires_at, role]
+      properties:
+        token: { type: string }
+        expires_at: { type: string, format: date-time }
+        role: { $ref: "#/components/schemas/Role" }
+    LoginResponse:
+      description: Alias of TokenResponse (kept for compatibility with 1.0.0).
+      $ref: "#/components/schemas/TokenResponse"
+    PasswordChangeRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, format: password }
+        new_password: { type: string, format: password, minLength: 12, maxLength: 256 }
+    Me:
+      type: object
+      required: [id, email, role, permissions]
       properties:
         id: { type: string, format: uuid }
-        mac: { type: string }
+        email: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        permissions:
+          type: array
+          description: Sorted permissions of the operator's current role.
+          items: { $ref: "#/components/schemas/Permission" }
+        password_changed_at: { type: string, format: date-time }
+
+    # ---------------------------------------------------------------- endpoints
+    Endpoint:
+      type: object
+      required: [id, mac, access_status, posture, last_seen, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        mac: { type: string, examples: ["aa:bb:cc:dd:ee:ff"] }
         ip: { type: string }
         hostname: { type: string }
         device_type: { type: string }
         access_status: { $ref: "#/components/schemas/AccessStatus" }
         posture: { $ref: "#/components/schemas/PostureStatus" }
+        posture_source:
+          type: string
+          description: Who reported posture (`posture`); absent when posture is unknown.
+        posture_observed_at:
+          type: string
+          format: date-time
+          description: When posture was reported; posture older than `NAC_POSTURE_MAX_AGE` is stale evidence.
         attributes: { $ref: "#/components/schemas/Attributes" }
         last_seen: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
@@ -338,31 +1623,45 @@ components:
       type: object
       required: [mac]
       properties:
-        mac: { type: string, examples: ["aa:bb:cc:dd:ee:ff"] }
+        mac:
+          type: string
+          description: Required on create; ignored on update (immutable).
+          examples: ["aa:bb:cc:dd:ee:ff"]
         ip: { type: string }
         hostname: { type: string }
         device_type: { type: string }
         posture: { $ref: "#/components/schemas/PostureStatus" }
-        access_status: { $ref: "#/components/schemas/AccessStatus" }
+        access_status:
+          $ref: "#/components/schemas/AccessStatus"
+          description: Applied on update only (ignored on create).
         attributes: { $ref: "#/components/schemas/Attributes" }
     EndpointList:
       type: object
+      required: [items, page]
       properties:
         items:
-          type: array
+          type: [array, "null"]
+          description: "`null` when the page is empty."
           items: { $ref: "#/components/schemas/Endpoint" }
         page: { $ref: "#/components/schemas/PageMeta" }
+
+    # ---------------------------------------------------------------- policies
     Condition:
       type: object
       required: [field, operator]
       properties:
-        field: { type: string }
+        field:
+          type: string
+          description: A field from `GET /api/v1/policy-inputs`, or `attr.<key>`.
         operator: { $ref: "#/components/schemas/MatchOperator" }
         values:
           type: array
+          description: Exactly one for `eq`/`ne`, at least one for `in`, none for `exists`/`absent`.
           items: { type: string }
     Policy:
       type: object
+      description: One rule. Rules are evaluated in ascending `priority`; all conditions must match (AND); first match wins.
+      required: [id, name, priority, enabled, conditions, action, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -370,20 +1669,30 @@ components:
         priority: { type: integer }
         enabled: { type: boolean }
         conditions:
-          type: array
+          type: [array, "null"]
           items: { $ref: "#/components/schemas/Condition" }
         action: { $ref: "#/components/schemas/PolicyAction" }
-        segment: { type: string }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        segment:
+          type: string
+          description: Segment name mapped to a VLAN per switch; required for allow/quarantine.
+        created_at:
+          type: string
+          format: date-time
+          description: Zero time (`0001-01-01T00:00:00Z`) inside drafts and versions.
+        updated_at:
+          type: string
+          format: date-time
+          description: Zero time (`0001-01-01T00:00:00Z`) inside drafts and versions.
     PolicyInput:
       type: object
       required: [name, action]
       properties:
-        name: { type: string }
+        name: { type: string, maxLength: 128 }
         description: { type: string }
         priority: { type: integer, minimum: 0 }
-        enabled: { type: boolean }
+        enabled:
+          type: boolean
+          description: Defaults to false when omitted.
         conditions:
           type: array
           items: { $ref: "#/components/schemas/Condition" }
@@ -391,11 +1700,267 @@ components:
         segment: { type: string }
     PolicyList:
       type: object
+      required: [items, page]
       properties:
         items:
-          type: array
+          type: [array, "null"]
+          description: "`null` when the page is empty."
           items: { $ref: "#/components/schemas/Policy" }
         page: { $ref: "#/components/schemas/PageMeta" }
+
+    # ---------------------------------------------------------------- policy versions
+    InputSpec:
+      type: object
+      required: [field, sources, description]
+      properties:
+        field: { type: string, examples: ["identity.bound"] }
+        sources:
+          type: array
+          description: |
+            The only evidence sources allowed to supply this input (e.g.
+            `eap-tls`, `nas`, `nac-binding`, `endpoint-record`, `posture`,
+            `operator`, `evaluate-request`).
+          items: { type: string }
+        description: { type: string }
+        max_age:
+          type: string
+          description: Freshness window (Go duration, e.g. `24h0m0s`), when the input has one.
+    PolicyInputs:
+      type: object
+      required: [inputs, operators]
+      properties:
+        inputs:
+          type: array
+          items: { $ref: "#/components/schemas/InputSpec" }
+        operators:
+          type: array
+          items: { $ref: "#/components/schemas/MatchOperator" }
+    Validation:
+      type: object
+      required: [valid, errors, warnings]
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          description: Block publication.
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    PolicyDraft:
+      type: object
+      required: [rules, default_action, digest, validation, differs_from_active]
+      properties:
+        rules:
+          type: array
+          items: { $ref: "#/components/schemas/Policy" }
+        default_action: { $ref: "#/components/schemas/PolicyAction" }
+        digest:
+          type: string
+          description: SHA-256 over the canonical rules and default action.
+        validation: { $ref: "#/components/schemas/Validation" }
+        active_version:
+          type: integer
+          description: Number of the active version; absent when none.
+        differs_from_active: { type: boolean }
+    DraftSettingsRequest:
+      type: object
+      required: [default_action]
+      properties:
+        default_action: { $ref: "#/components/schemas/PolicyAction" }
+    RecordedCase:
+      type: object
+      required: [decision_id, subject, occurred_at, recorded_action]
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+          description: The recorded decision whose inputs were re-evaluated.
+        session_id: { type: string, format: uuid }
+        subject: { type: string }
+        occurred_at: { type: string, format: date-time }
+        recorded_action: { $ref: "#/components/schemas/PolicyAction" }
+        recorded_segment: { type: string }
+        recorded_version: { type: integer }
+        override:
+          type: string
+          description: The session's current operator override (`quarantine`), if any.
+    PreviewRow:
+      type: object
+      required: [case, active_action, draft_action, changed, policy_changed]
+      properties:
+        case: { $ref: "#/components/schemas/RecordedCase" }
+        active_action: { $ref: "#/components/schemas/PolicyAction" }
+        active_segment: { type: string }
+        active_rule: { type: string }
+        draft_action: { $ref: "#/components/schemas/PolicyAction" }
+        draft_segment: { type: string }
+        draft_rule: { type: string }
+        changed:
+          type: boolean
+          description: The effective authorization (override applied) differs.
+        policy_changed:
+          type: boolean
+          description: The policy result alone differs (what the draft would do once an override is restored).
+        override_applies: { type: boolean }
+        insufficient_evidence:
+          type: array
+          items: { type: string }
+        stale_inputs:
+          type: array
+          items: { type: string }
+    Preview:
+      type: object
+      required: [label, draft_digest, active_version, validation, cases_examined, changed, insufficient_evidence, rows, since]
+      properties:
+        label:
+          type: string
+          description: Always show it with the preview (it states that this is a prediction).
+        draft_digest:
+          type: string
+          description: Pass as `expected_digest` to publish.
+        active_version: { type: integer }
+        validation: { $ref: "#/components/schemas/Validation" }
+        cases_examined: { type: integer }
+        changed: { type: integer }
+        insufficient_evidence:
+          type: integer
+          description: Number of cases with insufficient evidence under the draft.
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/PreviewRow" }
+        since:
+          type: string
+          format: date-time
+          description: Start of the recorded-decision window.
+    PublishRequest:
+      type: object
+      required: [expected_digest]
+      properties:
+        expected_digest:
+          type: string
+          description: The draft digest that was previewed (`422` when empty, `409` when stale).
+        note: { type: string }
+    PolicyVersion:
+      type: object
+      required: [id, number, rules, default_action, digest, created_at, active]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer }
+        rules:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/Policy" }
+        default_action: { $ref: "#/components/schemas/PolicyAction" }
+        digest: { type: string }
+        note: { type: string }
+        created_by:
+          type: string
+          description: Email of the publishing operator, or `system` for the initial version.
+        created_at: { type: string, format: date-time }
+        active: { type: boolean }
+    PublishResponse:
+      type: object
+      required: [version, semantics]
+      properties:
+        version: { $ref: "#/components/schemas/PolicyVersion" }
+        semantics:
+          type: string
+          description: Human-readable statement of when the change applies.
+    PolicyVersionList:
+      type: object
+      required: [versions]
+      properties:
+        versions:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyVersion" }
+    RestoreRequest:
+      type: object
+      properties:
+        reset_draft:
+          type: boolean
+          default: true
+          description: Replace the draft with the restored version's rules.
+        note: { type: string }
+    ActivationKind:
+      type: string
+      enum: [initial, publish, restore]
+    PolicyActivation:
+      type: object
+      required: [id, version_id, version_number, kind, activated_by, activated_at]
+      properties:
+        id: { type: integer, format: int64 }
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        kind: { $ref: "#/components/schemas/ActivationKind" }
+        previous_version_id: { type: string, format: uuid }
+        previous_version_number: { type: integer }
+        activated_by:
+          type: string
+          description: Email of the operator, or `system`.
+        activated_at: { type: string, format: date-time }
+        note: { type: string }
+    RestoreResponse:
+      type: object
+      required: [activation, draft_reset, semantics]
+      properties:
+        activation: { $ref: "#/components/schemas/PolicyActivation" }
+        draft_reset: { type: boolean }
+        semantics: { type: string }
+    PolicyActivationList:
+      type: object
+      required: [activations]
+      properties:
+        activations:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyActivation" }
+
+    # ---------------------------------------------------------------- decisions and evidence
+    EvidenceStatus:
+      type: string
+      description: "`stale` evidence is treated exactly like `missing` by the engine."
+      enum: [present, missing, stale]
+    Evidence:
+      type: object
+      required: [authenticated, status]
+      properties:
+        value: { type: string }
+        source: { type: string }
+        observed_at: { type: string, format: date-time }
+        authenticated:
+          type: boolean
+          description: The source cryptographically authenticated the value (EAP-TLS).
+        status: { $ref: "#/components/schemas/EvidenceStatus" }
+        note:
+          type: string
+          description: Explains a missing or stale status.
+    Inputs:
+      type: object
+      description: Decision inputs by field name.
+      additionalProperties: { $ref: "#/components/schemas/Evidence" }
+    ConditionTrace:
+      type: object
+      required: [field, operator, evidence, outcome]
+      properties:
+        field: { type: string }
+        operator: { $ref: "#/components/schemas/MatchOperator" }
+        values:
+          type: array
+          items: { type: string }
+        observed: { type: string }
+        evidence: { $ref: "#/components/schemas/EvidenceStatus" }
+        outcome: { type: string, enum: [match, no_match, insufficient_evidence] }
+    RuleTrace:
+      type: object
+      required: [rule, priority, action, outcome]
+      properties:
+        rule_id: { type: string }
+        rule: { type: string }
+        priority: { type: integer }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+        outcome: { type: string, enum: [matched, not_matched, insufficient_evidence, disabled, not_reached] }
+        conditions:
+          type: array
+          items: { $ref: "#/components/schemas/ConditionTrace" }
     EvaluateRequest:
       type: object
       required: [mac]
@@ -406,40 +1971,598 @@ components:
         attributes: { $ref: "#/components/schemas/Attributes" }
     AccessDecision:
       type: object
+      required: [endpoint, status, action, reason, evaluated_at]
       properties:
-        endpoint: { type: string }
+        endpoint:
+          type: string
+          description: Normalised MAC.
         status: { $ref: "#/components/schemas/AccessStatus" }
         action: { $ref: "#/components/schemas/PolicyAction" }
         segment: { type: string }
         matched_policy_id: { type: string, format: uuid }
+        matched_rule: { type: string }
+        policy_version: { type: integer }
+        policy_version_id: { type: string, format: uuid }
         reason: { type: string }
         evaluated_at: { type: string, format: date-time }
-    AuditEvent:
+        trace:
+          type: array
+          items: { $ref: "#/components/schemas/RuleTrace" }
+        insufficient_evidence:
+          type: array
+          items: { type: string }
+    DecisionRecord:
       type: object
+      required: [id, occurred_at, subject, inputs, policy_version, trace, insufficient_evidence, action, result, reason]
       properties:
         id: { type: string, format: uuid }
         occurred_at: { type: string, format: date-time }
-        actor_id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        switch_id: { type: string, format: uuid }
+        subject: { type: string }
+        inputs: { $ref: "#/components/schemas/Inputs" }
+        policy_version: { type: integer }
+        policy_version_id: { type: string, format: uuid }
+        matched_rule:
+          type: string
+          description: Absent when no rule matched (default action).
+        matched_rule_id: { type: string, format: uuid }
+        trace:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/RuleTrace" }
+        insufficient_evidence:
+          type: [array, "null"]
+          items: { type: string }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+        segment: { type: string }
+        vlan: { type: integer }
+        result: { type: string, enum: [accept, reject] }
+        reason: { type: string }
+
+    # ---------------------------------------------------------------- audit
+    AuditEvent:
+      type: object
+      required: [id, occurred_at, action, resource_type, outcome]
+      properties:
+        id: { type: string, format: uuid }
+        occurred_at: { type: string, format: date-time }
+        actor_id:
+          type: string
+          format: uuid
+          description: The authenticated operator; absent for unauthenticated and service-token actions.
         actor_email: { type: string }
-        action: { type: string }
+        action:
+          type: string
+          description: Open set, e.g. `endpoint.create`, `policy.publish`, `session.quarantine`, `operator.login`.
         resource_type: { type: string }
         resource_id: { type: string }
-        outcome: { type: string }
+        outcome:
+          type: string
+          description: Usually `success` or `failure`; for `access.evaluate` the decided action.
         request_id: { type: string }
         remote_addr: { type: string }
         metadata: { $ref: "#/components/schemas/Attributes" }
     AuditList:
       type: object
+      required: [items, page]
       properties:
         items:
-          type: array
+          type: [array, "null"]
+          description: "`null` when the page is empty."
           items: { $ref: "#/components/schemas/AuditEvent" }
         page: { $ref: "#/components/schemas/PageMeta" }
-    PageMeta:
+
+    # ---------------------------------------------------------------- switches
+    StatusItem:
       type: object
+      required: [state, detail]
       properties:
-        limit: { type: integer }
-        offset: { type: integer }
-        count: { type: integer }
+        state: { type: string, enum: ["yes", "no", "unknown", "pending"] }
+        at: { type: string, format: date-time }
+        detail: { type: string }
+        historical:
+          type: boolean
+          description: |
+            True when the item records a past event rather than current
+            state. `verified` is always historical: a commissioning record
+            of one session, which may have ended since. Read current state
+            from `reachable` and from each session's observation and liveness.
+        note:
+          type: string
+          description: How a historical item relates to now, e.g. whether the verified session is still active.
+    SwitchStatus:
+      type: object
+      required: [configured, reachable, auth_request_seen, verified, radius_client_file, freeradius_load]
+      properties:
+        configured:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            `yes` only when the switch is registered AND the running
+            FreeRADIUS has loaded the list that contains it (same state as
+            `freeradius_load`). Before `pilot-rc12` it meant only that nacd
+            had written the client file (known defect D1).
+        reachable: { $ref: "#/components/schemas/StatusItem" }
+        auth_request_seen: { $ref: "#/components/schemas/StatusItem" }
+        verified: { $ref: "#/components/schemas/StatusItem" }
+        radius_client_file:
+          $ref: "#/components/schemas/StatusItem"
+          description: Whether nacd wrote the client file. Not whether FreeRADIUS loaded it; see `freeradius_load`.
+        freeradius_load:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            Whether the running FreeRADIUS has loaded the current switch list
+            (known defect D1). `yes`: the reload helper restarted FreeRADIUS
+            with exactly the list nacd would write now, and a `freeradius`
+            process is running. `pending`: written, not yet confirmed (up to
+            60 s). `no`: rejected by `freeradius -C`, FreeRADIUS stopped or
+            not running, or not confirmed within 60 s; `detail` says which.
+            `unknown`: nacd does not manage the client file, or cannot see
+            whether FreeRADIUS runs.
+    Switch:
+      type: object
+      description: A registered RADIUS client. Secrets are never returned, only whether they are set.
+      required: [id, name, radius_source_ip, nas_ip, radius_secret_set, coa_port, segment_vlans, access_ports, eos_version, radius_server_ip, eapi_password_set, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        radius_source_ip: { type: string }
+        nas_ip: { type: string }
+        radius_secret_set: { type: boolean }
+        coa_port: { type: integer }
+        segment_vlans:
+          type: object
+          description: Segment name to VLAN ID.
+          additionalProperties: { type: integer }
+          examples: [{ corp: 10, quarantine: 20 }]
+        access_ports:
+          type: [array, "null"]
+          items: { type: string }
+        eos_version: { type: string }
+        radius_server_ip: { type: string }
+        eapi_url: { type: string }
+        eapi_username: { type: string }
+        eapi_password_set: { type: boolean }
+        last_radius_at: { type: string, format: date-time }
+        last_probe_at: { type: string, format: date-time }
+        last_probe_ok: { type: boolean }
+        last_probe_detail: { type: string }
+        verified_at: { type: string, format: date-time }
+        verified_detail: { type: string }
+        verified_session_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    SwitchView:
+      allOf:
+        - $ref: "#/components/schemas/Switch"
+        - type: object
+          required: [status]
+          properties:
+            status: { $ref: "#/components/schemas/SwitchStatus" }
+    SwitchInput:
+      type: object
+      required: [name, radius_source_ip, segment_vlans]
+      properties:
+        name:
+          type: string
+          description: 1-63 letters, digits, `.`, `_` or `-`.
+        radius_source_ip:
+          type: string
+          description: |
+            IPv4 address FreeRADIUS sees as the packet source, in dotted form
+            (`10.70.99.1`). IPv4-mapped IPv6 (`::ffff:10.70.99.1`,
+            `::ffff:a46:6301`) is rejected with `422`: FreeRADIUS refuses or
+            misreads it (known defect D1). `nas_ip` follows the same rule.
+        nas_ip:
+          type: string
+          description: IPv4 NAS-IP-Address used in CoA; defaults to `radius_source_ip`.
+        radius_secret:
+          type: string
+          format: password
+          writeOnly: true
+          description: |
+            16-128 printable ASCII characters without spaces, quotes,
+            backslashes or `$`. Required on create; empty on update keeps the
+            stored secret.
+        coa_port: { type: integer, minimum: 1, maximum: 65535, default: 3799 }
+        segment_vlans:
+          type: object
+          description: Segment name (lower-case letters, digits, `-`, `_`; max 32) to a unique VLAN 1-4094; must include `quarantine`.
+          additionalProperties: { type: integer, minimum: 1, maximum: 4094 }
+        access_ports:
+          type: array
+          items: { type: string, examples: ["Ethernet1"] }
+        radius_server_ip:
+          type: string
+          description: The FreeRADIUS address the switch sends to (used in the generated configuration).
+        eapi_url:
+          type: string
+          description: Optional eAPI base URL, e.g. `https://10.70.99.1`.
+        eapi_username: { type: string }
+        eapi_password:
+          type: string
+          format: password
+          writeOnly: true
+          description: Empty on update keeps the stored password.
+        clear_eapi:
+          type: boolean
+          description: Update only; removes eAPI URL, username and password.
+    SwitchList:
+      type: object
+      required: [switches]
+      properties:
+        switches:
+          type: array
+          items: { $ref: "#/components/schemas/SwitchView" }
+
+    # ---------------------------------------------------------------- identity bindings
+    IdentityBinding:
+      type: object
+      required: [id, endpoint_id, issuer, serial, revision, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        endpoint_id: { type: string, format: uuid }
+        issuer: { type: string }
+        serial:
+          type: string
+          description: Upper-case hex without separators or leading zeros.
+        subject_cn: { type: string }
+        revision: { type: integer }
+        note: { type: string }
+        created_by:
+          type: string
+          description: Email of the operator who created it.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BindingInput:
+      type: object
+      required: [endpoint_id, issuer, serial]
+      properties:
+        endpoint_id: { type: string, format: uuid }
+        issuer:
+          type: string
+          maxLength: 1024
+          description: Issuer DN exactly as FreeRADIUS reports it (copy it from a session).
+        serial:
+          type: string
+          description: Certificate serial in hex (normalised by the server).
+        subject_cn: { type: string, maxLength: 256 }
+        note: { type: string, maxLength: 1024 }
+    BindingList:
+      type: object
+      required: [bindings]
+      properties:
+        bindings:
+          type: array
+          items: { $ref: "#/components/schemas/IdentityBinding" }
+    BindSessionRequest:
+      type: object
+      required: [endpoint_id]
+      properties:
+        endpoint_id: { type: string, format: uuid }
+
+    # ---------------------------------------------------------------- sessions
+    SessionState:
+      type: string
+      description: "`active` means the last authentication was accepted, not necessarily that the endpoint is connected now (see `liveness`)."
+      enum: [active, rejected, ended]
+    Session:
+      type: object
+      description: One endpoint on one switch port, keyed by switch + NAS-Port-Id + MAC.
+      required: [id, switch_id, nas_port_id, mac, state, started_at, last_auth_at]
+      properties:
+        id: { type: string, format: uuid }
+        switch_id: { type: string, format: uuid }
+        switch_name: { type: string }
+        nas_port_id: { type: string }
+        mac: { type: string }
+        calling_station_id: { type: string }
+        nas_ip_address: { type: string }
+        user_name:
+          type: string
+          description: Outer EAP identity (an untrusted claim).
+        acct_session_id: { type: string }
+        cert_issuer: { type: string }
+        cert_serial: { type: string }
+        cert_cn: { type: string }
+        endpoint_id: { type: string, format: uuid }
+        binding_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/SessionState" }
+        override:
+          type: string
+          description: Operator override; takes precedence over policy at every authentication of this session until restored.
+          enum: [quarantine]
+        override_by:
+          type: string
+          description: Email of the operator who set the override.
+        override_at: { type: string, format: date-time }
+        last_decision_id: { type: string, format: uuid }
+        requested_action: { type: string }
+        requested_segment: { type: string }
+        requested_vlan: { type: integer }
+        started_at: { type: string, format: date-time }
+        last_auth_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time }
+        observed_status: { type: string }
+        observed_vlan: { type: string }
+        observed_at: { type: string, format: date-time }
+        observed_source: { type: string }
+        observed_detail: { type: string }
+    Requested:
+      type: object
+      description: The authorization NAC returned (or will return).
+      required: [at]
+      properties:
+        action: { type: string }
+        segment: { type: string }
+        vlan: { type: integer }
+        decision_id: { type: string, format: uuid }
+        at: { type: string, format: date-time }
+        override: { type: string }
+    Observed:
+      type: object
+      description: |
+        What the switch reported, with explicit freshness; never guessed.
+        `unavailable` without eAPI or before the first observation; `fresh`
+        up to `NAC_OBSERVATION_MAX_AGE`; `stale` after.
+      required: [freshness, note]
+      properties:
+        freshness: { type: string, enum: [fresh, stale, unavailable] }
+        status:
+          type: string
+          description: Switch auth stage, e.g. `SUCCESS`, or `absent`.
+        vlan: { type: string }
+        at: { type: string, format: date-time }
+        source: { type: string }
+        note: { type: string }
+        matches_requested:
+          type: boolean
+          description: Present only when fresh and a VLAN was requested.
+    Liveness:
+      type: object
+      description: |
+        Whether NAC knows the endpoint is still connected. `ended`: NAC ended
+        the session (accounting Stop, or a different certificate on the same
+        port and MAC). `connected`: a fresh observation lists the MAC as
+        authenticated on the port. `absent`: a fresh observation does not
+        list it. `unknown`: no fresh observation. `basis` and `note` then
+        state what NAC has: `last authentication only` (no RADIUS
+        accounting received), or `accounting Start, no Stop` /
+        `accounting Interim-Update, no Stop` (the latest accounting packet
+        NAC accepted for this session). Accounting without a Stop shows the
+        switch opened the session; it does not prove the endpoint is
+        connected now, because a lost Stop leaves NAC unaware of the
+        disconnect.
+      required: [state, basis, note]
+      properties:
+        state: { type: string, enum: [ended, connected, absent, unknown] }
+        basis: { type: string }
+        note: { type: string }
+    SessionView:
+      allOf:
+        - $ref: "#/components/schemas/Session"
+        - type: object
+          required: [requested, observed, liveness, endpoint_reachability]
+          properties:
+            requested: { $ref: "#/components/schemas/Requested" }
+            observed: { $ref: "#/components/schemas/Observed" }
+            last_coa: { $ref: "#/components/schemas/CoARequest" }
+            liveness: { $ref: "#/components/schemas/Liveness" }
+            endpoint_reachability:
+              type: object
+              description: |
+                The third, separate fact. `requested` is switch authorization
+                (what NAC asked the switch for); `observed` is the switch's own
+                view (VLAN, liveness). Neither proves the endpoint can use the
+                VLAN: after a VLAN change the endpoint keeps its old DHCP lease
+                until its next renewal. NAC never measures reachability, so
+                `state` is always `not_observed`.
+              required: [state, note]
+              properties:
+                state: { type: string, enum: [not_observed] }
+                note: { type: string }
+    SessionList:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items: { $ref: "#/components/schemas/SessionView" }
+    TimelineEntry:
+      type: object
+      required: [at, kind, stage, result, summary, source]
+      properties:
+        at: { type: string, format: date-time }
+        kind:
+          type: string
+          description: Open set; currently `event` or `coa`.
+        stage: { type: string }
+        result: { type: string }
+        summary: { type: string }
+        source: { type: string }
+        decision_id: { type: string, format: uuid }
+        coa_id: { type: string, format: uuid }
+    SessionDetail:
+      allOf:
+        - $ref: "#/components/schemas/SessionView"
+        - type: object
+          required: [decisions, coa_requests, timeline, explanation]
+          properties:
+            switch: { $ref: "#/components/schemas/SwitchView" }
+            endpoint: { $ref: "#/components/schemas/Endpoint" }
+            binding: { $ref: "#/components/schemas/IdentityBinding" }
+            last_decision: { $ref: "#/components/schemas/DecisionRecord" }
+            decisions:
+              type: array
+              items: { $ref: "#/components/schemas/DecisionRecord" }
+            coa_requests:
+              type: array
+              items: { $ref: "#/components/schemas/CoARequest" }
+            timeline:
+              type: [array, "null"]
+              items: { $ref: "#/components/schemas/TimelineEntry" }
+            explanation:
+              type: [array, "null"]
+              description: Operator-language answer to "why is this session in this state?".
+              items: { type: string }
+
+    # ---------------------------------------------------------------- CoA
+    CoAKind:
+      type: string
+      enum: [quarantine, restore, reauthenticate]
+    CoAState:
+      type: string
+      description: |
+        `requested`: recorded. `sent`: on the wire. `acked`: CoA-ACK (the
+        switch accepted it; not proof of enforcement). `nak`: CoA-NAK (see
+        `error_cause`). `timeout`: no valid response after all attempts.
+        `failed`: transport error, target changed, or restart mid-exchange.
+        `observed`: the switch's next authentication of the same session
+        received the requested VLAN. Only one CoA per session may be
+        `requested` or `sent` at a time.
+      enum: [requested, sent, acked, nak, timeout, failed, observed]
+    CoATarget:
+      type: object
+      description: Identifiers captured when the action was requested; retries never re-target.
+      required: [switch_id, switch_name, address, nas_ip_address, nas_port_id, calling_station_id, session_id, session_started_at]
+      properties:
+        switch_id: { type: string, format: uuid }
+        switch_name: { type: string }
+        address:
+          type: string
+          description: host:port the CoA is sent to.
+        nas_ip_address: { type: string }
+        nas_port_id: { type: string }
+        calling_station_id: { type: string }
+        user_name: { type: string }
+        session_id: { type: string, format: uuid }
+        session_started_at: { type: string, format: date-time }
+    CoARequest:
+      type: object
+      required: [id, session_id, switch_id, kind, target, state, attempts, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        switch_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/CoAKind" }
+        target: { $ref: "#/components/schemas/CoATarget" }
+        requested_segment: { type: string }
+        requested_vlan:
+          type: integer
+          description: Absent when the active policy would reject the session at re-authentication.
+        state: { $ref: "#/components/schemas/CoAState" }
+        attempts: { type: integer }
+        radius_id: { type: integer }
+        error_cause:
+          type: integer
+          description: RFC 5176 Error-Cause from the switch.
+        detail: { type: string }
+        created_by:
+          type: string
+          description: Email of the requesting operator.
+        created_at: { type: string, format: date-time }
+        sent_at: { type: string, format: date-time }
+        responded_at: { type: string, format: date-time }
+        observed_at: { type: string, format: date-time }
+        observed_decision_id: { type: string, format: uuid }
+        updated_at: { type: string, format: date-time }
+    CoAResponse:
+      type: object
+      required: [coa, semantics]
+      properties:
+        coa: { $ref: "#/components/schemas/CoARequest" }
+        semantics: { type: string }
+
+    # ---------------------------------------------------------------- events
+    AuthEvent:
+      type: object
+      required: [id, occurred_at, stage, result, reason, source]
+      properties:
+        id: { type: string, format: uuid }
+        occurred_at: { type: string, format: date-time }
+        session_id: { type: string, format: uuid }
+        switch_id: { type: string, format: uuid }
+        client_ip: { type: string }
+        nas_port_id: { type: string }
+        mac: { type: string }
+        stage:
+          type: string
+          description: Open set; e.g. `eap-tls`, `nac-decision`, `outage`, `coa`, `observation`, `accounting`, `operator`.
+        result:
+          type: string
+          description: Open set; e.g. `accept`, `reject`, `info`.
+        reason: { type: string }
+        source:
+          type: string
+          description: Open set; e.g. `nacd`, `freeradius`, `freeradius-outage-log`, `eapi`, `operator`.
+        decision_id: { type: string, format: uuid }
+        coa_id: { type: string, format: uuid }
+        detail: { $ref: "#/components/schemas/Attributes" }
+    AuthEventList:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/AuthEvent" }
+
+    # ---------------------------------------------------------------- RADIUS adapter
+    RadiusHealth:
+      type: object
+      required: [outage_log_import, radius_client_file, freeradius_load, outage_semantics]
+      properties:
+        last_decision: { $ref: "#/components/schemas/AuthEvent" }
+        last_eap_tls_reject: { $ref: "#/components/schemas/AuthEvent" }
+        last_outage_reject: { $ref: "#/components/schemas/AuthEvent" }
+        outage_log_import: { $ref: "#/components/schemas/StatusItem" }
+        radius_client_file: { $ref: "#/components/schemas/StatusItem" }
+        freeradius_load:
+          $ref: "#/components/schemas/StatusItem"
+          description: |
+            Whether the running FreeRADIUS has loaded the current switch list
+            (known defect D1). `yes`: the reload helper restarted FreeRADIUS
+            with exactly the list nacd would write now, and a `freeradius`
+            process is running. `pending`: written, not yet confirmed (up to
+            60 s). `no`: rejected by `freeradius -C`, FreeRADIUS stopped or
+            not running, or not confirmed within 60 s; `detail` says which.
+            `unknown`: nacd does not manage the client file, or cannot see
+            whether FreeRADIUS runs.
+        outage_semantics: { type: string }
+    FreeRADIUSRequest:
+      type: object
+      description: |
+        FreeRADIUS `rlm_rest` `body = json`: attribute name to
+        `{type, value}`. EAP payloads and passwords are discarded unread.
+      additionalProperties:
+        type: object
+        properties:
+          type: { type: string }
+          value:
+            description: One value or a list of values.
+            oneOf:
+              - type: array
+                items: { type: [string, number] }
+              - type: [string, number]
+      examples:
+        - Calling-Station-Id: { type: string, value: ["52-54-00-12-34-56"] }
+          NAS-Port-Id: { type: string, value: ["Ethernet1"] }
+          TLS-Client-Cert-Serial: { type: string, value: ["1A2B"] }
+    FreeRADIUSReply:
+      type: object
+      description: |
+        rlm_rest reply attributes. Accept: `control:Tmp-String-1` =
+        `nac-accept`, `reply:Tunnel-Type`, `reply:Tunnel-Medium-Type`,
+        `reply:Tunnel-Private-Group-Id` (VLAN) and `reply:Class` =
+        `nac:<decision_id>`. Reject: `control:Tmp-String-1` = `nac-reject`
+        and `reply:Reply-Message`.
+      additionalProperties:
+        type: object
+        required: [value, do_xlat, op]
+        properties:
+          value:
+            type: array
+            items: { type: string }
+          do_xlat: { type: boolean, const: false }
+          op: { type: string, const: ":=" }
+
 security:
-  - bearerAuth: []
+  - operatorJWT: []

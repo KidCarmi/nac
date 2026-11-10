@@ -53,17 +53,21 @@ func (p PostureStatus) Valid() bool {
 
 // Endpoint is a device observed on the network, keyed by its MAC address.
 type Endpoint struct {
-	ID           uuid.UUID         `json:"id"`
-	MAC          string            `json:"mac"`
-	IP           string            `json:"ip,omitempty"`
-	Hostname     string            `json:"hostname,omitempty"`
-	DeviceType   string            `json:"device_type,omitempty"`
-	AccessStatus AccessStatus      `json:"access_status"`
-	Posture      PostureStatus     `json:"posture"`
-	Attributes   map[string]string `json:"attributes,omitempty"`
-	LastSeen     time.Time         `json:"last_seen"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	ID           uuid.UUID     `json:"id"`
+	MAC          string        `json:"mac"`
+	IP           string        `json:"ip,omitempty"`
+	Hostname     string        `json:"hostname,omitempty"`
+	DeviceType   string        `json:"device_type,omitempty"`
+	AccessStatus AccessStatus  `json:"access_status"`
+	Posture      PostureStatus `json:"posture"`
+	// PostureSource and PostureObservedAt record who reported posture and
+	// when; posture older than NAC_POSTURE_MAX_AGE is stale evidence.
+	PostureSource     string            `json:"posture_source,omitempty"`
+	PostureObservedAt *time.Time        `json:"posture_observed_at,omitempty"`
+	Attributes        map[string]string `json:"attributes,omitempty"`
+	LastSeen          time.Time         `json:"last_seen"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 // PolicyAction is the decision a matching policy yields.
@@ -93,12 +97,15 @@ const (
 	OpNotEqual MatchOperator = "ne"
 	OpIn       MatchOperator = "in"
 	OpExists   MatchOperator = "exists"
+	// OpAbsent matches when the field has no usable (present and fresh)
+	// evidence, so a policy can act explicitly on missing evidence.
+	OpAbsent MatchOperator = "absent"
 )
 
 // Valid reports whether o is a recognized match operator.
 func (o MatchOperator) Valid() bool {
 	switch o {
-	case OpEquals, OpNotEqual, OpIn, OpExists:
+	case OpEquals, OpNotEqual, OpIn, OpExists, OpAbsent:
 		return true
 	default:
 		return false
@@ -139,8 +146,18 @@ type AccessDecision struct {
 	Action          PolicyAction `json:"action"`
 	Segment         string       `json:"segment,omitempty"`
 	MatchedPolicyID *uuid.UUID   `json:"matched_policy_id,omitempty"`
-	Reason          string       `json:"reason"`
-	EvaluatedAt     time.Time    `json:"evaluated_at"`
+	MatchedRule     string       `json:"matched_rule,omitempty"`
+	// PolicyVersion identifies the immutable version that produced this
+	// decision (0 when evaluated outside versioning, e.g. a draft preview).
+	PolicyVersion   int        `json:"policy_version,omitempty"`
+	PolicyVersionID *uuid.UUID `json:"policy_version_id,omitempty"`
+	Reason          string     `json:"reason"`
+	EvaluatedAt     time.Time  `json:"evaluated_at"`
+	// Trace lists every rule in evaluation order with its outcome.
+	Trace []RuleTrace `json:"trace,omitempty"`
+	// InsufficientEvidence lists fields whose missing or stale evidence
+	// prevented a higher-priority rule from being decided.
+	InsufficientEvidence []string `json:"insufficient_evidence,omitempty"`
 }
 
 // Role is an operator's authorization role within the platform.
@@ -173,8 +190,12 @@ type Operator struct {
 	PasswordHash string    `json:"-"`
 	Role         Role      `json:"role"`
 	Disabled     bool      `json:"disabled"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	// TokenVersion is embedded in every session token; incrementing it
+	// (password change, local reset) revokes all earlier sessions.
+	TokenVersion      int        `json:"-"`
+	PasswordChangedAt *time.Time `json:"password_changed_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // AuditEvent is an append-only record of a security-relevant action.

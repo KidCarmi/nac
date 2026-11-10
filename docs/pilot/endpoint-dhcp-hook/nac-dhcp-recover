@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# nac-dhcp-recover: reference endpoint hook for managed Linux (systemd-networkd).
+#
+# STATUS: UNQUALIFIED, opt-in reference for the lab test described in
+# README.md. It is endpoint configuration, not part of NAC, and is not
+# installed by NAC.
+#
+# Problem it addresses:
+#   After a CoA moves an 802.1X session to another VLAN, the link stays up,
+#   so the DHCP client keeps its old lease. Its T1 renewal is unicast to an
+#   unreachable server, and a broadcast rebind can be lost or ignored.
+#
+# Preconditions. All must hold, or the hook does nothing:
+#   - wpa_supplicant reports suppPortStatus=Authorized on the interface
+#   - systemd-networkd holds a DHCPv4 lease file for the interface
+#     (/run/systemd/netif/leases/<ifindex>)
+#   - the interface's default route was installed by DHCP (proto dhcp)
+#   Static addressing, a static default route or no default route: no action.
+#
+# Trigger:
+#   The gateway has failed every probe for at least UNREACHABLE_SECONDS of
+#   elapsed monotonic time, measured from the first failed probe. The probe
+#   is ARP (arping) when available, so it does not depend on ICMP. It falls
+#   back to ping.
+#
+# Schedule, within one outage episode (from the first failure until the
+#   gateway answers RECOVER_PROBES probes in a row):
+#   - action 1 when the trigger condition is first met
+#   - action 2 no sooner than MIN_INTERVAL after action 1
+#   - each later action no sooner than twice the previous wait, capped at
+#     MAX_INTERVAL
+#   - at most MAX_ACTIONS actions per episode; after that it only logs until
+#     the episode ends
+#
+# A recovery command that fails, or times out, is logged as recovery_failed.
+# It counts as an action, and it is never reported as a recovery.
+#
+# Usage: nac-dhcp-recover <interface>      (run as root; see the systemd unit)
+set -u
+
+IF="${1:?usage: nac-dhcp-recover <interface>}"
+CTRL="${NAC_HOOK_WPA_CTRL:-/run/wpa_supplicant}"
+UNREACHABLE_SECONDS="${NAC_HOOK_UNREACHABLE_SECONDS:-5}"
+MIN_INTERVAL="${NAC_HOOK_MIN_INTERVAL:-30}"
+MAX_INTERVAL="${NAC_HOOK_MAX_INTERVAL:-300}"
+MAX_ACTIONS="${NAC_HOOK_MAX_ACTIONS:-3}"
+RECOVER_PROBES="${NAC_HOOK_RECOVER_PROBES:-3}"
+ACTION="${NAC_HOOK_ACTION:-linkcycle}"          # linkcycle | reconfigure
+CMD_TIMEOUT="${NAC_HOOK_CMD_TIMEOUT:-10}"       # seconds per recovery command
+LEASES_DIR="${NAC_HOOK_LEASES_DIR:-/run/systemd/netif/leases}"
+
+if command -v arping >/dev/null 2>&1; then PROBE=arp; else PROBE=icmp; fi
+
+log() {
+	logger -t nac-dhcp-recover -- "$*" 2>/dev/null || true
+	printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$*"
+}
+
+# Monotonic seconds (boot time), with millisecond resolution.
+mono_ms() { awk '{ printf "%d", $1 * 1000 }' /proc/uptime; }
+
+authorized() {
+	timeout 2 wpa_cli -p "$CTRL" -i "$IF" status 2>/dev/null | grep -q '^suppPortStatus=Authorized'
+}
+
+dhcp_gateway() {
+	# Prints the gateway only if the default route is DHCP-installed and
+	# systemd-networkd holds a DHCPv4 lease for this interface.
+	local idx
+	idx=$(cat "/sys/class/net/$IF/ifindex" 2>/dev/null) || return 1
+	[ -s "$LEASES_DIR/$idx" ] || return 1
+	ip -4 route show default dev "$IF" proto dhcp 2>/dev/null | awk '$1 == "default" { print $3; exit }'
+}
+
+probe() {
+	if [ "$PROBE" = arp ]; then
+		timeout 3 arping -q -c 1 -w 1 -I "$IF" "$1" >/dev/null 2>&1
+	else
+		timeout 3 ping -n -q -c 1 -W 1 -I "$IF" "$1" >/dev/null 2>&1
+	fi
+}
+
+run() { # run <description> <command...>: run with a deadline, report failure
+	local what=$1 rc
+	shift
+	timeout "$CMD_TIMEOUT" "$@"
+	rc=$?
+	if [ "$rc" -ne 0 ]; then
+		log "recovery_failed step=$what rc=$rc"
+		return 1
+	fi
+}
+
+recover() {
+	case "$ACTION" in
+	reconfigure)
+		run reconfigure networkctl reconfigure "$IF"
+		;;
+	linkcycle)
+		run down networkctl down "$IF" || { run up-after-failed-down networkctl up "$IF"; return 1; }
+		sleep 1
+		run up networkctl up "$IF"
+		;;
+	*)
+		log "recovery_failed step=config reason=unknown_action action=$ACTION"
+		return 1
+		;;
+	esac
+}
+
+reset_episode() {
+	fail_since=""
+	fails=0
+	actions=0
+	next_wait_ms=0
+	last_action_ms=0
+	oks=0
+}
+
+reset_episode
+log "started if=$IF probe=$PROBE unreachable=${UNREACHABLE_SECONDS}s interval=${MIN_INTERVAL}-${MAX_INTERVAL}s max_actions=$MAX_ACTIONS recover_probes=$RECOVER_PROBES action=$ACTION"
+
+while sleep 1; do
+	if ! authorized; then
+		[ -n "$fail_since" ] && log "episode_end reason=not_authorized probes_failed=$fails actions=$actions"
+		reset_episode
+		continue
+	fi
+	gw=$(dhcp_gateway) || gw=""
+	if [ -z "$gw" ]; then
+		[ -n "$fail_since" ] && log "episode_end reason=no_dhcp_lease_or_route probes_failed=$fails actions=$actions"
+		reset_episode
+		continue
+	fi
+	if probe "$gw"; then
+		if [ -n "$fail_since" ]; then
+			oks=$((oks + 1))
+			if [ "$oks" -ge "$RECOVER_PROBES" ]; then
+				log "episode_end reason=gateway_answers gw=$gw probes_failed=$fails actions=$actions"
+				reset_episode
+			fi
+		fi
+		continue
+	fi
+	now=$(mono_ms)
+	oks=0
+	fails=$((fails + 1))
+	[ -z "$fail_since" ] && fail_since=$now && log "episode_start gw=$gw probe=$PROBE"
+	elapsed_ms=$((now - fail_since))
+	[ "$elapsed_ms" -lt $((UNREACHABLE_SECONDS * 1000)) ] && continue
+	if [ "$actions" -ge "$MAX_ACTIONS" ]; then
+		continue # cap reached: wait for the episode to end
+	fi
+	if [ "$actions" -gt 0 ] && [ $((now - last_action_ms)) -lt "$next_wait_ms" ]; then
+		continue
+	fi
+	addr=$(ip -4 -o addr show dev "$IF" 2>/dev/null | awk '{ print $4; exit }')
+	actions=$((actions + 1))
+	log "action n=$actions/$MAX_ACTIONS gw=$gw unreachable_elapsed=$((elapsed_ms / 1000)).$(((elapsed_ms % 1000) / 100))s probes_failed=$fails addr=${addr:-none} action=$ACTION"
+	if recover; then
+		log "action_done n=$actions (commands succeeded; DHCP recovery not yet confirmed)"
+	fi
+	last_action_ms=$(mono_ms)
+	if [ "$actions" -eq 1 ]; then
+		next_wait_ms=$((MIN_INTERVAL * 1000))
+	else
+		next_wait_ms=$((next_wait_ms * 2))
+		[ "$next_wait_ms" -gt $((MAX_INTERVAL * 1000)) ] && next_wait_ms=$((MAX_INTERVAL * 1000))
+	fi
+	[ "$actions" -ge "$MAX_ACTIONS" ] && log "cap_reached actions=$actions; no further action until the gateway answers $RECOVER_PROBES probes in a row"
+done

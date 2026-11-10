@@ -1,0 +1,43 @@
+# EAP for the NAC pilot: EAP-TLS only.
+#
+# Certificates (see docs/pilot/installation.md, "Certificates"):
+#   ca_file          the CA that issued the endpoint certificates
+#   certificate_file the FreeRADIUS server certificate (presented to supplicants)
+#   private_key_file its key
+eap {
+	default_eap_type = tls
+	timer_expire = 60
+	ignore_unknown_eap_types = no
+	max_sessions = ${max_requests}
+
+	tls-config tls-common {
+		private_key_file = ${confdir}/nac/certs/server.key
+		certificate_file = ${confdir}/nac/certs/server.pem
+		ca_file = ${confdir}/nac/certs/ca.pem
+		ca_path = ${confdir}/nac/certs/capath
+		cipher_list = "DEFAULT"
+		cipher_server_preference = no
+		tls_min_version = "1.2"
+		tls_max_version = "1.3"
+		ecdh_curve = ""
+
+		# Revocation: set check_crl = yes and put the CA's CRL (PEM) in
+		# ca_path with `c_rehash`; certificates on it then fail EAP-TLS.
+		check_crl = no
+
+		# TLS session resumption is disabled: a resumed session could reuse a
+		# stored VLAN and skip the NAC decision (an authorization cache).
+		cache {
+			enable = no
+		}
+		verify {
+		}
+		ocsp {
+			enable = no
+		}
+	}
+
+	tls {
+		tls = tls-common
+	}
+}

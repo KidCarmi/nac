@@ -132,9 +132,27 @@ func pathUUID(r *http.Request, name string) (uuid.UUID, error) {
 
 // pageFromQuery parses limit/offset query params with safe defaults. Negative
 // or non-numeric values fall back to defaults; the service clamps the maximum.
+// Paging bounds applied to every paged list (endpoints, policies, audit).
+const (
+	defaultPageLimit = 50
+	maxPageLimit     = 200
+)
+
+// pageFromQuery parses limit/offset and applies the bounds here, so every
+// paged route (including audit, which has no service layer) behaves the same
+// and the page metadata reports the limit actually used.
 func pageFromQuery(r *http.Request) domain.Page {
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
+	if limit <= 0 {
+		limit = defaultPageLimit
+	}
+	if limit > maxPageLimit {
+		limit = maxPageLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	return domain.Page{Limit: limit, Offset: offset}
 }

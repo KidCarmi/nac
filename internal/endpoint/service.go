@@ -74,8 +74,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*domain.Endpoint,
 		Posture:      posture,
 		Attributes:   in.Attributes,
 		LastSeen:     now,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		// Posture provenance: the endpoint API is the only posture source.
+		PostureSource:     postureSource(posture),
+		PostureObservedAt: postureTime(posture, now),
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 	if err := s.repo.Create(ctx, e); err != nil {
 		return nil, err
@@ -120,7 +123,12 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput) (*do
 	existing.Hostname = in.Hostname
 	existing.DeviceType = in.DeviceType
 	if in.Posture != "" {
+		// Every posture write refreshes its observation time, even when the
+		// value is unchanged: re-reporting "compliant" is fresh evidence.
+		now := s.now().UTC()
 		existing.Posture = in.Posture
+		existing.PostureSource = postureSource(in.Posture)
+		existing.PostureObservedAt = postureTime(in.Posture, now)
 	}
 	if in.AccessStatus != "" {
 		existing.AccessStatus = in.AccessStatus
@@ -132,6 +140,20 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput) (*do
 		return nil, err
 	}
 	return existing, nil
+}
+
+func postureSource(p domain.PostureStatus) string {
+	if p == "" || p == domain.PostureUnknown {
+		return ""
+	}
+	return "endpoint-api"
+}
+
+func postureTime(p domain.PostureStatus, now time.Time) *time.Time {
+	if p == "" || p == domain.PostureUnknown {
+		return nil
+	}
+	return &now
 }
 
 // Delete removes an endpoint by ID.

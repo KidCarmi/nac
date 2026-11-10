@@ -1,0 +1,11 @@
+# json_encode for the NAC outage log: {"Attr":"value", ...}
+json {
+	encode {
+		output_mode = object_simple
+		value {
+			single_value_as_array = no
+			enum_as_integer = no
+			always_string = yes
+		}
+	}
+}

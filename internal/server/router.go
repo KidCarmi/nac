@@ -37,6 +37,12 @@ func (s *Server) buildHandler() http.Handler {
 	// Metrics endpoint for Prometheus scraping.
 	mux.Handle("GET /metrics", promhttp.HandlerFor(s.metrics.Registry(), promhttp.HandlerOpts{}))
 
+	// ---- Operator console (static; every action goes through /api/v1) ----
+	mux.Handle("GET /ui/", uiHandler())
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusFound)
+	})
+
 	// ---- Authentication ----
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 
@@ -46,6 +52,10 @@ func (s *Server) buildHandler() http.Handler {
 		// RBAC for the specific capability.
 		return s.requireOperator(s.requirePermission(perm, h))
 	}
+
+	// Self-service for any authenticated operator (no extra permission).
+	mux.Handle("GET /api/v1/auth/me", s.requireOperator(http.HandlerFunc(s.handleMe)))
+	mux.Handle("POST /api/v1/auth/password", s.requireOperator(http.HandlerFunc(s.handlePasswordChange)))
 
 	mux.Handle("POST /api/v1/endpoints", authed(auth.PermEndpointWrite, s.handleCreateEndpoint))
 	mux.Handle("GET /api/v1/endpoints", authed(auth.PermEndpointRead, s.handleListEndpoints))
@@ -61,8 +71,31 @@ func (s *Server) buildHandler() http.Handler {
 
 	mux.Handle("GET /api/v1/audit", authed(auth.PermAuditRead, s.handleListAudit))
 
+	// ---- Versioned policy: the /policies routes above edit the draft ----
+	if s.versions != nil {
+		mux.Handle("GET /api/v1/policy-inputs", authed(auth.PermPolicyRead, s.handlePolicyInputs))
+		mux.Handle("GET /api/v1/policy-draft", authed(auth.PermPolicyRead, s.handleGetDraft))
+		mux.Handle("PUT /api/v1/policy-draft/settings", authed(auth.PermPolicyWrite, s.handleDraftSettings))
+		mux.Handle("GET /api/v1/policy-draft/preview", authed(auth.PermPolicyRead, s.handlePreviewDraft))
+		mux.Handle("POST /api/v1/policy-draft/publish", authed(auth.PermPolicyWrite, s.handlePublishDraft))
+		mux.Handle("GET /api/v1/policy-versions", authed(auth.PermPolicyRead, s.handleListVersions))
+		mux.Handle("GET /api/v1/policy-versions/{number}", authed(auth.PermPolicyRead, s.handleGetVersion))
+		mux.Handle("POST /api/v1/policy-versions/{number}/restore", authed(auth.PermPolicyWrite, s.handleRestoreVersion))
+		mux.Handle("GET /api/v1/policy-activations", authed(auth.PermPolicyRead, s.handleListActivations))
+	}
+
 	// ---- Service-token endpoint for network enforcement points ----
 	mux.Handle("POST /api/v1/access/evaluate", s.requireServiceToken(s.handleEvaluateAccess))
+
+	// ---- FreeRADIUS integration (service token as Bearer or Basic password) ----
+	if s.radius != nil {
+		mux.Handle("POST /api/v1/radius/authorize", s.requireServiceToken(s.handleRadiusAuthorize))
+		mux.Handle("POST /api/v1/radius/reject", s.requireServiceToken(s.handleRadiusReject))
+		mux.Handle("POST /api/v1/radius/accounting", s.requireServiceToken(s.handleRadiusAccounting))
+	}
+	if s.pilot != nil {
+		s.pilotRoutes(mux, authed)
+	}
 
 	// Global middleware stack (outermost first).
 	return chain(mux,

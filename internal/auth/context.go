@@ -13,6 +13,8 @@ type Principal struct {
 	ID    uuid.UUID
 	Email string
 	Role  domain.Role
+	// TokenVersion is the operator token_version the session was issued under.
+	TokenVersion int
 }
 
 type principalKey struct{}

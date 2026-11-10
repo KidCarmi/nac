@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -147,6 +148,25 @@ func (s *Server) requireOperator(next http.Handler) http.Handler {
 			s.authFail(w, r, "invalid_token")
 			return
 		}
+		// The token is only a claim: the operator record is authoritative.
+		// A disabled or deleted operator, or a token issued before the last
+		// password change, is rejected, and the CURRENT role is enforced.
+		op, err := s.operators.GetByID(r.Context(), principal.ID)
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			s.authFail(w, r, "unknown_operator")
+			return
+		case err != nil:
+			writeProblem(w, r, err)
+			return
+		case op.Disabled:
+			s.authFail(w, r, "disabled_operator")
+			return
+		case op.TokenVersion != principal.TokenVersion:
+			s.authFail(w, r, "revoked_token")
+			return
+		}
+		principal.Email, principal.Role = op.Email, op.Role
 		ctx := auth.WithPrincipal(r.Context(), principal)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -175,6 +195,13 @@ func (s *Server) requirePermission(perm auth.Permission, next http.HandlerFunc) 
 func (s *Server) requireServiceToken(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		presented := bearerToken(r)
+		if presented == "" {
+			// FreeRADIUS rlm_rest authenticates with HTTP Basic; the token is
+			// the password (the username is ignored).
+			if _, pw, ok := r.BasicAuth(); ok {
+				presented = pw
+			}
+		}
 		expected := s.cfg.Auth.ServiceToken
 		if expected == "" || subtle.ConstantTimeCompare([]byte(presented), []byte(expected)) != 1 {
 			s.authFail(w, r, "invalid_service_token")
