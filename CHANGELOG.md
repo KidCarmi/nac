@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
+- `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
+  On a role switch the policy action is labelled "Apply active policy"
+  (it sends a role CoA; nothing re-authenticates). VLAN switches keep
+  "Re-authenticate (apply active policy)". The API action `reauthenticate`
+  is unchanged. No enforcement, RADIUS, adapter, reload-path or installer
+  change.
+
 ### pilot-aruba-rc4 (proposed; supersedes pilot-aruba-rc3 for the D2 wording defect)
 - `pilot-aruba-rc3` plus the `pilot-rc14` liveness wording fix D2 (merged),
   and nothing else. No enforcement change.

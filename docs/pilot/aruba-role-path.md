@@ -120,6 +120,45 @@ What the states mean:
 
   Only Restore clears it, exactly as on the VLAN path.
 
+## Proposed successor: `pilot-aruba-rc5` (U2 only; not under qualification)
+
+Prepared so that U2 is fixed without touching the frozen rc4. It is handed
+to ASTRA only when the owner asks.
+
+| What | Value |
+|---|---|
+| Candidate commit | `5ddc15732a7a49bc65df9a0338351cb9dbec55b0` (branch `claude/nac-aruba-rc5-u2`) |
+| nacd SHA-256 | `43efe22aa63cf54cb4aaf5216cb58bfee65efb61dc56c8aff69499843d95f6dc` (built twice here, identical) |
+| Build | `make pilot-bundle VERSION=pilot-aruba-rc5` (Go 1.25.0, linux/amd64, CGO off) |
+| Change from rc4 | `web/ui/app.js` (the console is embedded in nacd, so the nacd hash changes) and two UI test scripts; `git diff 0148bf8 5ddc157` outside `*.md` is only those three files |
+| Unchanged, so the rc4 pins still apply | FreeRADIUS adapter `3c45063e…`, reload helper `a8a31d6d…`, reload unit `c738690d…`, installer `a80fe967…`, all other installed files |
+
+**What changes.** On a role switch the button reads "Apply active policy",
+and its confirmation asks to "Apply the active policy to this session". The
+action still sends a role CoA, and nothing re-authenticates. VLAN switches
+keep "Re-authenticate (apply active policy)", because there the switch does
+re-authenticate. The policy page hint names both. The API action
+`reauthenticate` is unchanged, so the API and MCP contract does not move.
+
+**Verified here:**
+- `scripts/ui-aruba-role.js` 14/14 and `scripts/ui-walkthrough.js` 14/14,
+  each against a fresh nacd
+- the new Aruba assertion **fails on the rc4 console** and passes on rc5
+- `go vet`, `go test ./...` and golangci-lint are green
+
+**Rows to rerun on rc5** (by what changed: nacd, console only):
+- **P1:** install the rc5 bundle and check nacd `43efe22a…` and the
+  unchanged file pins
+- **1.6, 3.1 and 3.2 in the console:** the changed screen. Use Apply active
+  policy once and record the role CoA
+- **1.3:** the changed policy-page hint (text only)
+- **1.2 and 2.1 as nacd smoke**
+- **5.2 console:** only if the Arista console row is run; that label is
+  unchanged
+
+**Carried from rc4 without a rerun:** every other row. Decisions, CoA,
+RADIUS, the adapter, the reload path and the installer are byte-identical.
+
 ## Qualification matrix: `pilot-aruba-rc4` (consolidated)
 
 One row per acceptance-matrix case (expected outcomes are in
