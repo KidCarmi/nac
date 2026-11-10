@@ -1,0 +1,38 @@
+{
+  "cold_and_negative_capture_archive": {
+    "sha256": "415c09e156f2e1e4394ef7c96449c3dc150e343e820603495ce14f5686af599f",
+    "bytes": 30527
+  },
+  "timing_control_pcap": {
+    "sha256": "ff76bfa7d889a623f1d36c4c264bcafd310dcdf96857812025c083cccf701f91",
+    "bytes": 44424
+  },
+  "timing_endpoint_pcap": {
+    "sha256": "09dbe543e2d8f9b401ab1c8cbc8446eb5affc02319a193d77b962c52fa1a78dc",
+    "bytes": 7439802
+  },
+  "arista_ui-quarantine_control_pcap": {
+    "sha256": "10a194b6b775c110a0e41c5fd46ddfcfe764604e0fb2282fc0d771a90cbb3bc5",
+    "bytes": 8550
+  },
+  "arista_ui-quarantine_endpoint_pcap": {
+    "sha256": "a7cade5e4e0a3a6d2d1f9d556d7bcab898bd900961e355c5a330ec7de366ff14",
+    "bytes": 295040
+  },
+  "arista_ui-quarantine_probes_jsonl": {
+    "sha256": "595e855f70c08bb67e7abe31a09734f62cb92a1a9568cb098f3656e8376de5f4",
+    "bytes": 64660
+  },
+  "arista_ui-restore_control_pcap": {
+    "sha256": "e1eec4f07df2e196004bb75b94e64287f576c07287b0bb7941cea7ad3205f851",
+    "bytes": 8550
+  },
+  "arista_ui-restore_endpoint_pcap": {
+    "sha256": "caffc5d6088f4652ce3816369882b76759d15851fb4760f3c4d7dda4535cc5b5",
+    "bytes": 248852
+  },
+  "arista_ui-restore_probes_jsonl": {
+    "sha256": "7673b11527127a39cbae4a387a4f9842fee9fc5de99b993b5673138f758e2599",
+    "bytes": 65182
+  }
+}

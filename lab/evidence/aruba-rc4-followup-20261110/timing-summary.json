@@ -1,0 +1,104 @@
+{
+  "candidate": "0148bf88985c5da9086b54aafd002fbfbfe71b75",
+  "clock": "EVE host packet taps for CoA and TCP; guest API timestamps are about 0.52 s behind EVE and are not combined without calibration",
+  "nacd_sha256": "dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7",
+  "probe_rule": "fresh corp TCP SYN; quarantine requires no SYN/ACK within 0.5s, restore requires SYN/ACK within 0.5s",
+  "statistics": {
+    "quarantine": {
+      "ack_count": 100,
+      "corp_http_200_windows": 4,
+      "metrics": {
+        "ack_to_traffic_ms": {
+          "max": 584.388,
+          "median": 24.59,
+          "n": 100,
+          "p95": 80.624
+        },
+        "api_request_to_202_ms": {
+          "max": 20.0,
+          "median": 12.0,
+          "n": 100,
+          "p95": 16.05
+        },
+        "api_request_to_ack_observed_ms": {
+          "max": 207.0,
+          "median": 109.0,
+          "n": 100,
+          "p95": 117.05
+        },
+        "packet_request_to_ack_ms": {
+          "max": 103.786,
+          "median": 8.073,
+          "n": 100,
+          "p95": 12.058
+        },
+        "packet_request_to_traffic_ms": {
+          "max": 592.562,
+          "median": 33.552,
+          "n": 100,
+          "p95": 91.648
+        },
+        "product_to_packet_request_ms": {
+          "max": 526.293,
+          "median": 518.323,
+          "n": 100,
+          "p95": 522.31
+        }
+      },
+      "n": 100,
+      "post_denial_http_200_windows": 3,
+      "post_denial_successful_syn_windows": 0,
+      "remediation_http_200_windows": 100,
+      "traffic_before_ack_count": 7,
+      "traffic_observed_count": 100
+    },
+    "restore": {
+      "ack_count": 100,
+      "corp_http_200_windows": 100,
+      "metrics": {
+        "ack_to_traffic_ms": {
+          "max": 586.519,
+          "median": 553.725,
+          "n": 100,
+          "p95": 579.741
+        },
+        "api_request_to_202_ms": {
+          "max": 17.0,
+          "median": 12.0,
+          "n": 100,
+          "p95": 15.0
+        },
+        "api_request_to_ack_observed_ms": {
+          "max": 119.0,
+          "median": 109.0,
+          "n": 100,
+          "p95": 115.0
+        },
+        "packet_request_to_ack_ms": {
+          "max": 29.988,
+          "median": 3.405,
+          "n": 100,
+          "p95": 6.109
+        },
+        "packet_request_to_traffic_ms": {
+          "max": 589.615,
+          "median": 558.158,
+          "n": 100,
+          "p95": 583.626
+        },
+        "product_to_packet_request_ms": {
+          "max": 524.137,
+          "median": 518.726,
+          "n": 100,
+          "p95": 520.864
+        }
+      },
+      "n": 100,
+      "post_denial_http_200_windows": 0,
+      "post_denial_successful_syn_windows": 0,
+      "remediation_http_200_windows": 100,
+      "traffic_before_ack_count": 0,
+      "traffic_observed_count": 100
+    }
+  }
+}

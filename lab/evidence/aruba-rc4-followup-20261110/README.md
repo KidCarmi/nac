@@ -1,0 +1,43 @@
+# ASTRA follow-up: frozen Aruba rc4 candidate
+
+**Exact candidate:** `pilot-aruba-rc4` commit `0148bf88985c5da9086b54aafd002fbfbfe71b75`; installed `nacd` SHA-256 `dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7`; installed adapter aggregate SHA-256 `3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32`. No successor build was tested. Tests were agent-operated on isolated EVE VM 102, ArubaOS-CX Virtual 10.07.0004 and Arista vEOS-lab 4.29.2F. The [earlier clean-install package](../aruba-rc4-clean-20261110/README.md) and [Arista API regression](../arista-rc4-regression-20261110/README.md) remain separate baselines.
+
+## Exact-candidate matrix
+
+| Case | Result | Evidence and limitation |
+|---|---|---|
+| Aruba full cold restart, automatic endpoint recovery | **FAIL (virtual lab)** | Six guest boot units for wired supplicant, DHCP, checksum offload and remediation route survived reboot. Endpoint sent EAPOL Starts for 145 s without an authenticator response, RADIUS exchange or session; protected TCP timed out. An **operator-triggered disable/enable of the virtual authenticator** then produced EAP-TLS admission and protected HTTP 200. Post-repair access is diagnostic, never an automatic-recovery pass. Local bounded raw capture SHA-256 `415c09e156f2e1e4394ef7c96449c3dc150e343e820603495ce14f5686af599f`. |
+| Stale ended-session action | **PASS** | HTTP 422 `session is ended, not active`; no retargeting. |
+| Missing required quarantine role mapping | **PASS** | HTTP 422; mapping unchanged, no CoA. |
+| Unknown role on switch | **PASS** | CoA-NAK Error-Cause 506; previous corp access persisted. After mapping repair and **manual reauthentication**, pending quarantine took effect; protected TCP blocked, remediation HTTP 200. |
+| Real CoA network timeout | **PASS** | Isolated EVE tap dropped three UDP/3799 packets; state `timeout` after 14.5 s; switch retained prior access. After filter removal and **manual reauthentication**, pending quarantine applied. A separate guest-local firewall attempt yielded immediate `failed: operation not permitted` and was excluded from this result. |
+| Policy-denied Restore | **PASS** | HTTP 422; no CoA and quarantine override unchanged. Policy restoration and explicit cleanup Restore returned corp access. |
+| Override persistence and stale accounting | **PASS** | Quarantine survived nacd and FreeRADIUS restart and explicit reauthentication. An **operator port shutdown/no shutdown** replaced the session; replay of an old captured Accounting Stop did not end the new active quarantine session. Protected TCP stayed blocked/remediation HTTP 200. |
+| Bounded 100 Aruba Quarantine/Restore pairs after lab repair | **PASS, virtual sample** | Exactly 100/100 requests and ACKs each way; all 100 quarantine windows had a blocked new protected TCP SYN and remediation HTTP 200; all 100 restore windows had a successful fresh protected SYN/SYN-ACK and protected HTTP 200. No newly established protected connection succeeded after the first denial. Four windows contained HTTP 200 responses from connections begun before denial. `cycles.csv`, `timing-summary.json`. This campaign does not erase the cold-restart failure. |
+| Arista **console** Quarantine/Restore, same binary | **PASS for authorization; FAIL for prompt Linux DHCP recovery** | UI action → CoA-ACK → switch-initiated EAP-TLS/RADIUS Access-Accept for VLAN 20, then reverse for VLAN 10. Protected TCP blocked in quarantine and returned in corp. A single-NIC Linux DHCP client retained its old lease, recovering the newly permitted service only after lease expiry: approximately **93 s** on quarantine and **108 s** on restore. Each primary probe ran 180 s without manual renew/reconnect. The prior 35 s run remains a failure within that observation window. `arista-dhcp-summary.json`; packet evidence retained locally. |
+| Windows 10/11 and physical switches | **BLOCKED** | This run lacked an authorized Windows 10/11 single-data-NIC endpoint and an authorized physical access switch. A historical Windows Server 2025 result does not satisfy this row. |
+
+## Timing from the 100-cycle Aruba campaign
+
+These are measured EVE-host packet-clock intervals, in milliseconds. A fresh protected TCP SYN was counted as blocked when no SYN/ACK arrived within 0.5 s; it was counted as restored when a SYN/ACK arrived. The 0.5 s sampling/detection window limits the precision of traffic-change times.
+
+| Action | CoA request→ACK median / p95 / max | CoA request→changed fresh TCP median / p95 / max |
+|---|---:|---:|
+| Quarantine | 8.073 / 12.058 / 103.786 | 33.552 / 91.648 / 592.562 |
+| Restore | 3.405 / 6.109 / 29.988 | 558.158 / 583.626 / 589.615 |
+
+The product guest clock was about 0.52 s behind the EVE packet clock. Guest API request→HTTP 202 median was 12 ms; request→ACK **noticed by polling** median was 109 ms, with an 80 ms poll interval. Guest and EVE timestamps were not directly subtracted. Seven quarantine traffic changes appeared before ACK. No p99 or production SLA is inferred. `cycles.csv` gives all 200 per-action measurements without session identifiers or packet payloads.
+
+## Arista Linux DHCP and UI semantics
+
+The console visibly distinguished requested VLAN, eAPI-observed VLAN and `endpoint_reachability: not_observed`. Both CoAs were ACKed and followed by switch-initiated reauthentication. The endpoint initially had no service in the new VLAN because it still held the prior VLAN's address. DHCP leases were 120 s; T1/T2 were not explicit packet options. A renewal near 60 s tried the old server, and a new Discover/Offer/Request/ACK at expiry obtained the other segment's lease. The primary observation windows contained no manual endpoint action. This is eventual automatic recovery on this Linux client, **with unacceptable long interruption for a prompt-change claim**. The user-facing UI did not falsely claim application access; its `observed` state proves switch authorization, not endpoint address or reachability.
+
+The Arista action used the preserved rc4 overlay of the control guest. Its original baseline disk was restored afterward, and the rc4 overlay retained. An isolated switch RADIUS target was corrected manually before this run; no Proxmox setting, external bridge or unrelated VM changed. Both test topologies were stopped after qualification.
+
+## Reproduce and raw evidence
+
+The original bounded runner and all raw packet/endpoint logs remain in the local lab handoff under `D:/AI/nac-wired-lab/qualification/runs/`. They were **not** published because they include internal lab addresses, session IDs, a test certificate identity and packet payloads. The cold/negative archive hash above identifies the exact local raw capture; `raw-local-hashes.json` identifies the other local files. `timing-summary.json`, `cycles.csv`, and `arista-dhcp-summary.json` are sanitized derived results. `timing-runner.py` and `endpoint-probe.py` are parameterized publication copies of the executed logic; set `NAC_CA_FILE`, `NAC_PASSWORD_FILE`, `NAC_ENDPOINT_MAC`, `NAC_CORP_SERVICE` and `NAC_REMEDIATION_SERVICE` to the isolated lab values. These copies passed syntax validation, while the original executed scripts and outputs remain locally available for exact rerun. The earlier packages contain topology exports, sanitized configuration and installation commands.
+
+To rerun, start only the isolated EVE nodes after checking the published topology hash, verify the exact candidate binary and adapter hashes, and confirm protected/remediation service health independently. Install six boot units with the local `persist_aruba_rc4_lab_prereqs.py`, perform the scoped full cold restart, wait **145 s without repair** while capturing EAPOL/RADIUS/TCP, then separately record any authenticator reset. Run stale-session, missing/unknown mapping, network-silence, denied-Restore and stale-accounting cases with the local `aruba_rc4_api_guest.py`, checking both NAC state and endpoint TCP after each. For timing, start bounded endpoint/control PCAPs and fresh endpoint probes before the 100-pair runner; reject an incomplete count. The local runner caps each capture at 800 s/40,000 packets and rejects pre-existing output files. For Arista, start 210 s captures and 180 s endpoint probes **before** each console action, and wait for expiry without touching the endpoint. `sha256-manifest.json` verifies this published derived package.
+
+**Release decision:** this rc4 candidate is not pilot-cleared for an external administrator until the virtual Aruba cold-restart failure is resolved or explicitly scoped out with a tested recovery procedure, and the Windows/physical prerequisites are addressed.

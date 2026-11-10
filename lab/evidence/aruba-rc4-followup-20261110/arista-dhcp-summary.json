@@ -1,0 +1,26 @@
+{
+  "ui-quarantine": {
+    "action_utc_second": "2026-11-10T12:33:03+00:00",
+    "coa_response": "ACK",
+    "switch_reauthentication": "EAP-TLS Access-Accept",
+    "old_service_denied_observed_seconds_from_action_second": 0.242,
+    "new_address_observed_seconds_from_action_second": 92.533,
+    "new_service_http_200_observed_seconds_from_action_second": 92.533,
+    "probe_window_seconds": 180,
+    "manual_endpoint_renew_or_reconnect": false,
+    "lease_seconds": 120,
+    "client": "Linux systemd-networkd"
+  },
+  "ui-restore": {
+    "action_utc_second": "2026-11-10T12:36:49+00:00",
+    "coa_response": "ACK",
+    "switch_reauthentication": "EAP-TLS Access-Accept",
+    "old_service_denied_observed_seconds_from_action_second": 0.27,
+    "new_address_observed_seconds_from_action_second": 107.149,
+    "new_service_http_200_observed_seconds_from_action_second": 107.149,
+    "probe_window_seconds": 180,
+    "manual_endpoint_renew_or_reconnect": false,
+    "lease_seconds": 120,
+    "client": "Linux systemd-networkd"
+  }
+}
