@@ -1,0 +1,7 @@
+Candidate: 0148bf88985c5da9086b54aafd002fbfbfe71b75
+Agent-operated lab check on the isolated clean rc4 guest.
+Before user Account-page change: initial-password login HTTP 200; pre-change token GET /sessions HTTP 200.
+User entered and submitted the new disposable password in the Account page (manual browser-policy handoff).
+UI displayed Password last changed 2026-11-10 10:00:06 Asia/Jerusalem (08:00:06 UTC).
+After change: initial-password login HTTP 401; pre-change token GET /sessions HTTP 401.
+No password or token value is included.

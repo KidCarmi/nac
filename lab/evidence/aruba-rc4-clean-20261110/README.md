@@ -23,7 +23,7 @@
 | nacd decision outage and recovery | PASS | Existing authorized session kept corp HTTP 200; a new login during outage got Access-Reject/switch Fail/corp blocked; after nacd start and manual port cycle, fresh Access-Accept/switch Success/corp HTTP 200. No cached authorization on new login (`outage-capture.tar.gz`, `nac-outage.log`) |
 | Full EVE restart, automatic endpoint recovery | FAIL (lab) | Saved NAC state and services survived, but virtual authenticator, DHCP, checksum offload and return route needed manual repair; details below (`postrestart-capture.tar.gz`, first probe logs) |
 | Postrepair UI Quarantine/Restore | PASS | Two UI pairs ACKed; second pair has endpoint/control taps on the same EVE clock and continuous fresh TCP (`postrestart-capture2.tar.gz`, second probe logs) |
-| Interactive password change on this clean rc4 guest | BLOCKED | Browser credential-change handoff was not performed on this guest. Earlier rc10 Account-page evidence does not qualify rc4 |
+| Interactive password change on this clean rc4 guest | PASS | User entered and submitted the replacement through the Account page; UI shows `Password last changed` at 10:00:06 local (08:00:06 UTC). A staged pre-change token returned HTTP 200 before, then HTTP 401 after; old password login also returned HTTP 401 (`account-rotation-result.txt`). User handoff was the sole manual step |
 | Arista regression with this binary | NOT RUN | Separate isolated vEOS topology still needs candidate `dd2b6137…` wired into its RADIUS control node; prior vEOS results are historical, not an rc4 pass |
 | Physical switch and Windows 10/11 | BLOCKED | No authorized physical Aruba/Arista switch or Windows 10/11 guest in this run |
 

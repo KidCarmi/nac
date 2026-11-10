@@ -1,8 +1,13 @@
 {
   "candidate_commit": "0148bf88985c5da9086b54aafd002fbfbfe71b75",
   "nacd_sha256": "dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7",
-  "generated_at_utc": "2026-11-10T07:53:35.8095802Z",
+  "generated_at_utc": "2026-11-10T08:00:53.6538650Z",
   "entries": [
+    {
+      "path": "account-rotation-result.txt",
+      "size": 539,
+      "sha256": "8f99382cae5153532aec92d7215fb3cc2958d0972949cb8cbe1055d727914f56"
+    },
     {
       "path": "aruba_fetch_rc4_probe_guest.py",
       "size": 2015,
@@ -95,8 +100,8 @@
     },
     {
       "path": "README.md",
-      "size": 10233,
-      "sha256": "4c7e15845f2c805905d389e9294f14dae55ceb16a96245b192ad64aad3c69b48"
+      "size": 10429,
+      "sha256": "717dd82255c2cb4ab49944625f4a1263ccaf9d2ce286ef69fe6ba5b3aea8c84d"
     },
     {
       "path": "reload-chaos.log",
