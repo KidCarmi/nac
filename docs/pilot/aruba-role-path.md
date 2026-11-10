@@ -122,7 +122,7 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc4`: clean qualification, published (ASTRA, 2026-11-10, [`ef64a48`](https://github.com/KidCarmi/nac/tree/ef64a48a91fdd884bc2a1c516a893df16a111639/lab/evidence/aruba-rc4-clean-20261110), 26/26 manifest entries verified here). **Not release-cleared**
+### `pilot-aruba-rc4`: clean qualification, published (ASTRA, 2026-11-10, [`15e89db`](https://github.com/KidCarmi/nac/tree/15e89dba28dd2d40a76893c857db0c69def2fc1c/lab/evidence/aruba-rc4-clean-20261110), 27/27 manifest entries verified here; supersedes `ef64a48`, which only lacked the Account result). **Not release-cleared**
 
 **Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, nacd `dd2b6137…`
 (independently built and running; the package manifest names the same
@@ -140,7 +140,7 @@ package has the exact timings and every manual intervention.
 | 4.6 nacd outage | **Existing corp session:** HTTP 200 with nacd stopped. **Fresh login:** Access-Reject, switch `Fail`, corp TCP unreachable. **After recovery:** fresh login Access-Accept, `Success`, role `corp`, TCP 200 |
 | **4.5 planned full EVE restart** | **FAIL for automatic lab recovery; product regression after repair PASS. No product defect established.**<br>• **Product:** all product services and the installed hashes survived; policy v2, the session and the override persisted.<br>• **Lab:** recovery failed before any valid endpoint probe, for five causes, each with taps and diagnostics, and each repaired by an explicit, recorded intervention (lab prerequisite P7 below).<br>• **After repair:** the same product accepted EAP-TLS with v2 `corp`. Console Quarantine/Restore ACKed twice, with switch role changes and fresh TCP (quarantine: corp timeout, remediation 200; restore: corp 200). Second pair: CoA `0x18` at 07:47:20.130736 UTC and `0x25` at 07:49:53.244821 UTC. First blocked corp SYN +0.067 s after the request; first restored corp SYN-ACK +0.611 s (EVE clock). No EAP or RADIUS during these CoAs |
 | UI/API role CoA | **PASS for the observed console path.** API negative cases were not run again in this package (they passed on the same role code in rc3, `148e196`) |
-| Interactive password change on this guest | **BLOCKED.** Not performed on the rc4 guest; the earlier rc10 Account-page evidence does not qualify rc4 |
+| 1.1 interactive password change on this guest | **PASS.** Changed on the Account page ("Password last changed" 08:00:06 UTC). Before: initial-password login and a staged pre-change token HTTP 200. After: both HTTP 401. The only manual step was the user entering the new password, as browser policy requires |
 | 5 Arista regression, same binary | **NOT RUN.** The isolated vEOS topology still needs nacd `dd2b6137…` wired in; earlier vEOS results are historical, not an rc4 pass |
 | Windows 10/11, physical switch | **BLOCKED.** None authorized in this run |
 | Remaining | ASTRA is running the remaining independent checks |
