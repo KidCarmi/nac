@@ -120,6 +120,70 @@ What the states mean:
 
   Only Restore clears it, exactly as on the VLAN path.
 
+## Qualification matrix: `pilot-aruba-rc4` (consolidated)
+
+One row per acceptance-matrix case (expected outcomes are in
+"Acceptance matrix" below), on exact `0148bf8`, nacd `dd2b6137…`. Results are
+ASTRA's, as reported; they are never upgraded here. **Not release-cleared.**
+Evidence: Aruba clean run [`15e89db`](https://github.com/KidCarmi/nac/tree/15e89dba28dd2d40a76893c857db0c69def2fc1c/lab/evidence/aruba-rc4-clean-20261110) (27/27 verified), Arista
+regression [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e145946b7fa37820e7aed/lab/evidence/arista-rc4-regression-20261110) (18/18), targeted D2 retest [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109)
+(4/4), and for unchanged role code `pilot-aruba-rc3` [`148e196`](https://github.com/KidCarmi/nac/tree/148e19614d58a9239226d5f212cfad9fac4ac504/lab/evidence/aruba-rc3-qualification-20261109)
+(77/77).
+
+| Row | Case | Result on rc4 | Evidence | Manual intervention / notes |
+|---|---|---|---|---|
+| P1 | Clean install from the pinned bundle | **PASS** | `15e89db` | None. 39 s; installed pins match |
+| 1.1 | Account password change | **PASS** | `15e89db` | The user typed the new password (browser policy). Old password and pre-change token: 401 |
+| 1.2 | Console switch onboarding | **PASS** | `15e89db` | — |
+| 1.3 | Console policy preview and publish | **PASS** | `15e89db` | v2 published; the rule-only v3 preview matched the decision |
+| 1.4 | Valid EAP-TLS admission | **PASS** | `15e89db` | — |
+| 1.5 | Invalid certificate | **PASS** | `15e89db` | — |
+| 1.6 | Console Quarantine / Restore | **PASS** | `15e89db` | Wording finding U2 (below) |
+| 2.1 | D1 chaos C1–C6, real systemd | **PASS, 20/20** | `15e89db` | Real SIGKILL of FreeRADIUS; a deliberate stop read `no` |
+| 2.2 | D2 liveness wording | **PASS** | `15e89db` (console), `2609fdb` (API) | — |
+| 3.1 | Quarantine (role CoA) | **PASS** (console) | `15e89db` | VLAN and IP unchanged; no EAP. API path: rc3 `148e196`, same role code |
+| 3.2 | Restore (role CoA) | **PASS** (console) | `15e89db` | As 3.1 |
+| 3.3 | Missing role mapping | **NOT RUN** in the lab on rc4 | — | Covered by automated tests only |
+| 3.4 | Policy-denied Restore keeps the quarantine | **NOT RUN** in the lab on rc4 | — | Covered by automated tests only |
+| 4.1 | Persistence (re-auth, Stop/Start, nacd and FreeRADIUS restart) | **NOT RUN** on rc4 | rc3 `148e196` A5 PASS, same role code | The override survived the 4.5 restart |
+| 4.2 | CoA NAK | **NOT RUN** on rc4 | rc3 A6 PASS | — |
+| 4.3 | CoA timeout | **NOT RUN** on rc4 | rc3 A7 PASS | — |
+| 4.4 | Stale session | **NOT RUN** on rc4 | rc3 A8 PASS | — |
+| 4.5 | Planned full EVE restart | **FAIL (lab) for automatic recovery**; product regression after repair **PASS** | `15e89db` | Four lab repairs: 802.1X toggle on `1/1/1`, corp `udhcpd` start and `networkctl renew`, `ethtool -K … tx off`, the remediation route. Plus a ~2 min `networkd-wait-online` delay. No product defect established |
+| 4.6 | nacd outage | **PASS** | `15e89db` | Manual port cycles to trigger fresh logins (test method, not a repair) |
+| 5.1 | Arista admission and rejection | **PASS** | `f6552cd` | The switch's saved RADIUS target was the old rc10 address; corrected live, not saved. `networkctl renew` at first admission |
+| 5.2 | Arista rule-only change and API Quarantine/Restore | **PASS for enforcement** (API) | `f6552cd` | A manual `networkctl down/up` in all four transitions, ~35 s after each CoA |
+| 5.2 | Arista console Quarantine/Restore | **NOT RUN** | — | Console covered on Aruba only |
+| 5.x | Arista automatic Linux addressing | **FAIL** (as reported) | `f6552cd` | **Review: not established**. Every intervention came before the client's own T2 or lease expiry; see the failure review |
+| 5.x | Arista five-node cold restart | **FAIL (lab)** unattended; **PASS** after repair | `f6552cd` | Corp guest disk full (journal/cache cleanup); DHCP reconnect |
+| — | Established TCP survival on Arista | **NOT RUN** | — | Aruba: not torn down, platform evidence `42be71f` |
+| — | Windows 10/11 | **BLOCKED** | — | No guest authorized |
+| — | Physical switch | **BLOCKED** | — | None authorized |
+
+**Open decisions for the owner:**
+- Whether rc3 results on unchanged role code (4.1–4.4) are accepted for rc4,
+  or rerun on the exact pin.
+- Whether 3.3/3.4 need a lab run, or automated coverage is enough.
+
+### Failure review: product vs lab vs virtual platform
+
+| Finding | Class | Why | Action |
+|---|---|---|---|
+| 4.5: endpoint held ~2 min by `networkd-wait-online` | Lab configuration | Endpoint image waits for all links | P7 |
+| 4.5: AOS-CX authenticator silent after cold boot until 802.1X toggled | **Virtual-platform limitation** (watch on hardware) | NAC was up; no EAPOL reached RADIUS; the switch-local toggle alone fixed it | P7; check on a physical switch |
+| 4.5: corp `udhcpd` not running after boot | Lab configuration | Started ad hoc, not as a unit | P7 |
+| 4.5: TX checksum offload back on (virtio) | Virtual platform + lab configuration | Bad SYN checksums at the service taps | P7 |
+| 4.5: remediation route to `10.70.10.0/24` lost | Lab configuration | Route was not persistent | P7 |
+| 5.1: first admission timed out | Lab configuration | Saved vEOS config targeted the old rc10 control guest (`10.70.99.4`); no RADIUS on the control tap | P6 |
+| 5.x restart: corp guest disk full | Lab configuration | Journal and package cache | P6 |
+| 5.x: Linux kept the old lease after a VLAN CoA | Endpoint DHCP behavior; product boundary of VLAN enforcement | The CoA keeps carrier up. The client only sent its unicast T1 renewal to the old server. Already documented in the recovery boundary | **Not a defect.** Re-measure hands-off (P8) |
+| 5.x: "automatic addressing FAIL" | **Classification not supported by the evidence** | 120 s lease (T1 60 s, T2 105 s). Each manual reconnect started ~35 s after the CoA, before T2 (+46 to +78 s) and expiry (+61 to +93 s). rc7–rc10 recovered on their own at expiry, 24–117 s after the CoA. Same precedent as `a6df762`: "blocked by intervention" | Kept as reported; ASTRA to rerun or reclassify (P8) |
+| 5.2: one old-segment connection ~+0.06 s after each operator CoA | Expected switch latency | The CoA is processed after the request; first denial +0.473 to +0.754 s | None. Packet clock is authoritative (P8) |
+| U2: "Re-authenticate (apply active policy)" on a role switch | **Product: console wording.** No enforcement impact | It sends a role CoA; nothing re-authenticates | Fix prepared as the proposed successor `pilot-aruba-rc5` on branch `claude/nac-aruba-rc5-u2` (see PR #3); rc4 unchanged |
+
+**Product defects established on rc4: none in enforcement.** One console
+wording finding (U2).
+
 ## Lab results (NAC-driven)
 
 ### `pilot-aruba-rc4`: clean qualification, published (ASTRA, 2026-11-10, [`15e89db`](https://github.com/KidCarmi/nac/tree/15e89dba28dd2d40a76893c857db0c69def2fc1c/lab/evidence/aruba-rc4-clean-20261110), 27/27 manifest entries verified here; supersedes `ef64a48`, which only lacked the Account result). **Not release-cleared**
@@ -169,7 +233,7 @@ for byte afterwards. All actions went through the **NAC API**.
 | 5.2 rule-only change (corp → quarantine, v13) and restore (v2), API | **PASS for enforcement.** The preview agreed; Re-authenticate sent CoA `0x62` (ACK); switch-initiated EAP-TLS gave VLAN 20; corp blocked. Restore: CoA `0x89` (ACK), VLAN 10, corp open. Conditions, certificate, MAC, port, mapping, adapter and binary unchanged |
 | 5.2 operator Quarantine/Restore, API (after the five-node restart) | **PASS for enforcement.** CoA `0x34` / `0xc3` ACKed; VLAN 20 / 10 on the switch; the decision cites the operator override above the matched corp rule |
 | 5.2 Arista **console** Quarantine/Restore | **NOT RUN.** The console path is covered on Aruba only |
-| Automatic Linux DHCP recovery across a VLAN CoA | **FAIL.** The link stayed up and the old lease stayed; each of the four transitions needed a recorded manual `networkctl down/up` before the new segment was reachable. This is the known Linux recovery limit (operating envelope, PR #1), **not a NAC policy error** |
+| Automatic Linux DHCP recovery across a VLAN CoA | **FAIL (as reported by ASTRA).** The link stayed up and the old lease stayed; each of the four transitions got a recorded manual `networkctl down/up` before the new segment was reachable. Not a NAC policy error. **Review:** the reconnects started ~35 s after each CoA, before the client's T2 or lease expiry (120 s lease). So automatic recovery was not given time to happen, and the evidence does not show it failing (failure review above) |
 | Five-node cold restart | **FAIL for unattended lab recovery; PASS after repair.** Saved policy and the pinned nacd resumed. Repairs: the endpoint's DHCP reconnect, and a full disk on the corp service guest |
 | Established TCP survival | **NOT RUN** (fresh connections only) |
 | Windows 10/11, physical switch | **BLOCKED** |
@@ -484,7 +548,15 @@ files above instead.
   peer, with bounded captures on the endpoint and control taps. Timestamps
   come from one clock, and its uncertainty is stated.
 - **P6** (row 5 only). The isolated vEOS 4.29.2F topology, with **the same
-  candidate binary** in a disposable instance.
+  candidate binary** in a disposable instance. Before counting a row
+  (ASTRA's rc4 Arista run failed on each):
+  - point the switch's **saved** RADIUS server and dynamic-authorization
+    client at the candidate control guest, then `write memory`. A live-only
+    change is lost at the next restart.
+  - before the first admission, confirm RADIUS traffic on the control tap
+  - give the service guests disk headroom (for example a journald
+    `SystemMaxUse=` limit); a full corp guest disk broke DHCP and HTTP
+    after the restart
 - **P7. Lab recovery after a full EVE restart.** These are lab and
   simulator conditions, not product steps; ASTRA's rc4 restart run failed on
   each. Make them persistent before row 4.5, or record each intervention
@@ -503,6 +575,16 @@ files above instead.
     systemd unit or a networkd `.link` file.
   - **Remediation route:** the remediation guest lost its route back to
     `10.70.10.0/24`. Make that route persistent.
+- **P8. Measurement rules** (from the rc4 runs):
+  - **The packet clock is authoritative.** Endpoint-log samples bound
+    reachability, not enforcement time. One fresh old-segment connection can
+    succeed in the few tens of ms after a CoA request.
+  - **Automatic DHCP recovery needs a hands-off window.** Record the lease,
+    T1 and T2. Leave the endpoint untouched for at least the lease plus a
+    margin: at least 150 s for the 120 s lease.
+  - **An intervention before that window ends** makes the automatic result
+    "blocked by intervention", not FAIL. A manual reconnect is then a
+    separately recorded diagnostic.
 
 Each row is reported **PASS / FAIL / BLOCKED / NOT RUN**, with the exact
 artifact identity, topology and configuration, timestamps and sanitized
