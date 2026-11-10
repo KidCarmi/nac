@@ -137,7 +137,8 @@ Nothing below is verified here until the package is published.
 | 2.1 D1, real systemd | **PASS, 20/20.** The systemd journal confirms the C5 SIGKILL of the main FreeRADIUS process and its restart |
 | 2.2 D2 | **PASS** in a clean console: liveness `unknown` (accounting Start, no Stop); switch observation unavailable; endpoint reachability `not_observed` |
 | 4.6 nacd outage | **Existing corp session:** HTTP 200 with nacd stopped. **Fresh login:** Access-Reject, switch `Fail`, corp TCP unreachable. **After recovery:** fresh login Access-Accept, `Success`, role `corp`, TCP 200 |
-| Remaining | Full isolated restart, the rest of rows 4–5 and the evidence package are still running |
+| **4.5 planned full EVE restart** | **FAIL for automatic lab recovery; product regression after repair PASS. No product defect established.**<br>• **Product:** all product services and the installed hashes survived; policy v2, the session and the override persisted.<br>• **Lab:** recovery failed before any valid endpoint probe, for five causes, each with taps and diagnostics, and each repaired by an explicit, recorded intervention (lab prerequisite P7 below).<br>• **After repair:** the same product accepted EAP-TLS with v2 `corp`. Console Quarantine/Restore ACKed twice, with switch role changes and fresh TCP (quarantine: corp timeout, remediation 200; restore: corp 200). Second pair: CoA `0x18` at 07:47:20.130736 UTC and `0x25` at 07:49:53.244821 UTC. First blocked corp SYN +0.067 s after the request; first restored corp SYN-ACK +0.611 s (EVE clock). No EAP or RADIUS during these CoAs |
+| Remaining | The rest of rows 4–5 and the evidence package are still running |
 
 **Console wording note U2 (not a defect in enforcement).** On a role switch,
 the button "Re-authenticate (apply active policy)" sends a **role CoA**;
@@ -433,6 +434,24 @@ files above instead.
   come from one clock, and its uncertainty is stated.
 - **P6** (row 5 only). The isolated vEOS 4.29.2F topology, with **the same
   candidate binary** in a disposable instance.
+- **P7. Lab recovery after a full EVE restart.** These are lab and
+  simulator conditions, not product steps; ASTRA's rc4 restart run failed on
+  each. Make them persistent before row 4.5, or record each intervention
+  explicitly:
+  - **Endpoint boot:** `systemd-networkd-wait-online` held the endpoint for
+    about 2 minutes. Account for it, or scope wait-online to the data NIC.
+  - **AOS-CX virtual authenticator:** after the restart it did not answer
+    EAPOL-Start until 802.1X was disabled and re-enabled on `1/1/1`. This is
+    a **platform behavior to watch**: it is not a NAC defect, but a
+    physical switch must be checked for the same cold-boot behavior.
+  - **Corp DHCP:** the BusyBox `udhcpd` ran as a transient service and did
+    not restart. Install it as a persistent, enabled unit.
+  - **Virtual NIC offload:** TX checksum offload came back on the endpoint,
+    corp and remediation virtio NICs after the restart and broke TCP. Make
+    `ethtool -K <nic> tx off tso off gso off` persistent, for example with a
+    systemd unit or a networkd `.link` file.
+  - **Remediation route:** the remediation guest lost its route back to
+    `10.70.10.0/24`. Make that route persistent.
 
 Each row is reported **PASS / FAIL / BLOCKED / NOT RUN**, with the exact
 artifact identity, topology and configuration, timestamps and sanitized
