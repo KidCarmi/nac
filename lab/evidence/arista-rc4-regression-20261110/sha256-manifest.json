@@ -1,0 +1,97 @@
+{
+  "candidate_commit": "0148bf88985c5da9086b54aafd002fbfbfe71b75",
+  "nacd_sha256": "dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7",
+  "generated_at_utc": "2026-11-10T08:52:18.421266+00:00",
+  "entries": [
+    {
+      "path": "arista-rc4-complete-20261110.tar.gz",
+      "size": 133141,
+      "sha256": "dab291590a2d6cbdd4fca753b1d747527d5d5f14633a3ebd4e308b1b844d5c36"
+    },
+    {
+      "path": "arista_rc4_analyze.py",
+      "size": 2290,
+      "sha256": "5576aee3fd21cacdfec4bab7f12a93036e56871de26373cb4102d58c172d0040"
+    },
+    {
+      "path": "arista_rc4_capture_guest.py",
+      "size": 1376,
+      "sha256": "2d10ef565f7d2e0fecfabec96356e5a87a146bf47d453f360ce328edb81e2181"
+    },
+    {
+      "path": "arista_rc4_eve_guest.py",
+      "size": 3387,
+      "sha256": "ab1934903a096422f1624c91e18487b55b2f47b08146a7ac66274e33ae9a9427"
+    },
+    {
+      "path": "arista_rc4_fetch_probe_guest.py",
+      "size": 1904,
+      "sha256": "e0e797fc45cf05aef42fc69c54323c628f9659bd55c26f0a4cb74e612578f581"
+    },
+    {
+      "path": "arista_rc4_overlay_guest.py",
+      "size": 3161,
+      "sha256": "5db9b697dadc0005330cce781ba89b35f32f5d6857041cecfa84d66109f5b4e2"
+    },
+    {
+      "path": "arista_rc4_overlay_upgrade.sh",
+      "size": 2175,
+      "sha256": "f97da5df86e3ca1958abb1d2ea708a2161fc55da23b9d3a0e35b6024a737a110"
+    },
+    {
+      "path": "arista_rc4_packet_summary_guest.py",
+      "size": 870,
+      "sha256": "9b2a355a0e4d2d34c9d819af25f4ba44b587d8cc0dc3a53fbbd39946615757f6"
+    },
+    {
+      "path": "arista_rc4_probe_endpoint.py",
+      "size": 1293,
+      "sha256": "59d4d34d1e9cc1312344795d957e61512cb38449330a31d3c10553676dabb44e"
+    },
+    {
+      "path": "arista_rc4_service_health_guest.py",
+      "size": 1804,
+      "sha256": "3f9ca811fd460d5ec2835b9e7eb47400956504883547f7941711b510222840f2"
+    },
+    {
+      "path": "arista_rc4_tcp_timeline_guest.py",
+      "size": 2559,
+      "sha256": "e47055dab3746902e9bfe2d5fb812ae16e3d255558952879528d6cf121676c1f"
+    },
+    {
+      "path": "configs.sanitized.md",
+      "size": 2325,
+      "sha256": "7fe19b9fe3b0265f68bf022d0e0667f1bec4af45c16733c47041413c294adf16"
+    },
+    {
+      "path": "dhcp_endpoint_guest.py",
+      "size": 5055,
+      "sha256": "34bbcfab62181e50b9c021145433353a6a5e9d41252c95766a78919c469e1d6e"
+    },
+    {
+      "path": "dhcp_switch_guest.py",
+      "size": 13466,
+      "sha256": "f7f8c8727e5fe96ae8327be602cf582f40107f3383b8c18029aaba39877984e0"
+    },
+    {
+      "path": "NAC-Pilot-DHCP.unl",
+      "size": 4161,
+      "sha256": "8b69cf973f3cc545082aac0334aaf0aaa2e9c7b6563a3f66d5d4ec86c62ea935"
+    },
+    {
+      "path": "nac_policy_api_control.py",
+      "size": 6064,
+      "sha256": "5feaf3f50be666d0f7500daf1086b4a5fb3490593c24faf5c38610ba02662195"
+    },
+    {
+      "path": "rc10_product_action_guest.py",
+      "size": 3749,
+      "sha256": "c7309d053911fbd468e1b742b719f670479ad67c7b928c43d4bb64a7962c3072"
+    },
+    {
+      "path": "README.md",
+      "size": 11081,
+      "sha256": "cdbebe08897931b1ac1b069012c0e5f6289925dcf01491ee54c5d3f1e5e147eb"
+    }
+  ]
+}
