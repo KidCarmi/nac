@@ -51,7 +51,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
   Re-run the installer.
 
-### pilot-rc12 (proposed; replacement for the D1 reload-path defect; not yet lab-run; rc10 stays the tested baseline)
+### pilot-rc12 (superseded; replacement for the D1 reload-path defect; its D1 retest failed)
 - **Known defect D1 fixed** (ASTRA chaos run on rc10, `5eb1ff7`: C4 FAIL).
   - **Input:** `radius_source_ip` and `nas_ip` must be dotted IPv4.
     IPv4-mapped spellings get `422`. Stored mapped rows are normalized at
@@ -78,7 +78,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
   Re-run the installer to get them. No database migration.
 
-### pilot-rc11 (proposed; not yet qualified; rc10 `b39649f` stays the tested baseline)
+### pilot-rc11 (proposed; not yet qualified; carries D1 and D2)
 - **Console CoA confirmation wording only.** The text no longer says
   "about 20 s" or "at its next DHCP renewal". It now states the measured
   lab behavior, conditional on the tested setup:

@@ -2,9 +2,14 @@
 
 ## Support boundary (read first)
 
+**No candidate is release-cleared.** The candidate under qualification is
+`pilot-aruba-rc4`; see [qualification status](qualification-status.md).
+`pilot-rc10` below is historical evidence, not a release-safe fallback: known
+defects D1 and D2 (below) were found after it.
+
 **Functional qualification and recovery time are separate results.**
 
-- **Functional (`pilot-rc10`, PASS):** a real vEOS switch passed the full
+- **Functional (`pilot-rc10`, PASS; historical, carries D1 and D2):** a real vEOS switch passed the full
   operator workflow on a fresh instance:
   - onboarding, binding, preview/publish, Quarantine/Restore and Account
   - enforcement of the old segment within about 1–2.5 s of every CoA
