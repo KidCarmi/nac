@@ -122,7 +122,32 @@ What the states mean:
 
 ## Lab results (NAC-driven)
 
-### `pilot-aruba-rc4`: targeted D2 retest PASS (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
+### `pilot-aruba-rc4`: clean qualification IN PROGRESS. Interim reported by ASTRA (2026-11-10); evidence package pending
+
+**Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, nacd `dd2b6137…`
+(independently built and running), on a **fresh, recoverable Ubuntu guest**
+installed with the documented installer. The candidate stays frozen.
+Nothing below is verified here until the package is published.
+
+| Matrix row | Reported result |
+|---|---|
+| P1 install | Documented installer passed in 39 s |
+| 1.x console workflow | **PASS** through the console: onboarding, certificate binding, fresh admission and rejection, policy v2 `corp` → rule-only v3 `quarantine` → restore v2, Quarantine/Restore CoA with endpoint TCP. A separate fresh EAP/RADIUS login confirmed v3 `quarantine`, and later v2 `corp` |
+| 3.x role CoA | **PASS.** VLAN 10 and DHCP address `10.70.10.50` unchanged; no EAP and no DHCP during the CoA |
+| 2.1 D1, real systemd | **PASS, 20/20.** The systemd journal confirms the C5 SIGKILL of the main FreeRADIUS process and its restart |
+| 2.2 D2 | **PASS** in a clean console: liveness `unknown` (accounting Start, no Stop); switch observation unavailable; endpoint reachability `not_observed` |
+| 4.6 nacd outage | **Existing corp session:** HTTP 200 with nacd stopped. **Fresh login:** Access-Reject, switch `Fail`, corp TCP unreachable. **After recovery:** fresh login Access-Accept, `Success`, role `corp`, TCP 200 |
+| Remaining | Full isolated restart, the rest of rows 4–5 and the evidence package are still running |
+
+**Console wording note U2 (not a defect in enforcement).** On a role switch,
+the button "Re-authenticate (apply active policy)" sends a **role CoA**;
+nothing re-authenticates. The detail text says so, but the label can
+mislead an operator. It is **not changed during the freeze.**
+- **Proposed fix** for a successor candidate: label it "Apply active
+  policy" on role switches.
+- **Rows to rerun:** 1.6 and 3.1–3.2.
+
+ (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
 
 **Scope.** Exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`, built with
 Go 1.25.0, linux/amd64, CGO off; the nacd SHA-256 matched `dd2b6137…`.
