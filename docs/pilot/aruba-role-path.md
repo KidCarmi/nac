@@ -141,7 +141,7 @@ package has the exact timings and every manual intervention.
 | **4.5 planned full EVE restart** | **FAIL for automatic lab recovery; product regression after repair PASS. No product defect established.**<br>• **Product:** all product services and the installed hashes survived; policy v2, the session and the override persisted.<br>• **Lab:** recovery failed before any valid endpoint probe, for five causes, each with taps and diagnostics, and each repaired by an explicit, recorded intervention (lab prerequisite P7 below).<br>• **After repair:** the same product accepted EAP-TLS with v2 `corp`. Console Quarantine/Restore ACKed twice, with switch role changes and fresh TCP (quarantine: corp timeout, remediation 200; restore: corp 200). Second pair: CoA `0x18` at 07:47:20.130736 UTC and `0x25` at 07:49:53.244821 UTC. First blocked corp SYN +0.067 s after the request; first restored corp SYN-ACK +0.611 s (EVE clock). No EAP or RADIUS during these CoAs |
 | UI/API role CoA | **PASS for the observed console path.** API negative cases were not run again in this package (they passed on the same role code in rc3, `148e196`) |
 | 1.1 interactive password change on this guest | **PASS.** Changed on the Account page ("Password last changed" 08:00:06 UTC). Before: initial-password login and a staged pre-change token HTTP 200. After: both HTTP 401. The only manual step was the user entering the new password, as browser policy requires |
-| 5 Arista regression, same binary | **NOT RUN.** The isolated vEOS topology still needs nacd `dd2b6137…` wired in; earlier vEOS results are historical, not an rc4 pass |
+| 5 Arista regression, same binary | **API path PASS, with a manual DHCP reconnect as a diagnostic step; Arista console UI NOT RUN; automatic Linux addressing FAIL.** Separate package [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e145946b7fa37820e7aed/lab/evidence/arista-rc4-regression-20261110); details in the next section |
 | Windows 10/11, physical switch | **BLOCKED.** None authorized in this run |
 | Remaining | ASTRA is running the remaining independent checks |
 
@@ -152,6 +152,52 @@ mislead an operator. It is **not changed during the freeze.**
 - **Proposed fix** for a successor candidate: label it "Apply active
   policy" on role switches.
 - **Rows to rerun:** 1.6 and 3.1–3.2.
+
+### `pilot-aruba-rc4`: Arista same-binary regression (row 5): API path PASS, automatic addressing FAIL (ASTRA, 2026-11-10, [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e145946b7fa37820e7aed/lab/evidence/arista-rc4-regression-20261110), 18/18 manifest entries verified here). **Not release-cleared**
+
+**Scope.** The manifest names exact `0148bf88985c5da9086b54aafd002fbfbfe71b75`
+and nacd `dd2b6137…`; adapter `3c45063e…`. vEOS-lab 4.29.2F, one-NIC Linux
+(systemd-networkd) endpoint, corp VLAN 10 and quarantine VLAN 20. The
+control guest was an **upgraded copy-on-write overlay** of the preserved
+Arista control node, not a clean install (the clean install is covered by
+the Aruba run above). ASTRA preserved the original disk and restored it byte
+for byte afterwards. All actions went through the **NAC API**.
+
+| Row | Result (ASTRA) |
+|---|---|
+| 5.1 admission and rejection | **PASS.** Valid EAP-TLS: Access-Accept VLAN 10, vEOS `SUCCESS VLAN 10`, corp TCP open. Invalid certificate: Access-Reject, vEOS `FAILED`, corp TCP blocked |
+| 5.2 rule-only change (corp → quarantine, v13) and restore (v2), API | **PASS for enforcement.** The preview agreed; Re-authenticate sent CoA `0x62` (ACK); switch-initiated EAP-TLS gave VLAN 20; corp blocked. Restore: CoA `0x89` (ACK), VLAN 10, corp open. Conditions, certificate, MAC, port, mapping, adapter and binary unchanged |
+| 5.2 operator Quarantine/Restore, API (after the five-node restart) | **PASS for enforcement.** CoA `0x34` / `0xc3` ACKed; VLAN 20 / 10 on the switch; the decision cites the operator override above the matched corp rule |
+| 5.2 Arista **console** Quarantine/Restore | **NOT RUN.** The console path is covered on Aruba only |
+| Automatic Linux DHCP recovery across a VLAN CoA | **FAIL.** The link stayed up and the old lease stayed; each of the four transitions needed a recorded manual `networkctl down/up` before the new segment was reachable. This is the known Linux recovery limit (operating envelope, PR #1), **not a NAC policy error** |
+| Five-node cold restart | **FAIL for unattended lab recovery; PASS after repair.** Saved policy and the pinned nacd resumed. Repairs: the endpoint's DHCP reconnect, and a full disk on the corp service guest |
+| Established TCP survival | **NOT RUN** (fresh connections only) |
+| Windows 10/11, physical switch | **BLOCKED** |
+
+**Timing, EVE packet clock** (first unanswered fresh old-segment SYN after the
+CoA request; the new segment only after the **manual** reconnect, so not
+automatic recovery):
+
+| Action | Old segment denied | New segment HTTP 200 |
+|---|---:|---:|
+| Rule v13 quarantine | +0.473 s | +43.937 s |
+| Policy v2 restore | +0.631 s | +43.289 s |
+| Operator Quarantine | +0.749 s | +42.515 s |
+| Operator Restore | +0.754 s | +41.620 s |
+
+After each operator CoA **one fresh old-segment connection still succeeded
+(about +0.06 s)**, before the switch changed authorization. So the first
+blocked endpoint-log sample at about 0.18 s is not an enforcement time; use
+the packet-clock values above.
+
+**Lab corrections (not product):**
+- the saved vEOS config targeted the old rc10 control address; only the live
+  RADIUS target was changed, not saved
+- `networkctl renew` was needed at first admission
+- the corp guest disk was cleaned after the restart
+
+The endpoint-reachability field stayed `not_observed` throughout, as
+designed.
 
 ### `pilot-aruba-rc4`: targeted D2 retest PASS (ASTRA, 2026-11-09, [`2609fdb`](https://github.com/KidCarmi/nac/tree/2609fdb8cd7759c12f7d88b73027201481bc26d2/lab/evidence/aruba-rc4-d2-retest-20261109), 4/4 manifest entries verified here). **Not fully qualified**
 
