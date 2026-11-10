@@ -1,6 +1,6 @@
 # 0009. Access intent is separate from the enforcement strategy
 
-- **Status:** Proposed (contract for the owner-side architecture/security review; no code yet)
+- **Status:** Proposed (contract for the owner-side architecture/security review). Reconciled 2026-11-10 with the proposed network-device driver ADR (PR #4). Neither is accepted; the owner retains the architecture/security review.
 - **Date:** 2026-11-08
 - **Deciders:** OPUS (backend), owner-side assistant (architecture/security review), repository owner
 - **Relates to:** ADR-0006 (pilot architecture), ADR-0008 (change workflow)
@@ -48,15 +48,31 @@ become profiles: `corp` → full access, `quarantine` → the quarantine
 profile.
 
 A profile states **requirements**. Each requirement is a fact that must
-hold for the endpoint:
+hold for the endpoint. Every requirement names its **traffic direction**
+(`from_endpoint`, `to_endpoint` or `both`), its **protocols** (`tcp`,
+`udp`, `icmp`, `any`) and its **address families**. One that doesn't is
+invalid; nothing is implied by a requirement's name.
 
-| Requirement | Example (quarantine) |
-|---|---|
-| `deny_routed` | corporate subnets, IPv4 and IPv6 |
-| `deny_same_subnet_peers` | true when other hosts in the endpoint's own subnet must be unreachable (L2 containment) |
-| `allow` | remediation services (patch server, DNS, DHCP, the NAC portal) by address, port and protocol |
-| `cut_established_flows` | whether flows that already existed must stop |
-| `address_families` | `ipv4`, `ipv6` |
+| Requirement | Meaning | Example (quarantine) |
+|---|---|---|
+| `deny_routed` | New connections from the endpoint to these destinations cannot be established | corporate subnets; `from_endpoint`; tcp, udp, icmp; IPv4 and IPv6 |
+| `deny_same_subnet_sessions` | No connection between the endpoint and a same-subnet peer can complete, in the stated direction(s) | `both`; tcp, udp |
+| `isolate_same_subnet_packets` | Packets from same-subnet peers do not reach the endpoint at all (L2 packet isolation). A stronger claim than the line above | — (Q4) |
+| `block_established_flow_data` | While restricted, no data passes on flows that existed before the restriction | tcp; `both` (Q5) |
+| `terminate_established_flows` | Transport state of pre-existing flows is torn down | — (Q5) |
+| `allow` | Services that stay reachable: remediation, DNS, DHCP, the NAC portal, by address, protocol and port | remediation `10.70.20.10/32` tcp/8080 |
+| `address_families` | `ipv4`, `ipv6` | both |
+
+**Blocking and teardown are different claims.**
+- `block_established_flow_data` says nothing about what happens after the
+  restriction ends.
+- `terminate_established_flows` ends transport state. **It does not
+  guarantee that application data is never sent later**: an application
+  can reconnect and resend queued data after access returns.
+- No requirement in this vocabulary claims permanent suppression of
+  application data. **Ingress filtering, inbound packet isolation, blocking
+  existing-flow data and transport teardown are four separate claims**, and
+  each needs its own evidence.
 
 ### 2. Enforcement strategies are adapters with measured capabilities
 
@@ -67,16 +83,40 @@ A switch platform, version and configuration can offer strategies:
 | `vlan` | RADIUS VLAN in Access-Accept and CoA (today's path, lab-qualified on vEOS-lab 4.29.2F) | yes |
 | `role_acl` | a per-session role or downloadable ACL, set at authentication and changed by CoA | no |
 
-A **capability record** describes each strategy on each platform. It
-lists, per requirement, whether that requirement is `demonstrated`,
-`unverified` or `unsupported`, and points to the evidence record. It
-inherits nothing from vendor documentation.
+A **capability record** describes each strategy (a *recipe*) on each
+platform scope. It has three **independent** dimensions (from the proposed
+driver ADR, PR #4):
+
+| Dimension | Values | Meaning |
+|---|---|---|
+| Research | `draft` / `source-backed` / `disputed` | Quality and provenance of the described behavior, e.g. vendor documentation or another product's source |
+| Implementation | `absent` / `partial` / `implemented` | Whether our code contains the operation |
+| Qualification, **per requirement and environment** | `unverified` / `demonstrated` / `unsupported` / `inconclusive` | What our lab evidence establishes, with the evidence reference |
+
+- **No dimension implies another.** A `source-backed` recipe (for example
+  one read from PacketFence) with `absent` implementation can be shown for
+  planning. It is **never** executable, selectable or "qualified" as a
+  result.
+- **Offline fixtures and unit tests prove code behavior only.** They don't
+  change qualification.
+- **Nothing is inherited from vendor documentation.**
+- **Selectable** requires all of:
+  - `implemented`
+  - `demonstrated` for every requirement of the profile in the matching
+    platform scope
+  - an evidence record that is current for that configuration (§7)
+- **Scope** is vendor, family, model, OS/build, physical or virtual, the
+  operation, the authentication method, the configuration fingerprint (§7)
+  and the topology. One successful build does not extend to a version
+  range.
 
 Examples of what records must keep apart:
 - **Gateway ACL vs same-subnet containment.** An ingress ACL enforced at the
-  gateway does **not** demonstrate `deny_same_subnet_peers`.
-- **New-flow blocking vs flow cutting.** A role that blocks new flows does
-  not demonstrate `cut_established_flows`.
+  gateway does **not** demonstrate `deny_same_subnet_sessions` or
+  `isolate_same_subnet_packets`.
+- **New-flow blocking vs existing flows.** A role that blocks new flows does
+  not demonstrate `block_established_flow_data`, and blocking data does not
+  demonstrate `terminate_established_flows`.
 - **Phone + PC on one port.** Shared-port behavior (does the phone keep its
   authorization?) is recorded per strategy.
 
@@ -89,36 +129,53 @@ and an explicit last resort. It needs all of these:
 
 The records live in
 [`docs/architecture/enforcement-capability-matrix.md`](../docs/architecture/enforcement-capability-matrix.md).
-As of 2026-11-08:
-- Arista vEOS-lab `vlan` is the only NAC-integrated strategy with
-  demonstrated entries.
-- Aruba AOS-CX simulator 10.07.0004 `role_acl` is a **partly demonstrated
-  platform capability**, shown with a reference RADIUS server (`a8c8207`).
-  Per-session IPv4 quarantine kept the address, blocked corp and
-  endpoint-initiated same-subnet traffic, and kept remediation reachable.
-  A direct RADIUS CoA then changed the role both ways on the same IP and
-  VLAN, with no re-authentication in the captured window (`d3cf745`). It is
-  **not NAC-integrated** and not selectable.
+As of 2026-11-10:
+
+| Recipe | Research | Implementation | Qualification (lab, exact build) |
+|---|---|---|---|
+| Arista vEOS-lab 4.29.2F `vlan` (Tunnel-\* in Access-Accept and CoA) | source-backed | implemented (pilot line) | `deny_routed` demonstrated via readdressing; see the matrix |
+| Aruba AOS-CX Virtual 10.07.0004 local role (`Aruba-User-Role` in Access-Accept and CoA) | source-backed | implemented (`pilot-aruba-rc3`/`rc4`, KidCarmi/nac#3) | NAC-integrated evidence on exact `pilot-aruba-rc3` (`148e196`): corp → quarantine → corp with VLAN and IP unchanged; `deny_routed` (IPv4 TCP; UDP from the endpoint); `block_established_flow_data` (one TCP flow); `deny_same_subnet_sessions` (TCP). **`isolate_same_subnet_packets` unsupported** as tested; **`terminate_established_flows` not demonstrated**. `pilot-aruba-rc4` is under qualification |
+| Aruba AOS-CX `Filter-Id` in CoA (PacketFence's recipe) | source-backed | absent | unverified: **not executable** |
+
+Execution of the Aruba recipe in the pilot is limited to the frozen
+candidate and its lab. This ADR does not make it a production-selectable
+strategy.
 
 ### 3. Selecting a strategy never weakens the intent
 
 For each session, the backend chooses a strategy whose demonstrated
 capabilities cover **every** requirement of the decided profile.
 
-- **Order of preference:**
+- **Order of preference among selectable strategies:**
   1. strategies that keep the address (`role_acl`)
   2. `vlan`
-  3. otherwise per installation configuration
-- **If no strategy covers the profile:**
-  - The decision records `unmet_requirements`.
-  - It applies the installation's configured fail-safe, by default the
-    strongest available strategy (usually `vlan`) or deny.
-  - It never applies a weaker strategy as if it met the intent.
-  - The gap shows in the session view, the simulation, the plan and the
+- **There is no universally "strongest available" strategy.** VLAN and role
+  restrictions cover different requirements, so neither is a safe automatic
+  substitute for the other.
+- **Admission when the restriction cannot be compiled.** If no selectable
+  strategy can express the required restrictions for this switch, for
+  example because of a missing role mapping or an unqualified requirement:
+  - The admission is **rejected** (Access-Reject).
+  - It is never an unconstrained Access-Accept, and a broader cached
+    assignment is never reused.
+  - The same check applies at every re-authentication, not only to
+    operator CoA. **The pilot already rejects a decision for a segment
+    with no role mapping.**
+- **Active session when no strategy covers the profile:**
+  - The decision records `unmet_requirements` and **retains the desired
+    restriction** for the next authentication.
+  - It executes **only an explicitly configured, eligible fail-safe
+    action**. If none exists, the outcome is an **enforcement failure**,
+    reported in the session view, the simulation, the plan and the
     execution outcome.
-- **A strategy is selectable** only when its capability record exists for
-  that switch's platform, version and configuration. Unknown means not
-  selectable.
+  - A future Access-Reject does not disconnect an already authorized
+    session. That is stated, not implied.
+  - There is no fallback from a failed CoA to a port bounce. The pilot
+    refuses a Restore that the policy would turn into a deny (`422`) and
+    keeps the quarantine.
+- **A strategy is selectable** only under §2's rule: implemented, and
+  demonstrated for every requirement in a current configuration scope.
+  Unknown means not selectable.
 
 ### 4. Same fields everywhere
 
@@ -154,7 +211,7 @@ built now.
   heuristic, local-trigger experiment. It is not this action, and not a
   default.
 
-### 6. Platform mapping
+### 6. Platform mapping (see §7 for targeting and drift)
 
 **Arista EOS:** unchanged.
 - `vlan` sends Tunnel attributes in Access-Accept and CoA, the
@@ -174,6 +231,53 @@ matrix demonstrates with real traffic (ADR-0012). That means:
 A reference RADIUS harness may establish what the platform can do. It is
 labelled separately from an integrated NAC pass.
 
+### 7. Targeting, configuration drift and override scope
+
+**Exact session targeting.**
+- Each recipe defines the minimum identifying attributes for each action
+  and their matching semantics. The pilot's CoA uses User-Name,
+  NAS-IP-Address, NAS-Port-Id and Calling-Station-Id, captured at request
+  time; retries never re-target.
+- An operation is session-scoped only when those attributes select the
+  intended session with the qualified platform behavior.
+- **Missing or ambiguous identifiers block the operation.** The selector is
+  never broadened, for example to User-Name or MAC alone, to make a NAK go
+  away.
+- Requested selector scope and demonstrated impact scope are recorded
+  separately.
+- Support for an attribute in Access-Accept does not imply support in CoA
+  or Disconnect.
+
+**Role/ACL content and configuration drift.**
+- A role name is not evidence of its contents. Capability evidence is bound
+  to a **configuration fingerprint**. It covers the role and ACL
+  definitions and referenced objects, the implicit action, the direction,
+  VLAN membership and isolation, the authentication host mode, and the
+  fallback and critical-authentication settings. Credentials and counters
+  are excluded.
+- If the fingerprint changes, or the evidence is stale or unavailable,
+  coverage for that switch becomes **unknown**. The recipe is then not
+  selectable, and unexecuted plans and approvals that bound the old
+  fingerprint are **invalidated** (ADR-0008 §4).
+- A role that keeps its name but changes its rules loses its qualified
+  status.
+- Where automatic observation is unavailable (today, AOS-CX: NAC has no
+  observation adapter), an **explicitly approved, versioned operator
+  attestation** can be recorded with its age and limits. It is not a live
+  verification. Each requirement declares whether attestation is
+  acceptable for it.
+- A firmware or driver change triggers re-evaluation; qualification is not
+  inherited.
+
+**Override scope is preserved.**
+- The operator quarantine override keeps the ADR-0006 scope: one identity
+  (certificate issuer and serial) on one switch port and MAC, carried
+  across re-authentication and session replacement.
+- It is **not** reinterpreted as a global device quarantine. A device-wide
+  override would be a separate identity-scope decision, with a plan
+  targeting every eligible session. Moving to another port is a
+  qualification case, not an assumed invariant.
+
 ## Consequences
 
 ### Positive
@@ -191,44 +295,60 @@ labelled separately from an integrated NAC pass.
   configuration before a strategy can be selected.
 - The decision path gains a selection step. It must stay deterministic and
   auditable.
-- Enforcing `cut_established_flows` and `deny_same_subnet_peers` may still
-  require `vlan` on many platforms.
+- Enforcing `terminate_established_flows` and `isolate_same_subnet_packets`
+  may still require `vlan`, or a mechanism not yet demonstrated, on many
+  platforms.
 
 ### Open questions (owner / owner-side review)
-- **Q1. Default fail-safe** when no strategy covers a profile. Proposed:
-  strongest available strategy, else deny, and the gap is always reported.
-- **Q2. Quarantine profile requirements.** Proposed default:
-  `deny_routed: all corporate`, `deny_same_subnet_peers: true`,
-  `cut_established_flows: true`, `allow: DNS, DHCP, remediation`. The owner
-  confirms what the pilot's quarantine must guarantee.
+
+Recommended defaults and tradeoffs for each open item are in
+[decision-table-adr-0008-0009](../docs/architecture/decision-table-adr-0008-0009.md).
+
+- **Q1. Fail-safe** when no strategy covers a profile.
+  - **Admission:** reject (§3). This is decided by this reconciliation, not
+    left open.
+  - **Active sessions: open.** Which explicitly configured fail-safe
+    actions, if any, an installation may enable. Proposed: none by default,
+    which means enforcement failure is reported and the desired restriction
+    is retained.
+- **Q2. Quarantine profile requirements.** Proposed default, each with
+  direction and protocol:
+  - `deny_routed`: all corporate prefixes, `from_endpoint`, any protocol,
+    IPv4 and IPv6
+  - `deny_same_subnet_sessions`: `both`, tcp and udp
+  - `block_established_flow_data`: `both`
+  - `allow`: DNS, DHCP and remediation
+
+  `isolate_same_subnet_packets` and `terminate_established_flows` are not
+  in the default (Q4, Q5). The owner confirms what the pilot's quarantine
+  must guarantee.
 - **Q3. Mixed strategies** across switches inside one CR scope. Proposed:
   allowed, with the strategy shown per target in the plan.
 
-- **Q4. Same-subnet requirement granularity.** On Aruba 10.07, an
-  ingress-only role stopped peer TCP sessions from completing in both
-  directions. Inbound peer packets still reached the endpoint (`3ff53a9`).
-  Proposed: split `deny_same_subnet_peers` into:
-  - `deny_same_subnet_sessions`: no connection in either direction can
-    complete
-  - `isolate_same_subnet_packets`: inbound peer packets must not reach the
+- **Q4. Same-subnet requirement.** The vocabulary in §1 now has both:
+  - `deny_same_subnet_sessions`: no connection can complete
+  - `isolate_same_subnet_packets`: inbound peer packets don't reach the
     endpoint
 
-  The owner states which one quarantine requires. If it is packet
-  isolation, Aruba `role_acl` as tested cannot be selected for it, and the
-  `vlan` strategy (or an egress policy, once demonstrated) stays the fail-safe.
+  On Aruba 10.07, an ingress-only role stopped peer TCP sessions in both
+  directions, but inbound peer packets still reached the endpoint
+  (`3ff53a9`, confirmed through NAC on `148e196`). **Open: which one the
+  quarantine profile requires.** If it is packet isolation, the tested
+  Aruba role cannot be selected for it, and an admission that requires it
+  on that switch is rejected (§3).
 
-- **Q5. Established-flow requirement granularity.** On Aruba 10.07, the
-  role blocked data on an existing TCP flow while quarantined. It did not
-  tear down that flow: the same socket resumed after restore and delivered
-  the data queued during quarantine (`42be71f`). Proposed: split
-  `cut_established_flows` into:
+- **Q5. Established flows.** The vocabulary in §1 now has both:
   - `block_established_flow_data`: no data passes while restricted
-  - `terminate_established_flows`: the session is torn down, so queued
-    data cannot arrive later
+  - `terminate_established_flows`: transport state is torn down
 
-  The owner states which one quarantine requires. Termination would need
-  another mechanism, for example a TCP reset from the enforcement point,
-  which has not been demonstrated.
+  **Termination does not guarantee that queued application data is never
+  sent**: an application can reconnect and resend after access returns.
+
+  On Aruba 10.07, the role blocked data on an existing TCP flow (0 of 8
+  payloads, no FIN or RST). The same socket resumed after Restore and
+  delivered data queued during quarantine (`42be71f`; through NAC on
+  `148e196`). **Open: which one quarantine requires.** Termination would
+  need another, undemonstrated mechanism.
 
 ### Alternatives considered
 - **Keep quarantine = VLAN and tune DHCP.** Measured: authoritative DHCP

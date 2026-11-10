@@ -1,6 +1,6 @@
 # 0008. AI-operated change workflow: change requests, digest-bound human approval, delegated identities, MCP
 
-- **Status:** Proposed (contract for the owner-side architecture/security review; no code yet)
+- **Status:** Proposed (contract for the owner-side architecture/security review; no code yet). Reconciled 2026-11-10 with the proposed network-device driver ADR (PR #4): approval invalidation on configuration drift, dispatch-time authorization and generation fencing. Not accepted; the owner retains the review.
 - **Date:** 2026-11-07
 - **Deciders:** OPUS (backend), owner-side assistant (architecture/security review), repository owner. The GitHub `@codex review` bot is an additional automated reviewer.
 
@@ -124,12 +124,21 @@ An approval is a stored record. It is never a boolean that a client sends.
 - **Binding.** An approval binds `{cr_id, content_digest, base_version,
   validation_id, simulation_id, environment_fingerprint, plan_digest,
   scope}` and has an expiry: `expires_at`, default 24 h, configurable.
-- **Invalidation.** An approval becomes `invalid` when the CR content
-  changes, when the active version moves off `base_version`, when the
-  environment fingerprint changes, when it expires or is revoked, or when
-  the approver loses `policy:approve` or is disabled. Execution re-checks
-  every condition at the moment it starts. It does not rely on cached
-  approval state.
+- **Invalidation.** An approval becomes `invalid` when:
+  - the CR content changes
+  - the active version moves off `base_version`
+  - the environment fingerprint changes. The fingerprint includes each
+    target switch's **configuration fingerprint** (role and ACL contents,
+    implicit action, direction, host mode, fallback settings; ADR-0009 §7),
+    the capability record and the driver/recipe revision. A role that keeps
+    its name but changes its rules invalidates the approval.
+  - a target's desired-state generation moves, for example because an
+    operator quarantined a session the plan would restore
+  - it expires or is revoked
+  - the approver loses `policy:approve` or is disabled
+
+  Execution re-checks every condition when it starts **and again at
+  dispatch** (section 5). It does not rely on cached approval state.
 - **Single use.** An approval is consumed by exactly one execution. Reusing
   it, or using it for another CR, plan or scope, returns `409`.
 - **Separation of duties.** The approver must not be `requested_by`.
@@ -196,17 +205,53 @@ stages:
 4. **promote** (a separate, later plan with its own approval): activate the
    same version for a wider scope or for `all`.
 
-Each target records four outcomes separately:
+Each target records these outcomes separately:
 - `requested`
-- `acknowledged`: CoA-ACK
-- `observed`: re-authentication returned the requested VLAN, and the switch reports it
+- `acknowledged`: CoA-ACK, NAK or timeout
+- `observed`: on the VLAN path, re-authentication returned the requested
+  VLAN and the switch reports it. On the Aruba role path there is no
+  re-authentication and no NAC observation, so it is `unavailable` and
+  `acked` is final.
 - `verified`: an independent endpoint check. NAC never fills this in. It stays `not_observed`, as in ADR-0006.
+- `superseded` or `uncertain`, when the generation fence or a lost ACK
+  applies
 
 Retries are safe:
 - a repeated `Idempotency-Key` returns the same execution
 - a stage that already completed is a no-op
 - CoA keeps at-most-one-in-flight per session, with byte-identical,
   never-retargeted retries (ADR-0006)
+
+**Dispatch-time authorization and generation fencing.** Authorization when
+the plan is created is not enough, because an execution can wait in a
+queue.
+- Immediately before each target's **first send**, the executor re-checks:
+  - the principal's permissions and token revocation
+  - that the approval still applies (section 4)
+  - the target's **desired-state generation** and its override state
+  - target freshness (the session is current and not replaced)
+  - the configuration fingerprint and the driver/recipe revision
+- It then atomically claims the target with the expected generation.
+- **A newer Quarantine supersedes an older queued Restore.** The Restore
+  sees a moved generation and is recorded `superseded`, never sent.
+  Retries and reconciliation also stop once superseded; they never revive
+  an obsolete assignment.
+- A single-use approval is consumed once per execution, not once per
+  packet. A worker restart does not create a second execution.
+- **A lost ACK is an uncertain outcome, not a failure.** Retries resend the
+  exact bytes within a bounded window. After a restart or an expired
+  window, the executor reconciles first; it does not replay against a
+  replacement session.
+- No exactly-once network effect is claimed. Partial completion across
+  targets is explicit, and no automatic compensation removes a quarantine.
+- **Today's pilot:**
+  - Operator session actions allow one CoA in flight per session (`409`).
+  - A Restore that the policy would turn into a deny is refused (`422`)
+    and keeps the quarantine.
+  - Retries never re-target.
+
+  The generation fence is a requirement for the CR workflow's queued
+  stages. It is not yet implemented.
 
 **An execution never clears an operator quarantine override.** Restoring a
 policy version leaves overrides in place, as today. Clearing one is a
@@ -324,6 +369,10 @@ access automatically. Nothing in a skill is a security control.
   delegated identities. Each table is append-mostly and audited.
 
 ### Open decisions (owner / owner-side review)
+
+Recommended defaults and tradeoffs for each open item are in
+[decision-table-adr-0008-0009](../docs/architecture/decision-table-adr-0008-0009.md).
+
 - **O1. Self-approval through a delegate.** May the human named in a CR's
   `on_behalf_of` approve it? Proposed: **no by default**, with an explicit
   per-installation setting for single-admin pilots, shown in the approval

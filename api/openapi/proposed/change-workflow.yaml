@@ -651,7 +651,7 @@ components:
           enum: [valid, consumed, invalid, revoked, expired]
         invalid_reason:
           type: string
-          description: "e.g. content_changed, base_version_moved, environment_drift, approver_disabled, approver_lost_permission"
+          description: "e.g. content_changed, base_version_moved, environment_drift, configuration_drift (role/ACL contents or fallback settings changed under the same name), capability_changed, recipe_revision_changed, target_generation_moved, approver_disabled, approver_lost_permission"
         approved_by: { $ref: "#/components/schemas/Principal" }
         bindings:
           type: object
@@ -705,61 +705,139 @@ components:
 
     AccessProfile:
       type: object
-      description: "ADR-0009: required access restrictions. Each requirement must be covered by a demonstrated capability of the selected strategy."
+      description: |
+        ADR-0009: required access restrictions. Each requirement states its
+        direction, protocols and address families; nothing is implied by a
+        requirement's name. Each must be covered by a demonstrated
+        capability of the selected recipe in a current configuration scope.
+        Blocking and teardown are separate claims: `terminate_established_flows`
+        ends transport state but does not guarantee that application data
+        is never sent later.
       required: [name, version, requirements]
       properties:
         name: { type: string }
         version: { type: integer }
         requirements:
           type: object
+          additionalProperties: false
           properties:
-            deny_routed: { type: array, items: { type: string }, description: "Destination prefixes that must be unreachable." }
-            deny_same_subnet_peers: { type: boolean, description: "L2 containment: peers in the endpoint's own subnet must be unreachable." }
+            deny_routed:
+              $ref: "#/components/schemas/TrafficRequirement"
+              description: "New connections from the endpoint to these destinations cannot be established."
+            deny_same_subnet_sessions:
+              $ref: "#/components/schemas/TrafficRequirement"
+              description: "No connection between the endpoint and a same-subnet peer completes, in the stated direction(s)."
+            isolate_same_subnet_packets:
+              $ref: "#/components/schemas/TrafficRequirement"
+              description: "Packets from same-subnet peers do not reach the endpoint at all (L2 packet isolation). Stronger than deny_same_subnet_sessions."
+            block_established_flow_data:
+              $ref: "#/components/schemas/TrafficRequirement"
+              description: "While restricted, no data passes on flows that existed before the restriction. Says nothing about after the restriction ends."
+            terminate_established_flows:
+              $ref: "#/components/schemas/TrafficRequirement"
+              description: "Transport state of pre-existing flows is torn down. Does NOT guarantee that application data is never sent later: an application may reconnect and resend."
             allow:
               type: array
-              description: "Permitted services, for example remediation, DNS and DHCP."
+              description: "Services that stay reachable: remediation, DNS, DHCP, the NAC portal."
               items:
                 type: object
+                required: [destination, protocol]
                 properties:
                   destination: { type: string }
                   protocol: { type: string, enum: [tcp, udp, icmp, any] }
                   ports: { type: string }
-            cut_established_flows: { type: boolean }
             address_families: { type: array, items: { type: string, enum: [ipv4, ipv6] } }
+
+    TrafficRequirement:
+      type: object
+      description: "ADR-0009 §1: every requirement is explicit about direction and protocol."
+      required: [direction, protocols, address_families]
+      additionalProperties: false
+      properties:
+        direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
+        protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
+        address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
+        destinations:
+          type: array
+          description: "Prefixes, where the requirement applies to specific destinations (deny_routed)."
+          items: { type: string }
 
     EnforcementCapability:
       type: object
-      description: "ADR-0009: what one strategy demonstrably enforces on one platform/version/configuration. Nothing is inherited from vendor documentation."
-      required: [strategy, platform, requirements]
+      description: |
+        ADR-0009 §2: one recipe on one platform scope, with three
+        INDEPENDENT dimensions. A source-backed recipe with absent
+        implementation is visible for planning but never executable,
+        selectable or qualified. Unit tests and offline fixtures do not
+        change qualification. Nothing is inherited from vendor
+        documentation.
+      required: [recipe_id, strategy, platform, research_status, implementation_status, requirements, selectable]
       properties:
+        recipe_id: { type: string, examples: ["arubacx.local-role.aruba-user-role", "aristaeos.vlan.tunnel"] }
+        recipe_revision: { type: string }
         strategy: { type: string, enum: [vlan, role_acl] }
-        platform: { type: string, examples: ["arista-eos 4.29.2F (vEOS-lab)"] }
-        configuration: { type: string, description: "Identifies the switch configuration the evidence applies to." }
+        platform:
+          type: object
+          description: "Scope: vendor, family, model, OS/build, physical or virtual. One build does not extend to a version range."
+          properties:
+            vendor: { type: string }
+            family: { type: string }
+            model: { type: string }
+            os_build: { type: string, examples: ["4.29.2F", "Virtual.10.07.0004"] }
+            form: { type: string, enum: [physical, virtual] }
+        operation: { type: string, enum: [admission, coa, disconnect, reauthenticate] }
+        research_status: { type: string, enum: [draft, source-backed, disputed] }
+        research_sources:
+          type: array
+          items: { type: object, properties: { kind: { type: string }, reference: { type: string } } }
+        implementation_status: { type: string, enum: [absent, partial, implemented] }
+        configuration_fingerprint:
+          type: string
+          description: "ADR-0009 §7: the role/ACL definitions, implicit action, direction, VLAN, host mode and fallback settings the evidence applies to. Drift, or stale/unavailable evidence, makes coverage unknown."
+        configuration_evidence:
+          type: string
+          enum: [observed, operator_attestation, unavailable]
+          description: "operator_attestation is approved and versioned, with an age; it is not live verification. Each requirement declares whether it accepts it."
         changes_address: { type: boolean }
         requirements:
           type: object
-          description: "Per requirement: demonstrated, unverified or unsupported, with an evidence reference."
+          description: "Per requirement: the qualification status in this scope, with the evidence reference."
           additionalProperties:
             type: object
             required: [status]
             properties:
-              status: { type: string, enum: [demonstrated, unverified, unsupported] }
+              status: { type: string, enum: [unverified, demonstrated, unsupported, inconclusive] }
               evidence: { type: string }
               caveat: { type: string }
+        selectable:
+          type: boolean
+          readOnly: true
+          description: "Computed: implemented, AND demonstrated for every requirement of the profile in this scope, AND current configuration evidence. Never set by a client."
 
     StrategySelection:
       type: object
-      description: "ADR-0009: the mechanism chosen for one session, with what it does not cover. Never silently weaker than the intent."
+      description: |
+        ADR-0009 §3: the recipe chosen for one session, with what it does not
+        cover. Never silently weaker than the intent, and there is no
+        "strongest available" substitution. An admission whose required
+        restrictions cannot be compiled is rejected (`strategy: reject`),
+        never accepted unconstrained.
       required: [intent, strategy, unmet_requirements]
       properties:
         intent: { $ref: "#/components/schemas/AccessProfileRef" }
-        strategy: { type: string, enum: [vlan, role_acl, deny] }
+        strategy: { type: string, enum: [vlan, role_acl, reject] }
+        recipe_id: { type: string }
         strategy_limitations: { type: array, items: { type: string } }
         unmet_requirements:
           type: array
-          description: "Requirements no selectable strategy covers. When non-empty, the configured fail-safe applied and the gap is reported."
+          description: "Requirements no selectable recipe covers. For an active session, the desired restriction is retained for the next authentication."
           items: { type: string }
-        fail_safe_applied: { type: boolean }
+        fail_safe_action:
+          type: string
+          description: "Only an explicitly configured, eligible fail-safe action; absent when none is configured."
+        enforcement_failure:
+          type: boolean
+          description: "True when requirements are unmet for an active session and no eligible fail-safe exists. Reported, never hidden."
 
     TargetOutcome:
       type: object
@@ -769,8 +847,13 @@ components:
         selection: { $ref: "#/components/schemas/StrategySelection" }
         requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer }, role: { type: string } } }
         coa_request_id: { type: string, format: uuid }
-        acknowledged: { type: boolean, description: "CoA-ACK received. Not proof of access." }
-        observed: { type: boolean, description: "Re-authentication returned the requested VLAN and the switch reports it." }
+        acknowledged: { type: string, enum: [ack, nak, timeout, transport_failure, uncertain], description: "The switch's answer. ack is not proof of access; uncertain means a lost ACK, reconciled before any further send." }
+        observed:
+          type: string
+          enum: [matching, mismatching, stale, unavailable]
+          description: "VLAN path: re-authentication returned the requested VLAN and the switch reports it. Aruba role path: no re-authentication and no NAC observation, so unavailable (acked is final)."
+        desired_state_generation: { type: integer, description: "The target generation this outcome was dispatched against (ADR-0008 §5 generation fence)." }
+        superseded: { type: boolean, description: "A newer desired state (e.g. a later Quarantine) superseded this target before dispatch; nothing was sent." }
         verified:
           type: string
           const: not_observed
