@@ -2,7 +2,9 @@
 
 **Status: proposed defaults for the owner's architecture/security review.**
 Nothing here is accepted. Reconciled 2026-11-10 with the proposed
-network-device driver ADR (PR #4).
+network-device driver ADR (PR #4). Revised the same day for the owner's
+review findings R1–R5 (contract defects, resolved below). The new choices
+those fixes create are proposed decisions N5–N8.
 
 ## Invariants (not open)
 
@@ -37,6 +39,29 @@ network-device driver ADR (PR #4).
 | **N2** | Scope of the operator quarantine override | **Keep ADR-0006: one identity on one switch port.** A device-wide override is a separate future decision | The same certificate on another port is not automatically quarantined (a qualification case) |
 | **N3** | Research catalog in the product | **Documentation only now.** The product lists only implemented recipes with their qualification. A planning view of source-backed entries later, never executable | Planning visibility waits for the product UI |
 | **N4** | When the generation fence is required | **Before the CR workflow's queued execution ships.** Until then, operator session actions keep "one CoA in flight" (`409`) and refuse a policy-denied Restore (`422`) | No queued, AI-requested execution until the fence exists |
+| **N5** | On stop, what happens to requests already sent? | **They finish only their byte-identical retransmissions within the existing bounded window.** No first send happens after the stop | Stop takes up to the retry window to settle. Aborting retries would not unsend the first packet and would leave more targets `uncertain` |
+| **N6** | Two activations at the same specificity for one unit | **Rejected (`scope-overlap`) unless the plan names the holder it supersedes.** No "newest wins" | Every overlapping canary needs an explicit retire/keep choice. In exchange, resolution is deterministic and reviewable |
+| **N7** | Qualification record validity | **`valid_until` 90 days by default, and void sooner on any change of build, recipe revision or configuration fingerprint** | Periodic requalification costs lab time. Without expiry, old evidence would keep qualifying actions silently |
+| **N8** | Maximum execution duration (`authority_expires_at`) | **The earlier of the approval expiry and 2 h from start** | A long `observe` stage needs a new plan. A queued execution can't act on hours-old authority |
+
+## Review findings R1–R5 (owner review of `ed5935e`): resolutions
+
+| ID | Finding | Resolution | Where |
+|---|---|---|---|
+| **R1** | The execution invalidated its own approval after activation | One start transaction consumes the approval into one immutable execution, pins the pre-activation snapshot and records the execution's authority. After `activate` commits, dispatch accepts only this execution's **expected post-activation state**; any other activation change stops it (`external_activation`). Version checks are not skipped. A restart never republishes or consumes twice | ADR-0008 §4 "Single use, owned by one execution", §5 "Execution start", "own transition", "Crash and restart"; OpenAPI `executeChangeRequest`, `Execution.expected_post_activation` |
+| **R2** | Promotion and rollback left narrower activations shadowing the intended policy | Activation records with id and revision; no equal-specificity overlap (N6); partial supersession keeps the rest; widening and rollback plans list every narrower activation as `retire` or `keep`, with nothing retired implicitly; the resolved plan shows the post-change resolution of every unit; all of it is written atomically against the approved scope snapshot. The singular `base_version` binding is replaced by the scope snapshot | ADR-0008 §2, §4 "Scope snapshot", §5 "Activation records"; OpenAPI `ActivationScope`, `ScopeUnit`, `Activation`, `ScopeSnapshot`, `PlanInput.narrower_activations` |
+| **R3** | The approval API could not carry the immutable resolved plan | `PlanInput` (client) is separate from `ResolvedPlan` (server, immutable, stored), whose per-target records bind incarnation, assignment, profile version, recipe revision, configuration and qualification ids, generation, strategy, limitations and impact. `plan_digest` = SHA-256 over JCS canonical JSON. The executor never re-plans under an unchanged digest. Stage grammar and non-empty, bounded, duplicate-free scopes and targets are enforced in the schema and before approval | ADR-0008 §4, §5 "The resolved plan"; OpenAPI `PlanInput`, `ResolvedPlan`, `ResolvedTarget`, `ApprovalRequest`, `requestApproval` `422` |
+| **R4** | Qualification could not be matched to the requested traffic scope | Immutable qualification records with a structured tested scope (requirement, direction, protocols, families, destination class, flow state), platform build, recipe revision, configuration fingerprint, evidence digest, expiry and issuer. Coverage matches on every axis. Eligibility is per profile version and target, with the reason for each unmet requirement; the inventory shows only `readiness`. Attestations carry issuer, version, issue and expiry times. Allow entries are as explicit as requirements | ADR-0009 §2 "Qualification records", "Coverage matching", "Eligibility", §7; OpenAPI `QualificationRecord`, `TestedScope`, `EligibilityResult`, `Attestation`, `EnforcementCapability`, `getProfileEligibility` |
+| **R5** | CR mutability and stop/partial-completion semantics were unfinished | Content can change only before execution; from `executing` on the CR is immutable (`cr-immutable`) and a later change is a new CR. Edit, cancel and execute race on one compare-and-set, with one winner. Delegated ownership covers edit, cancel, request, execute and stop. `POST /executions/{id}/stop` defines pending, sent and uncertain work (N5), and reports what remains in force: the committed activation stays, a rollback is a separate approved CR, and overrides are untouched | ADR-0008 §2 "Mutable states", "Immutable from execution on", "Ownership", §5 "Stopping an execution"; OpenAPI `stopExecution`, `cancelChangeRequest`, `putChangeRequestContent`, `Execution.stop`, `still_in_force` |
+
+**Validated (proposed schema, Draft 2020-12, `jsonschema` 4.26):**
+- every `$ref` resolves
+- all 40 component schemas pass the metaschema
+- both counterexamples from the review are now **rejected**: an empty cohort with `apply → activate → activate`, and a capability with `platform: {}`, `selectable: true` and no evidence
+- so are an empty `apply`, a duplicate target, targets on `activate`, `observe` before `apply`, an attestation without expiry, a qualification record without a tested scope or evidence, a direction-less allow entry, and a resolved target without bindings
+- valid plans, inventory records and qualification records are accepted
+
+This checks the response and request contract only; nothing is implemented.
 
 ## What this does not authorize
 

@@ -100,15 +100,54 @@ driver ADR, PR #4):
 - **Offline fixtures and unit tests prove code behavior only.** They don't
   change qualification.
 - **Nothing is inherited from vendor documentation.**
-- **Selectable** requires all of:
-  - `implemented`
-  - `demonstrated` for every requirement of the profile in the matching
-    platform scope
-  - an evidence record that is current for that configuration (§7)
 - **Scope** is vendor, family, model, OS/build, physical or virtual, the
   operation, the authentication method, the configuration fingerprint (§7)
   and the topology. One successful build does not extend to a version
   range.
+
+**Qualification records (R4).** Qualification is not a status field on a
+capability. It is a set of **immutable qualification records**, one per lab
+result. Each record has:
+- an id, the recipe id and **revision**, and the operation
+- the platform: vendor, model, OS/build, physical or virtual (all required)
+- the **tested traffic scope**, structured like a requirement (§1):
+  - the requirement key and direction
+  - protocols and address families
+  - the destination class: routed prefixes, same-subnet peers or an allow
+    entry
+  - fresh or established flows
+- the authentication method and topology (for example one endpoint per
+  port, or phone + PC)
+- the configuration fingerprint at test time (§7)
+- the result (`demonstrated`, `unsupported`, `inconclusive`)
+- evidence: the package reference and its manifest digest
+- `measured_at`, `valid_until` and the issuer (the lab)
+
+A correction is a new record that supersedes the old one; a record is
+never edited. A record without complete bindings (for example research
+notes) can be stored. It never qualifies an action.
+
+**Coverage matching.** A requested requirement (§1) is covered only by a
+`demonstrated`, unexpired record that matches it on **every** axis:
+- the same recipe revision, operation and platform build
+- the same direction, or `both`
+- a superset of the protocols and address families
+- the same destination class and flow state
+- a configuration fingerprint equal to the target switch's **current** one,
+  with current configuration evidence (§7)
+
+A TCP, `from_endpoint` result never covers UDP or `to_endpoint`. An expired
+or absent record, a mismatch on any axis, or changed ACL content under the
+same role name leaves the requirement **unmet**, with that reason.
+
+**Eligibility is computed per profile version and target.** A strategy is
+**eligible** for one `(access profile, version)` on one `(switch, port)`
+only when it is `implemented` and every requirement of that profile version
+is covered as above. The server returns the result per requirement, with
+the record that covers it or the reason it is unmet; the console shows that
+reason. The capability inventory shows only **readiness**
+(`research_only`, `implemented_unqualified`, `qualified_for_some_scopes`).
+It never shows a profile-independent "selectable" flag.
 
 Examples of what records must keep apart:
 - **Gateway ACL vs same-subnet containment.** An ingress ACL enforced at the
@@ -173,9 +212,9 @@ capabilities cover **every** requirement of the decided profile.
   - There is no fallback from a failed CoA to a port bounce. The pilot
     refuses a Restore that the policy would turn into a deny (`422`) and
     keeps the quarantine.
-- **A strategy is selectable** only under §2's rule: implemented, and
-  demonstrated for every requirement in a current configuration scope.
-  Unknown means not selectable.
+- **A strategy is selectable** only when it is eligible under §2 for the
+  decided profile version on this switch and port. Unknown means not
+  selectable.
 
 ### 4. Same fields everywhere
 
@@ -183,7 +222,9 @@ The following carry `intent` (profile and version), `strategy`,
 `strategy_limitations` and `unmet_requirements`:
 - decisions
 - simulations (ADR-0008 §3)
-- plans and approvals (the approval binds the selected strategy)
+- plans and approvals: each resolved-plan target binds the selected
+  strategy, recipe revision, configuration fingerprint and the
+  qualification record ids that covered each requirement (ADR-0008 §5)
 - execution outcomes
 
 Observed outcomes keep the ADR-0006 split:
@@ -263,9 +304,14 @@ labelled separately from an integrated NAC pass.
   status.
 - Where automatic observation is unavailable (today, AOS-CX: NAC has no
   observation adapter), an **explicitly approved, versioned operator
-  attestation** can be recorded with its age and limits. It is not a live
-  verification. Each requirement declares whether attestation is
-  acceptable for it.
+  attestation** can be recorded. It is not a live verification. It carries:
+  - an id and version, and the issuer (the human who attested)
+  - `issued_at` and `expires_at`
+  - the configuration fingerprint it attests
+  - the statement and its limits
+
+  Each requirement declares whether attestation is acceptable for it. An
+  expired attestation counts as unavailable evidence.
 - A firmware or driver change triggers re-evaluation; qualification is not
   inherited.
 

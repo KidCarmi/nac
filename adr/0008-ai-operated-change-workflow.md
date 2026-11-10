@@ -62,7 +62,10 @@ disconnect, an operator change and a restart. It has:
 
 - `id`, `title`, `intent` (free text from the requester, stored as data, never interpreted).
 - `kind`: `policy_change` in this increment. `session_action` (quarantine or restore proposed by an AI) is reserved; until then those actions stay human-only, as in rc10.
-- `base_version`: the active policy version when the CR was created.
+- `base_version`: the policy version the content was drafted from (what the
+  console diffs against). It is **not** an approval binding: a scope can
+  resolve to several versions at once, so approvals bind a per-unit scope
+  snapshot instead (section 4, R2).
 - `content`: the full proposed rule set and default action, the same shape as today's draft. `content_digest` uses the existing `Digest()`.
 - `revision`: an integer. Every content change increments it. Writes carry `If-Match: <revision>` and get `409` on conflict, which is how concurrent edits are detected.
 - `requested_by`: the principal that created it. `on_behalf_of` is set when that principal is a delegated identity.
@@ -73,15 +76,33 @@ disconnect, an operator change and a restart. It has:
     ▲          │                                                       │ approve (human)
     └──edit────┴───────────── any content change ◀─────────────────────┤
                                                                        ▼
-  cancelled ◀── cancel (any state before executing)            approved ──execute──▶ executing
+  cancelled ◀── cancel (only before an execution exists)       approved ──execute──▶ executing
                                                                                         │
-                                       observed ◀── observe ── applied ◀────────────────┤
-                                       failed   ◀───────────────────────────────────────┘
+                    observed ◀── observe ── applied ◀───────────────────────────────────┤
+                    stopped  ◀── stop (section 5) ──────────────────────────────────────┤
+                    failed   ◀──────────────────────────────────────────────────────────┘
   ```
 
-- Every content change returns the CR to `draft`. Validations and
-  simulations stay recorded, but they become `stale` because their
-  `content_digest` no longer matches. Any approval is invalidated.
+- **Mutable states.** Content can change only in `draft`, `validated`,
+  `simulated`, `approval_pending` and `approved`. Every content change
+  returns the CR to `draft`. Validations and simulations stay recorded but
+  become `stale`, because their `content_digest` no longer matches. Every
+  approval is invalidated.
+- **Immutable from execution on (R5).** In `executing`, `applied`,
+  `observed`, `stopped`, `failed` and `cancelled`, a content write, a new
+  approval request and a new execution return `409`
+  (`/problems/cr-immutable`). A change after execution started is a **new
+  CR**, which may reference the old one (`follows_cr`). The execution keeps
+  an immutable snapshot of what it runs (section 5).
+- **One atomic winner.** Edit, cancel and execute each change the CR's
+  `state` with a compare-and-set on `(state, revision)` under the CR row
+  lock. When they race, exactly one wins; the others get `409` and change
+  nothing. Cancel after an execution exists returns `409`: stopping is a
+  separate operation on the execution.
+- **Ownership (R5).** A delegated identity may edit, cancel, request
+  approval for and execute only CRs whose `requested_by` is itself, and stop
+  only executions it started. A human with `policy:write` may do any of
+  these on any CR. No principal can approve its own CR (section 4).
 
 Today's global draft (`/policy-draft`) becomes the console's working CR.
 Existing endpoints stay readable. How their write paths change is decision 8.
@@ -91,10 +112,10 @@ Existing endpoints stay readable. How their write paths change is decision 8.
 - `POST /change-requests/{id}/validations` records a **validation result**:
   - static checks (rules, inputs, VLAN mapping)
   - errors and warnings
-  - the `content_digest` and `base_version` it ran against
+  - the `content_digest` and the scope snapshot it ran against
   - an `environment_fingerprint`: a hash of the switch inventory, segment-VLAN maps and the input catalog
 - `POST /change-requests/{id}/simulations` records a **simulation result**:
-  - the existing preview, which replays recorded inputs under the base version and under the CR
+  - the existing preview, which replays recorded inputs under the version each session currently resolves to, and under the CR
   - per-session predicted changes, insufficient-evidence and stale-input cases
   - the operator-override precedence that preview already applies
 
@@ -102,9 +123,9 @@ Existing endpoints stay readable. How their write paths change is decision 8.
 - **Neither is lab qualification.** Live lab results stay in ASTRA's
   evidence. The API never reports a simulation as a measured outcome.
 - **Environment drift** makes a result `stale`. Drift means a later
-  `environment_fingerprint` differs, or the active version differs from
-  `base_version`. The CR then needs revalidation before it can be approved
-  or executed.
+  `environment_fingerprint` differs, or the scope snapshot (section 4)
+  changed. The CR then needs revalidation before it can be approved or
+  executed.
 
 ### 4. Approval: created by an authenticated human, bound to exactly what was reviewed
 
@@ -117,16 +138,30 @@ An approval is a stored record. It is never a boolean that a client sends.
 - **How.** `POST /change-requests/{id}/approvals` from a human session. The
   request must carry:
   - `current_password`: a step-up re-authentication, as for a password change
-  - the `content_digest`, `base_version`, `validation_id`, `simulation_id` and `plan_digest` the human reviewed
+  - the `content_digest`, `scope_snapshot_digest`, `validation_id`, `simulation_id` and `plan_digest` the human reviewed
 
   The server checks each one against current state. Any mismatch returns
   `409`, so a human can never approve something other than what they saw.
-- **Binding.** An approval binds `{cr_id, content_digest, base_version,
-  validation_id, simulation_id, environment_fingerprint, plan_digest,
-  scope}` and has an expiry: `expires_at`, default 24 h, configurable.
-- **Invalidation.** An approval becomes `invalid` when:
+- **What the human approves is the resolved plan (R3).** At approval-request
+  time the server resolves the client's plan input into an immutable
+  **resolved plan** (section 5), stores it, and returns it with its
+  `plan_digest`. The console shows that resolved plan, not the input, before
+  the human approves.
+- **Binding.** An approval binds `{cr_id, cr_revision, content_digest,
+  validation_id, simulation_id, environment_fingerprint,
+  scope_snapshot_digest, plan_digest}`. The resolved plan already contains
+  the scope and every per-target binding, so `plan_digest` covers them. The
+  approval has an expiry: `expires_at`, default 24 h, configurable.
+- **Scope snapshot (R2).** For every scope unit the plan touches, the
+  snapshot records the activation that currently resolves it (`activation_id`,
+  `revision`, `version`). It also lists every current narrower activation
+  inside the scope. Its digest replaces the old singular `base_version`
+  binding, which was ambiguous for a scope that resolves to several versions.
+- **Invalidation before use.** Until it is consumed, an approval becomes
+  `invalid` when:
   - the CR content changes
-  - the active version moves off `base_version`
+  - the scope snapshot changes: an activation for any touched unit is
+    created, revised or superseded
   - the environment fingerprint changes. The fingerprint includes each
     target switch's **configuration fingerprint** (role and ACL contents,
     implicit action, direction, host mode, fallback settings; ADR-0009 §7),
@@ -137,10 +172,16 @@ An approval is a stored record. It is never a boolean that a client sends.
   - it expires or is revoked
   - the approver loses `policy:approve` or is disabled
 
-  Execution re-checks every condition when it starts **and again at
-  dispatch** (section 5). It does not rely on cached approval state.
-- **Single use.** An approval is consumed by exactly one execution. Reusing
-  it, or using it for another CR, plan or scope, returns `409`.
+  Execution re-checks every condition when it starts. It does not rely on
+  cached approval state.
+- **Single use, owned by one execution (R1).** The execution start
+  transaction (section 5) consumes the approval and records the execution
+  that owns it. Reusing it, or using it for another CR, plan or scope,
+  returns `409`. **After consumption, the approval applies only to its
+  owning execution**, and dispatch checks follow that execution's expected
+  transition rule (section 5), not the "snapshot unchanged" rule above. The
+  execution's own activation is therefore never mistaken for drift. An
+  unrelated activation still is.
 - **Separation of duties.** The approver must not be `requested_by`.
   Whether the human named in `on_behalf_of` may approve their own AI's CR
   is open decision **O1**. Single-admin installs need an answer.
@@ -155,36 +196,140 @@ re-authenticated, every other endpoint would get the new policy at its next
 authentication anyway. So staged publication is defined on the decision
 path.
 
-**Scoped activation.**
-- An activation has a `scope`:
-  - `all`, which is today's behavior
-  - a **cohort**: an explicit set of `(switch_id, port)` pairs, or whole
-    switches
-- Activations stay append-only (ADR-0006).
-- For each authentication, `radiusauth` resolves the version to evaluate
-  by taking the most specific current activation that matches the
-  request's switch and `NAS-Port-Id`:
-  1. a port-level cohort
-  2. a switch-level cohort
-  3. `all`
-- The decision record stores the resolved version and the activation that
-  supplied it. The console and API can then show, per session, which
-  version applied and why.
+**Activation records (R2).**
+- An activation has an `activation_id`, a `revision`, a `version`, a
+  `state` (`current` or `superseded`) and a `scope` made of **scope units**:
+  - `all`: exactly one current `all` activation always exists (today's
+    behavior)
+  - a switch unit: `(switch_id)`
+  - a port unit: `(switch_id, nas_port_id)`
+
+  A cohort activation holds one or more units of one kind. Revisions are
+  append-only (ADR-0006): changing an activation's units writes a new
+  revision, and the history stays readable.
+- **Resolution is deterministic.** For each authentication, `radiusauth`
+  takes the current activation that holds the request's port unit, else
+  its switch unit, else `all`.
+- **No equal-specificity overlap.** At most one current activation holds
+  any given port unit, and at most one holds any switch unit. A plan that
+  would add a unit that is already held must name the activation it
+  supersedes for that unit. Otherwise the plan is rejected before approval
+  (`422`, `/problems/scope-overlap`). There is no "newest wins".
+- **Partial supersession keeps the rest.** When a plan takes over some
+  units of an existing cohort, that cohort gets a new revision without
+  those units. Its other units keep their version.
+- **Promotion and rollback name exactly what they retire.** A plan that
+  widens a scope (port → switch → `all`) or rolls one back does not retire
+  any narrower activation implicitly.
+  - The plan input lists each current narrower activation inside the new
+    scope as `retire` or `keep`. The console pre-fills `retire` for
+    narrower activations of the version being promoted, or rolled back
+    from.
+  - The resolved plan shows the **post-change resolution of every unit**:
+    which units the retirements move, and which narrower activations keep
+    shadowing the new one.
+  - An unlisted narrower activation is kept. A new, unrelated canary is
+    therefore never retired by accident.
+  - Example: port P is pinned to canary v2, and v2 is promoted to `all`
+    with P retired. Rolling `all` back to v1 later resolves P to v1. Had P
+    been kept, both plans would show that P stays on v2.
+- **Atomic.** The new activation, every retirement and every partial
+  revision are written in one transaction under the activation lock. That
+  transaction succeeds only if every touched activation still has the
+  revision in the approved scope snapshot. On any mismatch nothing is
+  written and the execution stops (`external_change`). Two concurrent
+  scope changes cannot both apply.
+- The decision record stores the resolved version and the activation (id
+  and revision) that supplied it. The console and API can then show, per
+  session, which version applied and why.
 - An endpoint outside the cohort keeps the previous version, including when
   it re-authenticates. This is the out-of-cohort property the acceptance
   tests check.
 - Operator quarantine overrides keep precedence over every version and
   every scope, as today.
 
-**Scope is part of what is approved.** The approval's `scope` binding is the
-exact cohort or `all`. To widen a canary, a new CR or plan stage targets the
-wider scope, and that needs its own approval. To roll back a cohort, a new
-scoped activation restores the previous version for that cohort only.
+**Scope is part of what is approved.** The resolved plan, and therefore the
+approval, carries the exact scope units, the retirements and the
+post-change resolution. To widen a canary, a new plan targets the wider
+scope, and that needs its own approval. To roll back, a new plan restores
+the previous version for the stated units only.
 
-**Execution.** `POST /change-requests/{id}/executions` takes `{approval_id}`
-and an `Idempotency-Key` header. It returns `202` and an execution record.
-The plan reviewed at approval time, identified by `plan_digest`, has ordered
-stages:
+**The resolved plan (R3).** The client sends a **plan input**: scope,
+stages, apply targets (session ids), retire/keep choices, deadlines. The
+server resolves it into an immutable **resolved plan** when approval is
+requested, and stores it durably.
+- **Activation part:** the new activation's units and version, the
+  retirements and partial revisions, the scope snapshot, and the
+  post-change resolution of every touched unit.
+- **One record per apply target.** Each one carries the target's session
+  id and **incarnation** (session row, Acct-Session-Id and last
+  authentication). It also carries:
+  - switch, port and MAC
+  - the identity and the assignment: profile and version, segment, VLAN
+    or role
+  - the recipe id and revision
+  - the configuration fingerprint and its evidence ids
+  - the qualification record ids (ADR-0009 §2)
+  - the desired-state generation
+  - the selected strategy and its limitations
+  - the impact: shared-port dependents, the expected interruption, and
+    whether the address changes
+- **Canonical digest.** `plan_digest` is SHA-256 over the RFC 8785 (JCS)
+  canonical JSON of the whole resolved plan, `plan_digest` excluded. It
+  includes the CR id and revision, `content_digest`, and the validation
+  and simulation ids.
+- **The executor runs only the stored resolved plan.** It never recomputes
+  an assignment, a recipe or a target under an unchanged digest. If live
+  state no longer matches a target's binding, that target is `superseded`
+  or the execution stops; it is never silently re-planned.
+- **Grammar, checked before approval** (`422` otherwise):
+  - stages are exactly `activate`, optionally followed by `apply`, then
+    optionally by `observe`
+  - only `apply` has targets
+  - `apply` has 1 to `max_targets` targets (an installation limit), each
+    session at most once, all inside the scope
+  - a cohort scope has at least one unit
+
+**Execution start (R1).** `POST /change-requests/{id}/executions` takes
+`{approval_id}` and an `Idempotency-Key` header. It returns `202` and an
+execution record. One transaction does all of this, or nothing:
+1. It checks that the approval is `valid`, its bindings match current
+   state, and the CR is `approved`.
+2. It creates the execution with an **immutable copy of the resolved plan**,
+   the **pre-activation snapshot** (the approved scope snapshot), and its
+   **execution authority**: the executing principal, the approval, and
+   `authority_expires_at` (the earlier of the approval expiry and a maximum
+   execution duration).
+3. It marks the approval `consumed` by this execution, and moves the CR to
+   `executing`.
+
+The `Idempotency-Key` is unique per principal. The same key with the same
+CR, approval and body returns the same execution. The same key with a
+different CR, approval or body returns `409`
+(`/problems/idempotency-key-reused`).
+
+**The execution's own transition is the only accepted state change (R1).**
+When the `activate` stage commits, the execution records its **expected
+post-activation state**: the activation id and revision it wrote, and the
+revisions of everything it retired or revised. From then on, every
+dispatch check requires the live resolution of each scope unit to equal
+that expected state; before the commit, it must equal the pre-activation
+snapshot. Any other change stops further dispatch with reason
+`external_activation`: an unrelated activation, a retirement or a rollback
+between stages. Version checks are **not** skipped after activation. They
+compare against what this execution itself committed.
+
+**Crash and restart (R1).** The activation row carries `created_by_execution`
+and the stage, unique per execution. After a restart the executor reads
+the execution ledger:
+- an activation that already exists means the stage is done, and it is not
+  republished
+- the approval was consumed in the start transaction, so it cannot be
+  consumed twice
+- a repeated request with the same key returns the same execution
+
+**Stages.** The resolved plan, identified by `plan_digest`, runs its stages in
+this order:
 
 1. **activate(scope)**: write the CR content as a new immutable version.
    This reuses `PublishWorkspace`, with base-version and digest checks under
@@ -206,6 +351,8 @@ stages:
    same version for a wider scope or for `all`.
 
 Each target records these outcomes separately:
+- `not_sent`: never sent, with the reason (`stopped`, `superseded`,
+  `external_activation`, `authority_expired`)
 - `requested`
 - `acknowledged`: CoA-ACK, NAK or timeout
 - `observed`: on the VLAN path, re-authentication returned the requested
@@ -226,11 +373,15 @@ Retries are safe:
 the plan is created is not enough, because an execution can wait in a
 queue.
 - Immediately before each target's **first send**, the executor re-checks:
+  - the execution's state (not `stopping` or `stopped`) and that its
+    authority has not expired
   - the principal's permissions and token revocation
-  - that the approval still applies (section 4)
-  - the target's **desired-state generation** and its override state
-  - target freshness (the session is current and not replaced)
-  - the configuration fingerprint and the driver/recipe revision
+  - the expected-transition rule above (section 4 for the approval itself)
+  - the target's **desired-state generation** and its override state: a
+    newer quarantine supersedes
+  - the target's incarnation (the session is current and not replaced)
+  - the configuration fingerprint and the driver/recipe revision bound in
+    the resolved plan
 - It then atomically claims the target with the expected generation.
 - **A newer Quarantine supersedes an older queued Restore.** The Restore
   sees a moved generation and is recorded `superseded`, never sent.
@@ -256,6 +407,29 @@ queue.
 **An execution never clears an operator quarantine override.** Restoring a
 policy version leaves overrides in place, as today. Clearing one is a
 separate, explicit session action.
+
+**Stopping an execution (R5).** `POST /executions/{id}/stop`, with a
+reason, may be called by a human with `policy:write` or by the delegated
+identity that started the execution. A stop only reduces sends. It works
+like this:
+- It atomically moves the execution to `stopping`. No target gets a
+  **first send** after that.
+- **Pending** targets become `not_sent (stopped)`.
+- **Sent** targets still waiting for an answer finish only their in-progress,
+  byte-identical retransmissions within the existing bounded window. They
+  end as `ack`, `nak`, `timeout` or `uncertain`. The first packet may
+  already have acted, so abandoning the retries would only add
+  uncertainty (N5).
+- **Uncertain** targets are reconciled read-only. Nothing new is sent.
+- The execution becomes `stopped` when no request is in flight.
+
+The stop report states, per target, what was and was not sent. It also
+states **what remains in force**:
+- **A committed activation stays active** for later authentications in its
+  scope. The report lists its units and version. Stopping is not a
+  rollback.
+- **A rollback is a separate CR with its own approval.**
+- **Operator overrides are untouched.**
 
 ### 6. Delegated identities for AI clients
 
@@ -347,7 +521,7 @@ access automatically. Nothing in a skill is a security control.
 
 ### Positive
 - No path to a policy change without a human approval that is bound to the
-  exact content, base, validation, simulation, plan and environment the human
+  exact content, scope snapshot, validation, simulation, resolved plan and environment the human
   saw.
 - An AI's work and a human's work are the same records. Takeover, audit and
   retry need no special cases.
@@ -365,13 +539,21 @@ access automatically. Nothing in a skill is a security control.
   resolved per switch and port. That needs careful tests for resolution
   order, rollback per scope, and the interaction with overrides and outage
   imports.
-- More state: CRs, validations, simulations, approvals, executions,
-  delegated identities. Each table is append-mostly and audited.
+- More state: CRs, validations, simulations, resolved plans, approvals,
+  executions, activation revisions, qualification records, delegated
+  identities. Each table is append-mostly and audited.
+- Every widening or rollback plan needs an explicit retire/keep choice for
+  each narrower activation (N6). That costs a step, and buys deterministic,
+  reviewable resolution.
 
 ### Open decisions (owner / owner-side review)
 
 Recommended defaults and tradeoffs for each open item are in
 [decision-table-adr-0008-0009](../docs/architecture/decision-table-adr-0008-0009.md).
+The same table records how the owner's review findings R1–R5 are resolved,
+and the decisions those fixes add (N5–N8: stop and in-flight retries,
+same-specificity overlap, qualification validity, maximum execution
+duration).
 
 - **O1. Self-approval through a delegate.** May the human named in a CR's
   `on_behalf_of` approve it? Proposed: **no by default**, with an explicit

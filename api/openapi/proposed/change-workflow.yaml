@@ -33,8 +33,24 @@ info:
     ## Concurrency and retries
     - CR content writes require `If-Match: <revision>`. A stale revision
       returns `409`.
-    - Execution creation requires an `Idempotency-Key` header. A repeated
-      key returns the existing execution.
+    - Execution creation requires an `Idempotency-Key` header, unique per
+      principal. The same key with the same CR, approval and body returns
+      the existing execution. The same key with a different CR, approval
+      or body returns `409` (`/problems/idempotency-key-reused`).
+    - From `executing` on, a CR is immutable: content writes, approval
+      requests and executions return `409` (`/problems/cr-immutable`).
+      Edit, cancel and execute race on one compare-and-set of the CR's
+      `(state, revision)`; exactly one wins (ADR-0008 §2).
+    - A delegated identity may edit, cancel, request approval for and
+      execute only CRs it created, and stop only executions it started.
+
+    ## What a human approves (ADR-0008 §4–5, review R3)
+    The client sends a `PlanInput`. The server resolves it into an
+    immutable `ResolvedPlan`, stores it and returns it with `plan_digest`:
+    SHA-256 over the RFC 8785 (JCS) canonical JSON of the resolved plan,
+    without `plan_digest` itself. The approval binds that digest, and the
+    executor runs only the stored resolved plan. It never recomputes an
+    assignment under an unchanged digest.
 
     ## What this contract changes in v1 (ADR-0008 decision 8, open decision O3)
     `POST /api/v1/policy-draft/publish` and
@@ -133,10 +149,13 @@ paths:
       operationId: putChangeRequestContent
       summary: Replace the proposed rule set
       description: |
-        Increments `revision`, recomputes `content_digest`, returns the CR to
-        `draft`, marks prior validations and simulations `stale`, and
-        invalidates every approval. A delegated identity may only edit CRs it
-        created.
+        Allowed only in `draft`, `validated`, `simulated`,
+        `approval_pending` and `approved`. Increments `revision`, recomputes
+        `content_digest`, returns the CR to `draft`, marks prior validations
+        and simulations `stale`, and invalidates every approval. From
+        `executing` on it returns `409` (`/problems/cr-immutable`); a later
+        change is a new CR (`follows_cr`). A delegated identity may only
+        edit CRs it created.
       x-required-permission: policy:write
       x-delegated-scope: change:draft
       parameters:
@@ -196,22 +215,32 @@ paths:
       summary: Ask a human to approve one exact plan
       description: |
         Creates a pending approval request. It does not approve anything.
-        Requires a current validation and simulation. The CR moves to
-        `approval_pending`.
+        Requires a current validation and simulation. The server resolves
+        the plan input into an immutable `ResolvedPlan` (every target's
+        assignment, recipe revision, configuration and qualification
+        bindings, generation, strategy and impact; the activation's units,
+        retirements and post-change resolution), stores it, and returns it
+        with `plan_digest`. That resolved plan is what the console shows the
+        human. The CR moves to `approval_pending`.
       x-required-permission: policy:write
       x-delegated-scope: change:request
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ExecutionPlan" }
+            schema: { $ref: "#/components/schemas/PlanInput" }
       responses:
         "201":
-          description: Pending
+          description: Pending, with the resolved plan to review
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApprovalRequest" }
         "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+        "422":
+          description: "Malformed plan: stage grammar, an empty cohort, a target outside the scope or listed twice, over `max_targets`, or a scope unit already held by an activation the plan does not supersede (`/problems/scope-overlap`)"
+          content:
+            application/problem+json:
+              schema: { $ref: "../openapi.yaml#/components/schemas/Problem" }
 
   /change-requests/{id}/approvals:
     parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
@@ -264,10 +293,17 @@ paths:
       operationId: executeChangeRequest
       summary: Execute an approved plan (staged)
       description: |
-        Re-checks the approval at start: the bindings, expiry, single use,
-        the approver's status, the active version and the environment
-        fingerprint. Runs the plan's stages in order. Never clears an
-        operator quarantine override.
+        One transaction, all or nothing (ADR-0008 §5, R1): it checks that
+        the approval is `valid` and its bindings (scope snapshot,
+        environment, plan digest) match current state; creates the
+        execution with an immutable copy of the resolved plan, the
+        pre-activation snapshot and its authority (`authority_expires_at`);
+        consumes the approval for this execution; and moves the CR to
+        `executing`. After the `activate` stage commits, dispatch accepts
+        only this execution's own expected post-activation state; any other
+        activation change stops it (`external_activation`). A restart never
+        republishes and never consumes twice. Never clears an operator
+        quarantine override.
       x-required-permission: policy:write
       x-delegated-scope: change:execute
       parameters:
@@ -288,13 +324,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Execution" }
-        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+        "409":
+          description: "The approval is not valid or not current, the CR is not `approved` (including a lost race with edit or cancel), or the `Idempotency-Key` was used with a different CR, approval or body"
+          content:
+            application/problem+json:
+              schema: { $ref: "../openapi.yaml#/components/schemas/Problem" }
 
   /change-requests/{id}/cancel:
     parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
     post:
       operationId: cancelChangeRequest
-      summary: Cancel before execution; invalidates approvals
+      summary: Cancel before any execution exists; invalidates approvals
+      description: |
+        Atomic with edit and execute: exactly one wins. Once an execution
+        exists, cancel returns `409`; use `POST /executions/{id}/stop`. A
+        delegated identity may cancel only CRs it created.
       x-required-permission: policy:write
       x-delegated-scope: change:draft
       responses:
@@ -303,6 +347,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChangeRequest" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
 
   /executions/{id}:
     parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
@@ -317,6 +362,87 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Execution" }
+
+  /executions/{id}/stop:
+    parameters: [{ $ref: "../openapi.yaml#/components/parameters/IdPath" }]
+    post:
+      operationId: stopExecution
+      summary: Stop new sends; report what was sent and what remains in force
+      description: |
+        ADR-0008 §5 (R5). Moves the execution to `stopping`: no target gets
+        a first send afterwards, and pending targets become `not_sent`
+        (`stopped`). Sent targets finish only their in-progress,
+        byte-identical retransmissions within the bounded window. Uncertain
+        targets are reconciled read-only. The execution becomes `stopped`
+        when nothing is in flight. **A committed activation stays in
+        force** (`still_in_force`); a rollback is a separate CR with its own
+        approval. Operator overrides are untouched. Callable by a human with
+        `policy:write`, or by the delegated identity that started the
+        execution.
+      x-required-permission: policy:write
+      x-delegated-scope: change:execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: { type: string, maxLength: 2000 }
+      responses:
+        "202":
+          description: Stopping (or already stopped); the execution with its stop report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Execution" }
+        "403": { $ref: "../openapi.yaml#/components/responses/Forbidden" }
+        "409": { $ref: "../openapi.yaml#/components/responses/Conflict" }
+
+  /access-profiles/{name}/versions/{version}/eligibility:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getProfileEligibility
+      summary: Whether each strategy can enforce this profile version on one switch port, per requirement
+      description: |
+        ADR-0009 §2 (R4). Eligibility is computed for one profile version on
+        one target, never as a profile-independent flag. Each requirement is
+        covered by a matching, unexpired qualification record, or it is
+        reported unmet with the reason.
+      x-required-permission: policy:read
+      x-delegated-scope: inventory:read
+      parameters:
+        - { name: switch_id, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: nas_port_id, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Eligibility per strategy and requirement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EligibilityResult" }
+        "404": { $ref: "../openapi.yaml#/components/responses/NotFound" }
+
+  /qualification-records:
+    get:
+      operationId: listQualificationRecords
+      summary: Immutable lab qualification records (read-only)
+      x-required-permission: policy:read
+      x-delegated-scope: inventory:read
+      parameters:
+        - { name: recipe_id, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Records, newest first; superseded records stay listed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/QualificationRecord" } }
 
   /delegated-identities:
     post:
@@ -474,7 +600,8 @@ components:
 
     ChangeRequestState:
       type: string
-      enum: [draft, validated, simulated, approval_pending, approved, executing, applied, observed, failed, cancelled]
+      description: "Content can change only in draft, validated, simulated, approval_pending and approved. From executing on the CR is immutable (ADR-0008 §2)."
+      enum: [draft, validated, simulated, approval_pending, approved, executing, applied, observed, stopped, failed, cancelled]
 
     ChangeContent:
       type: object
@@ -516,7 +643,8 @@ components:
         intent: { type: string }
         state: { $ref: "#/components/schemas/ChangeRequestState" }
         revision: { type: integer }
-        base_version: { type: integer }
+        base_version: { type: integer, description: "The version the content was drafted from (the console diffs against it). Not an approval binding: approvals bind the scope snapshot." }
+        follows_cr: { type: string, format: uuid, description: "A CR created to change something an earlier, already executing or finished CR did." }
         content: { $ref: "#/components/schemas/ChangeContent" }
         content_digest: { type: string }
         requested_by: { $ref: "#/components/schemas/Principal" }
@@ -536,12 +664,12 @@ components:
 
     EvidenceStatus:
       type: string
-      description: "`current` while content digest, base version and environment fingerprint all still match."
+      description: "`current` while the content digest, scope snapshot and environment fingerprint all still match."
       enum: [current, stale]
 
     ValidationResult:
       type: object
-      required: [id, kind, valid, content_digest, base_version, environment_fingerprint, status, created_at]
+      required: [id, kind, valid, content_digest, scope_snapshot_digest, environment_fingerprint, status, created_at]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, const: static_validation }
@@ -549,7 +677,7 @@ components:
         errors: { type: array, items: { type: string } }
         warnings: { type: array, items: { type: string } }
         content_digest: { type: string }
-        base_version: { type: integer }
+        scope_snapshot_digest: { type: string }
         environment_fingerprint: { type: string }
         status: { $ref: "#/components/schemas/EvidenceStatus" }
         created_by: { $ref: "#/components/schemas/Principal" }
@@ -557,21 +685,21 @@ components:
 
     SimulationResult:
       type: object
-      required: [id, kind, label, validation_id, content_digest, base_version, cases_examined, changed, insufficient_evidence, status, created_at]
+      required: [id, kind, label, validation_id, content_digest, scope_snapshot_digest, cases_examined, changed, insufficient_evidence, status, created_at]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, const: historical_replay }
-        label: { type: string, description: "Always states that this is a prediction over recorded inputs." }
+        label: { type: string, description: "Always states that this is a prediction over recorded inputs, each session replayed under the version it currently resolves to." }
         validation_id: { type: string, format: uuid }
         content_digest: { type: string }
-        base_version: { type: integer }
+        scope_snapshot_digest: { type: string }
         cases_examined: { type: integer }
         changed: { type: integer }
         insufficient_evidence: { type: integer }
         rows: { type: array, items: { $ref: "../openapi.yaml#/components/schemas/PreviewRow" } }
         selections:
           type: array
-          description: "ADR-0009: per simulated session, the intent and the strategy that would enforce it, including unmet requirements."
+          description: "ADR-0009: per simulated session, the intent and the strategy that would enforce it, including unmet requirements. A prediction only: the resolved plan, not this, is what an execution runs."
           items:
             type: object
             properties:
@@ -580,61 +708,364 @@ components:
         status: { $ref: "#/components/schemas/EvidenceStatus" }
         created_at: { type: string, format: date-time }
 
-    ExecutionPlan:
+    PlanInput:
       type: object
+      description: |
+        What a client proposes (ADR-0008 §5, R3). The server validates the
+        grammar and the scope, then resolves this into a `ResolvedPlan`.
+        Only the resolved plan is approved and executed.
       required: [validation_id, simulation_id, scope, stages]
       additionalProperties: false
       properties:
-        scope: { $ref: "#/components/schemas/ActivationScope" }
         validation_id: { type: string, format: uuid }
         simulation_id: { type: string, format: uuid }
-        stages:
+        scope: { $ref: "#/components/schemas/ActivationScope" }
+        narrower_activations:
           type: array
-          minItems: 1
-          items: { $ref: "#/components/schemas/PlanStage" }
+          description: |
+            One entry for each current activation narrower than `scope` and
+            inside it: `retire` moves its units to the new activation, and
+            `keep` lets it keep shadowing. Any unlisted narrower activation is
+            kept, and the resolved plan shows that it keeps shadowing.
+            Nothing is retired implicitly.
+          items:
+            type: object
+            required: [activation_id, revision, action]
+            additionalProperties: false
+            properties:
+              activation_id: { type: string, format: uuid }
+              revision: { type: integer, minimum: 1 }
+              action: { type: string, enum: [retire, keep] }
+        stages:
+          description: "Grammar: `activate`, optionally followed by `apply`, then optionally by `observe`. Nothing else."
+          oneOf:
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }]
+              items: false
+              minItems: 1
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ApplyStageInput" }]
+              items: false
+              minItems: 2
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ObserveStageInput" }]
+              items: false
+              minItems: 2
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ApplyStageInput" }, { $ref: "#/components/schemas/ObserveStageInput" }]
+              items: false
+              minItems: 3
         stop_on_failure: { type: boolean, default: true }
-        observe_deadline_seconds: { type: integer, minimum: 0, maximum: 3600, default: 180 }
 
-    PlanStage:
+    ActivateStageInput:
       type: object
+      description: "Writes the CR content as a new immutable version, activated for the plan's scope with the listed retirements, in one transaction."
       required: [type]
+      additionalProperties: false
       properties:
-        type:
-          type: string
-          enum: [activate, apply, observe]
-          description: "`activate` records a new version activated for the plan's `scope`. Only endpoints in that scope get it at their next authentication; others keep the previously resolved version. `apply` re-authenticates listed sessions inside the scope now via CoA. `observe` waits for re-authentication and switch observation. Promotion to a wider scope is a separate plan with its own approval."
+        type: { const: activate }
+
+    ApplyStageInput:
+      type: object
+      description: |
+        Changes listed sessions inside the scope now, through CoA. Each
+        session appears at most once and must be inside the scope (the
+        server rejects duplicates and outside targets with `422`). The
+        installation's `max_targets` may be lower than this schema's
+        maximum.
+      required: [type, targets]
+      additionalProperties: false
+      properties:
+        type: { const: apply }
         targets:
           type: array
-          description: "`apply` only: explicit sessions, all inside `scope` (others are rejected at plan validation). The plan view shows predicted VLAN, shared-port dependents and the documented vEOS-lab interruption per target."
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
           items:
             type: object
             required: [session_id]
+            additionalProperties: false
             properties:
               session_id: { type: string, format: uuid }
 
+    ObserveStageInput:
+      type: object
+      required: [type]
+      additionalProperties: false
+      properties:
+        type: { const: observe }
+        deadline_seconds: { type: integer, minimum: 0, maximum: 3600, default: 180 }
+
+    ScopeUnit:
+      description: "One unit of an activation scope."
+      oneOf:
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { const: all }
+        - type: object
+          required: [kind, switch_id]
+          additionalProperties: false
+          properties:
+            kind: { const: switch }
+            switch_id: { type: string, format: uuid }
+        - type: object
+          required: [kind, switch_id, nas_port_id]
+          additionalProperties: false
+          properties:
+            kind: { const: port }
+            switch_id: { type: string, format: uuid }
+            nas_port_id: { type: string, examples: ["Ethernet1"] }
+
+    ActivationScope:
+      description: |
+        Where an activation applies (ADR-0008 §5, R2). `all`, or a non-empty
+        cohort of switch units or of port units. Resolution: the port unit,
+        else the switch unit, else `all`. At most one current activation
+        holds any unit; equal-specificity overlap is rejected unless the plan
+        supersedes the holder. Operator quarantine overrides take precedence
+        over every scope.
+      oneOf:
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { const: all }
+        - type: object
+          required: [kind, switches]
+          additionalProperties: false
+          properties:
+            kind: { const: cohort }
+            switches: { type: array, minItems: 1, uniqueItems: true, items: { type: string, format: uuid } }
+        - type: object
+          required: [kind, ports]
+          additionalProperties: false
+          properties:
+            kind: { const: cohort }
+            ports:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items:
+                type: object
+                required: [switch_id, nas_port_id]
+                additionalProperties: false
+                properties:
+                  switch_id: { type: string, format: uuid }
+                  nas_port_id: { type: string }
+
+    Activation:
+      type: object
+      description: "An append-only activation record (ADR-0008 §5). `GET /policy-activations` gains these fields additively."
+      required: [activation_id, revision, version, state, units, created_at]
+      properties:
+        activation_id: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1, description: "A new revision is written when units are removed by a partial supersession." }
+        version: { type: integer }
+        state: { type: string, enum: [current, superseded] }
+        units: { type: array, minItems: 1, items: { $ref: "#/components/schemas/ScopeUnit" } }
+        superseded_by: { type: string, format: uuid }
+        created_by_execution: { type: string, format: uuid, description: "Unique per execution and stage: a restart never republishes." }
+        created_at: { type: string, format: date-time }
+
+    ScopeSnapshot:
+      type: object
+      description: "For every unit the plan touches, which activation resolves it now; plus every current narrower activation inside the scope. Its digest replaces the old singular base_version binding."
+      required: [digest, units, narrower]
+      additionalProperties: false
+      properties:
+        digest: { type: string }
+        units:
+          type: array
+          items:
+            type: object
+            required: [unit, activation_id, revision, version]
+            additionalProperties: false
+            properties:
+              unit: { $ref: "#/components/schemas/ScopeUnit" }
+              activation_id: { type: string, format: uuid }
+              revision: { type: integer }
+              version: { type: integer }
+        narrower:
+          type: array
+          items:
+            type: object
+            required: [activation_id, revision, version, units]
+            additionalProperties: false
+            properties:
+              activation_id: { type: string, format: uuid }
+              revision: { type: integer }
+              version: { type: integer }
+              units: { type: array, items: { $ref: "#/components/schemas/ScopeUnit" } }
+
+    ResolvedPlan:
+      type: object
+      readOnly: true
+      description: |
+        Server-generated, immutable, stored durably (ADR-0008 §5, R3). The
+        human reviews this before approving. `plan_digest` is SHA-256 over
+        the RFC 8785 (JCS) canonical JSON of this object without
+        `plan_digest`. The executor runs only this stored plan.
+      required: [plan_digest, digest_algorithm, cr_id, cr_revision, content_digest, validation_id, simulation_id, environment_fingerprint, scope, scope_snapshot, activation, stages, max_targets, created_at]
+      additionalProperties: false
+      properties:
+        plan_digest: { type: string }
+        digest_algorithm: { const: sha256-jcs }
+        cr_id: { type: string, format: uuid }
+        cr_revision: { type: integer }
+        content_digest: { type: string }
+        validation_id: { type: string, format: uuid }
+        simulation_id: { type: string, format: uuid }
+        environment_fingerprint: { type: string }
+        scope: { $ref: "#/components/schemas/ActivationScope" }
+        scope_snapshot: { $ref: "#/components/schemas/ScopeSnapshot" }
+        activation:
+          type: object
+          required: [version_to_create, units, narrower_activations, post_change_resolution]
+          additionalProperties: false
+          properties:
+            version_to_create: { type: integer, description: "The policy version this plan creates; it is written once, at the activate stage." }
+            units: { type: array, minItems: 1, items: { $ref: "#/components/schemas/ScopeUnit" } }
+            narrower_activations:
+              type: array
+              items:
+                type: object
+                required: [activation_id, revision, version, action, units]
+                additionalProperties: false
+                properties:
+                  activation_id: { type: string, format: uuid }
+                  revision: { type: integer }
+                  version: { type: integer }
+                  action: { type: string, enum: [retire, keep] }
+                  units: { type: array, items: { $ref: "#/components/schemas/ScopeUnit" } }
+            partial_revisions:
+              type: array
+              description: "Existing cohorts that lose some units to this plan and keep the rest under a new revision."
+              items:
+                type: object
+                required: [activation_id, from_revision, units_removed]
+                additionalProperties: false
+                properties:
+                  activation_id: { type: string, format: uuid }
+                  from_revision: { type: integer }
+                  units_removed: { type: array, minItems: 1, items: { $ref: "#/components/schemas/ScopeUnit" } }
+            post_change_resolution:
+              type: array
+              description: "Every touched unit and the activation and version it will resolve to, including units that stay on a kept narrower activation."
+              items:
+                type: object
+                required: [unit, version, source]
+                additionalProperties: false
+                properties:
+                  unit: { $ref: "#/components/schemas/ScopeUnit" }
+                  version: { type: integer }
+                  source: { type: string, enum: [this_plan, kept_narrower] }
+                  activation_id: { type: string, format: uuid }
+        stages:
+          oneOf:
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }]
+              items: false
+              minItems: 1
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ResolvedApplyStage" }]
+              items: false
+              minItems: 2
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ObserveStageInput" }]
+              items: false
+              minItems: 2
+            - type: array
+              prefixItems: [{ $ref: "#/components/schemas/ActivateStageInput" }, { $ref: "#/components/schemas/ResolvedApplyStage" }, { $ref: "#/components/schemas/ObserveStageInput" }]
+              items: false
+              minItems: 3
+        stop_on_failure: { type: boolean }
+        max_targets: { type: integer, minimum: 1 }
+        created_at: { type: string, format: date-time }
+
+    ResolvedApplyStage:
+      type: object
+      required: [type, targets]
+      additionalProperties: false
+      properties:
+        type: { const: apply }
+        targets: { type: array, minItems: 1, maxItems: 500, items: { $ref: "#/components/schemas/ResolvedTarget" } }
+
+    ResolvedTarget:
+      type: object
+      description: "Everything the executor will act on for one session. A live mismatch with any of these at dispatch makes the target superseded or stops the execution; it is never re-planned."
+      required: [session_id, session_incarnation, switch_id, nas_port_id, mac, identity, assignment, recipe_id, recipe_revision, configuration_fingerprint, configuration_evidence_id, qualification_record_ids, desired_state_generation, strategy, strategy_limitations, impact]
+      additionalProperties: false
+      properties:
+        session_id: { type: string, format: uuid }
+        session_incarnation:
+          type: object
+          required: [acct_session_id, last_auth_at]
+          additionalProperties: false
+          properties:
+            acct_session_id: { type: string }
+            last_auth_at: { type: string, format: date-time }
+        switch_id: { type: string, format: uuid }
+        nas_port_id: { type: string }
+        mac: { type: string }
+        identity:
+          type: object
+          required: [issuer, serial]
+          additionalProperties: false
+          properties:
+            issuer: { type: string }
+            serial: { type: string }
+        assignment:
+          type: object
+          required: [profile, segment]
+          additionalProperties: false
+          properties:
+            profile: { $ref: "#/components/schemas/AccessProfileRef" }
+            segment: { type: string }
+            vlan: { type: integer }
+            role: { type: string }
+        recipe_id: { type: string }
+        recipe_revision: { type: string }
+        configuration_fingerprint: { type: string }
+        configuration_evidence_id: { type: string, format: uuid }
+        qualification_record_ids: { type: array, minItems: 1, items: { type: string, format: uuid } }
+        desired_state_generation: { type: integer }
+        strategy: { type: string, enum: [vlan, role_acl] }
+        strategy_limitations: { type: array, items: { type: string } }
+        impact:
+          type: object
+          required: [shared_port_dependents, changes_address]
+          additionalProperties: false
+          properties:
+            shared_port_dependents: { type: integer, minimum: 0 }
+            changes_address: { type: boolean }
+            expected_interruption: { type: string, examples: ["vEOS-lab: an ACKed VLAN-bearing CoA interrupted forwarding for up to ~58 s"] }
+
     ApprovalRequest:
       type: object
-      required: [id, state, plan, plan_digest, content_digest, base_version, requested_by, created_at]
+      required: [id, state, resolved_plan, plan_digest, content_digest, scope_snapshot_digest, requested_by, created_at]
       properties:
         id: { type: string, format: uuid }
         state: { type: string, enum: [pending, approved, invalid, cancelled] }
-        plan: { $ref: "#/components/schemas/ExecutionPlan" }
+        resolved_plan: { $ref: "#/components/schemas/ResolvedPlan" }
         plan_digest: { type: string }
         content_digest: { type: string }
-        base_version: { type: integer }
+        scope_snapshot_digest: { type: string }
         environment_fingerprint: { type: string }
         requested_by: { $ref: "#/components/schemas/Principal" }
         created_at: { type: string, format: date-time }
 
     ApprovalCreate:
       type: object
-      description: Echo of exactly what the human reviewed, plus step-up re-authentication.
-      required: [approval_request_id, content_digest, base_version, validation_id, simulation_id, plan_digest, current_password]
+      description: Echo of exactly what the human reviewed (the resolved plan's digest), plus step-up re-authentication.
+      required: [approval_request_id, content_digest, scope_snapshot_digest, validation_id, simulation_id, plan_digest, current_password]
       additionalProperties: false
       properties:
         approval_request_id: { type: string, format: uuid }
         content_digest: { type: string }
-        base_version: { type: integer }
+        scope_snapshot_digest: { type: string }
         validation_id: { type: string, format: uuid }
         simulation_id: { type: string, format: uuid }
         plan_digest: { type: string }
@@ -648,52 +1079,29 @@ components:
         id: { type: string, format: uuid }
         state:
           type: string
+          description: "`consumed` approvals apply only to `consumed_by_execution`, under that execution's expected-transition rule (ADR-0008 §4–5)."
           enum: [valid, consumed, invalid, revoked, expired]
         invalid_reason:
           type: string
-          description: "e.g. content_changed, base_version_moved, environment_drift, configuration_drift (role/ACL contents or fallback settings changed under the same name), capability_changed, recipe_revision_changed, target_generation_moved, approver_disabled, approver_lost_permission"
+          description: "Before consumption only, e.g. content_changed, scope_snapshot_changed, environment_drift, configuration_drift (role/ACL contents or fallback settings changed under the same name), capability_changed, recipe_revision_changed, qualification_expired, target_generation_moved, approver_disabled, approver_lost_permission"
         approved_by: { $ref: "#/components/schemas/Principal" }
         bindings:
           type: object
-          required: [cr_id, content_digest, base_version, validation_id, simulation_id, environment_fingerprint, plan_digest, scope]
+          required: [cr_id, cr_revision, content_digest, validation_id, simulation_id, environment_fingerprint, scope_snapshot_digest, plan_digest]
+          additionalProperties: false
           properties:
-            scope: { $ref: "#/components/schemas/ActivationScope" }
             cr_id: { type: string, format: uuid }
+            cr_revision: { type: integer }
             content_digest: { type: string }
-            base_version: { type: integer }
             validation_id: { type: string, format: uuid }
             simulation_id: { type: string, format: uuid }
             environment_fingerprint: { type: string }
-            plan_digest: { type: string }
+            scope_snapshot_digest: { type: string }
+            plan_digest: { type: string, description: "Covers the scope, the activation changes and every resolved target binding." }
             self_approval: { type: boolean, description: "True when the approver is the CR's on_behalf_of human (allowed only by installation setting, O1)." }
         consumed_by_execution: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
-
-    ActivationScope:
-      type: object
-      description: |
-        Where an activation applies. On each authentication the decision path
-        uses the most specific current activation that matches the request's
-        switch and NAS-Port-Id: port, then switch, then `all`. Operator
-        quarantine overrides take precedence over every scope. The existing
-        `GET /policy-activations` gains this as an additive `scope` field.
-      required: [kind]
-      properties:
-        kind: { type: string, enum: [all, cohort] }
-        switches:
-          type: array
-          description: "`cohort`: whole switches."
-          items: { type: string, format: uuid }
-        ports:
-          type: array
-          description: "`cohort`: individual switch ports."
-          items:
-            type: object
-            required: [switch_id, nas_port_id]
-            properties:
-              switch_id: { type: string, format: uuid }
-              nas_port_id: { type: string, examples: ["Ethernet1"] }
 
     AccessProfileRef:
       type: object
@@ -738,14 +1146,17 @@ components:
               description: "Transport state of pre-existing flows is torn down. Does NOT guarantee that application data is never sent later: an application may reconnect and resend."
             allow:
               type: array
-              description: "Services that stay reachable: remediation, DNS, DHCP, the NAC portal."
+              description: "Services that stay reachable: remediation, DNS, DHCP, the NAC portal. Each entry is as explicit as a requirement: direction, protocols and address families."
               items:
                 type: object
-                required: [destination, protocol]
+                required: [destination, direction, protocols, address_families]
+                additionalProperties: false
                 properties:
-                  destination: { type: string }
-                  protocol: { type: string, enum: [tcp, udp, icmp, any] }
+                  destination: { type: string, description: "Prefix or address." }
+                  direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
+                  protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
                   ports: { type: string }
+                  address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
             address_families: { type: array, items: { type: string, enum: [ipv4, ipv6] } }
 
     TrafficRequirement:
@@ -765,54 +1176,157 @@ components:
     EnforcementCapability:
       type: object
       description: |
-        ADR-0009 §2: one recipe on one platform scope, with three
-        INDEPENDENT dimensions. A source-backed recipe with absent
-        implementation is visible for planning but never executable,
-        selectable or qualified. Unit tests and offline fixtures do not
-        change qualification. Nothing is inherited from vendor
-        documentation.
-      required: [recipe_id, strategy, platform, research_status, implementation_status, requirements, selectable]
+        ADR-0009 §2: one recipe on one platform build, with three INDEPENDENT
+        dimensions. This is inventory, not eligibility: it shows only
+        `readiness`. Whether a strategy can enforce a given profile version
+        on a given switch port is `EligibilityResult`. A source-backed recipe
+        with absent implementation is visible for planning but never
+        executable or qualified. Unit tests and offline fixtures do not
+        change qualification. Nothing is inherited from vendor documentation.
+      required: [recipe_id, recipe_revision, strategy, operation, platform, research_status, implementation_status, readiness, qualification_record_ids, configuration_evidence]
+      additionalProperties: false
       properties:
         recipe_id: { type: string, examples: ["arubacx.local-role.aruba-user-role", "aristaeos.vlan.tunnel"] }
         recipe_revision: { type: string }
         strategy: { type: string, enum: [vlan, role_acl] }
-        platform:
-          type: object
-          description: "Scope: vendor, family, model, OS/build, physical or virtual. One build does not extend to a version range."
-          properties:
-            vendor: { type: string }
-            family: { type: string }
-            model: { type: string }
-            os_build: { type: string, examples: ["4.29.2F", "Virtual.10.07.0004"] }
-            form: { type: string, enum: [physical, virtual] }
         operation: { type: string, enum: [admission, coa, disconnect, reauthenticate] }
+        platform: { $ref: "#/components/schemas/PlatformScope" }
         research_status: { type: string, enum: [draft, source-backed, disputed] }
         research_sources:
           type: array
           items: { type: object, properties: { kind: { type: string }, reference: { type: string } } }
         implementation_status: { type: string, enum: [absent, partial, implemented] }
-        configuration_fingerprint:
+        readiness:
           type: string
-          description: "ADR-0009 §7: the role/ACL definitions, implicit action, direction, VLAN, host mode and fallback settings the evidence applies to. Drift, or stale/unavailable evidence, makes coverage unknown."
-        configuration_evidence:
-          type: string
-          enum: [observed, operator_attestation, unavailable]
-          description: "operator_attestation is approved and versioned, with an age; it is not live verification. Each requirement declares whether it accepts it."
-        changes_address: { type: boolean }
-        requirements:
-          type: object
-          description: "Per requirement: the qualification status in this scope, with the evidence reference."
-          additionalProperties:
-            type: object
-            required: [status]
-            properties:
-              status: { type: string, enum: [unverified, demonstrated, unsupported, inconclusive] }
-              evidence: { type: string }
-              caveat: { type: string }
-        selectable:
-          type: boolean
           readOnly: true
-          description: "Computed: implemented, AND demonstrated for every requirement of the profile in this scope, AND current configuration evidence. Never set by a client."
+          enum: [research_only, implemented_unqualified, qualified_for_some_scopes]
+          description: "Inventory readiness only. Never a profile-independent \"selectable\" flag."
+        qualification_record_ids: { type: array, items: { type: string, format: uuid } }
+        configuration_evidence: { $ref: "#/components/schemas/ConfigurationEvidence" }
+        changes_address: { type: boolean }
+
+    PlatformScope:
+      type: object
+      description: "One build; it does not extend to a version range."
+      required: [vendor, model, os_build, form]
+      additionalProperties: false
+      properties:
+        vendor: { type: string, minLength: 1 }
+        family: { type: string }
+        model: { type: string, minLength: 1 }
+        os_build: { type: string, minLength: 1, examples: ["4.29.2F", "Virtual.10.07.0004"] }
+        form: { type: string, enum: [physical, virtual] }
+
+    TestedScope:
+      type: object
+      description: "What a lab result actually exercised, on the same axes as a requirement (ADR-0009 §1). Matching is per axis; TCP from_endpoint never covers UDP or to_endpoint."
+      required: [requirement, direction, protocols, address_families, destination_class, flow_state]
+      additionalProperties: false
+      properties:
+        requirement: { type: string, enum: [deny_routed, deny_same_subnet_sessions, isolate_same_subnet_packets, block_established_flow_data, terminate_established_flows, allow] }
+        direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
+        protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
+        address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
+        destination_class: { type: string, enum: [routed, same_subnet, allow_entry] }
+        destinations: { type: array, items: { type: string } }
+        flow_state: { type: string, enum: [new, established] }
+
+    QualificationRecord:
+      type: object
+      readOnly: true
+      description: |
+        Immutable: a correction is a new record that supersedes this one
+        (ADR-0009 §2, R4). Only a `demonstrated`, unexpired record with
+        complete bindings and a configuration fingerprint equal to the
+        target's current one can cover a requirement.
+      required: [id, recipe_id, recipe_revision, operation, platform, tested_scope, authentication, topology, configuration_fingerprint, result, evidence, measured_at, valid_until, issuer]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        recipe_id: { type: string }
+        recipe_revision: { type: string }
+        operation: { type: string, enum: [admission, coa, disconnect, reauthenticate] }
+        platform: { $ref: "#/components/schemas/PlatformScope" }
+        tested_scope: { $ref: "#/components/schemas/TestedScope" }
+        authentication: { type: string, enum: [eap_tls, mab] }
+        topology: { type: string, examples: ["one endpoint per port", "phone + PC on one port"] }
+        configuration_fingerprint: { type: string }
+        result: { type: string, enum: [demonstrated, unsupported, inconclusive] }
+        evidence:
+          type: object
+          required: [reference, manifest_sha256]
+          additionalProperties: false
+          properties:
+            reference: { type: string, examples: ["KidCarmi/nac@15e89db:lab/evidence/aruba-rc4-clean-20261110"] }
+            manifest_sha256: { type: string }
+        caveat: { type: string }
+        measured_at: { type: string, format: date-time }
+        valid_until: { type: string, format: date-time }
+        issuer: { type: string, description: "The lab that produced the result." }
+        supersedes: { type: string, format: uuid }
+
+    ConfigurationEvidence:
+      type: object
+      description: "ADR-0009 §7: evidence of the switch's current role/ACL definitions, implicit action, direction, VLAN, host mode and fallback settings. `unavailable` or expired evidence makes coverage unknown."
+      required: [id, kind, configuration_fingerprint]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [observed, operator_attestation, unavailable] }
+        configuration_fingerprint: { type: string }
+        observed_at: { type: string, format: date-time }
+        attestation: { $ref: "#/components/schemas/Attestation" }
+
+    Attestation:
+      type: object
+      description: "An approved, versioned operator statement. It is not live verification. Expired means unavailable."
+      required: [id, version, issuer, issued_at, expires_at, configuration_fingerprint, statement]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        issuer: { $ref: "#/components/schemas/Principal" }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        configuration_fingerprint: { type: string }
+        statement: { type: string }
+        limits: { type: string }
+
+    EligibilityResult:
+      type: object
+      readOnly: true
+      description: "ADR-0009 §2 (R4): for one profile version on one switch port, per strategy and per requirement. A strategy is eligible only when it is implemented and every requirement is covered."
+      required: [profile, switch_id, nas_port_id, evaluated_at, strategies]
+      additionalProperties: false
+      properties:
+        profile: { $ref: "#/components/schemas/AccessProfileRef" }
+        switch_id: { type: string, format: uuid }
+        nas_port_id: { type: string }
+        evaluated_at: { type: string, format: date-time }
+        configuration_fingerprint: { type: string }
+        strategies:
+          type: array
+          items:
+            type: object
+            required: [recipe_id, recipe_revision, eligible, requirements]
+            additionalProperties: false
+            properties:
+              recipe_id: { type: string }
+              recipe_revision: { type: string }
+              eligible: { type: boolean }
+              requirements:
+                type: array
+                items:
+                  type: object
+                  required: [requirement, covered]
+                  additionalProperties: false
+                  properties:
+                    requirement: { type: string }
+                    covered: { type: boolean }
+                    qualification_record_id: { type: string, format: uuid }
+                    unmet_reason:
+                      type: string
+                      enum: [not_implemented, no_record, record_expired, direction_mismatch, protocol_mismatch, address_family_mismatch, destination_class_mismatch, flow_state_mismatch, platform_mismatch, recipe_revision_mismatch, configuration_changed, configuration_evidence_unavailable, attestation_not_accepted, result_not_demonstrated]
 
     StrategySelection:
       type: object
@@ -830,8 +1344,13 @@ components:
         strategy_limitations: { type: array, items: { type: string } }
         unmet_requirements:
           type: array
-          description: "Requirements no selectable recipe covers. For an active session, the desired restriction is retained for the next authentication."
-          items: { type: string }
+          description: "Requirements no eligible recipe covers, with the reason (as in EligibilityResult). For an active session, the desired restriction is retained for the next authentication."
+          items:
+            type: object
+            required: [requirement, unmet_reason]
+            properties:
+              requirement: { type: string }
+              unmet_reason: { type: string }
         fail_safe_action:
           type: string
           description: "Only an explicitly configured, eligible fail-safe action; absent when none is configured."
@@ -841,9 +1360,14 @@ components:
 
     TargetOutcome:
       type: object
-      required: [session_id, requested]
+      required: [session_id, dispatch]
       properties:
         session_id: { type: string, format: uuid }
+        dispatch:
+          type: string
+          enum: [pending, not_sent, sent]
+          description: "not_sent carries not_sent_reason; nothing reached the switch for this target."
+        not_sent_reason: { type: string, enum: [stopped, superseded, external_activation, authority_expired, incarnation_changed, configuration_drift] }
         selection: { $ref: "#/components/schemas/StrategySelection" }
         requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer }, role: { type: string } } }
         coa_request_id: { type: string, format: uuid }
@@ -862,15 +1386,37 @@ components:
 
     Execution:
       type: object
-      required: [id, cr_id, approval_id, state, stages, created_at]
+      description: |
+        ADR-0008 §5. The resolved plan, the pre-activation snapshot and the
+        authority are copied at start and never change; outcomes and state
+        are appended. `stopped` means no further sends: `still_in_force`
+        lists what remains active (a rollback is a separate CR).
+      required: [id, cr_id, approval_id, state, resolved_plan, pre_activation_snapshot, authority, stages, created_at]
       properties:
         id: { type: string, format: uuid }
         cr_id: { type: string, format: uuid }
         approval_id: { type: string, format: uuid }
         idempotency_key: { type: string }
-        state: { type: string, enum: [running, applied, observed, failed, stopped] }
-        activated_version: { type: integer }
-        activated_scope: { $ref: "#/components/schemas/ActivationScope" }
+        state: { type: string, enum: [running, stopping, stopped, applied, observed, failed] }
+        resolved_plan: { $ref: "#/components/schemas/ResolvedPlan" }
+        pre_activation_snapshot: { $ref: "#/components/schemas/ScopeSnapshot" }
+        expected_post_activation:
+          type: object
+          readOnly: true
+          description: "Recorded when the activate stage commits; afterwards every dispatch check compares live resolution against this, and anything else stops the execution (external_activation)."
+          required: [activation_id, revision, retired, revised]
+          properties:
+            activation_id: { type: string, format: uuid }
+            revision: { type: integer }
+            retired: { type: array, items: { type: object, required: [activation_id, revision], properties: { activation_id: { type: string, format: uuid }, revision: { type: integer } } } }
+            revised: { type: array, items: { type: object, required: [activation_id, revision], properties: { activation_id: { type: string, format: uuid }, revision: { type: integer } } } }
+        authority:
+          type: object
+          required: [principal, approval_id, authority_expires_at]
+          properties:
+            principal: { $ref: "#/components/schemas/Principal" }
+            approval_id: { type: string, format: uuid }
+            authority_expires_at: { type: string, format: date-time }
         stages:
           type: array
           items:
@@ -878,9 +1424,22 @@ components:
             required: [type, state]
             properties:
               type: { type: string, enum: [activate, apply, observe] }
-              state: { type: string, enum: [pending, running, done, failed, skipped] }
+              state: { type: string, enum: [pending, running, done, failed, skipped, not_started] }
               detail: { type: string }
               targets: { type: array, items: { $ref: "#/components/schemas/TargetOutcome" } }
+        stop:
+          type: object
+          description: "Present once a stop was requested or the executor stopped itself."
+          required: [reason_kind, at]
+          properties:
+            reason_kind: { type: string, enum: [operator_stop, external_activation, authority_expired, stage_failed] }
+            reason: { type: string }
+            requested_by: { $ref: "#/components/schemas/Principal" }
+            at: { type: string, format: date-time }
+        still_in_force:
+          type: array
+          description: "Activations this execution committed that remain current. Stopping never reverts them; overrides are untouched."
+          items: { $ref: "#/components/schemas/Activation" }
         executed_by: { $ref: "#/components/schemas/Principal" }
         created_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time }
