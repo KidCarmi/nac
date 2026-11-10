@@ -1,0 +1,46 @@
+! Relevant running configuration, sanitized; captured 2026-11-09 on isolated
+! ArubaOS-CX Virtual.10.07.0004. Ciphertext and test shared secrets omitted.
+radius-server host 10.70.99.5 key plaintext <LAB_SHARED_SECRET> vrf mgmt
+aaa accounting port-access start-stop group radius
+radius dyn-authorization enable
+radius dyn-authorization client 10.70.99.5 secret-key plaintext <LAB_SHARED_SECRET> vrf mgmt
+! Existing reference 10.70.99.2 remains a dynamic-authorization client only.
+aaa authentication port-access dot1x authenticator
+    enable
+class ip allow-rem
+    10 match any any 10.70.20.10
+class ip deny-all
+    10 match any any any
+port-access policy q-policy
+    10 class ip allow-rem
+    100 class ip deny-all action drop
+port-access role corp
+port-access role quarantine
+    associate policy q-policy
+    vlan access 10
+interface mgmt
+    no shutdown
+    ip static 10.70.99.1/24
+interface 1/1/1
+    no shutdown
+    no routing
+    vlan access 10
+    aaa authentication port-access dot1x authenticator
+        enable
+interface 1/1/2
+    no shutdown
+    no routing
+    vlan access 10
+interface 1/1/3
+    no shutdown
+    no routing
+    vlan access 10
+interface 1/1/4
+    no shutdown
+    no routing
+    vlan access 20
+interface vlan 10
+    ip address 10.70.10.1/24
+interface vlan 20
+    ip address 10.70.20.1/24
+! write memory returned [Success] after enabling accounting.

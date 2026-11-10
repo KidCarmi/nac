@@ -1,0 +1,7 @@
+dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7  /usr/local/bin/nacd
+a80fe96707b05a7e5cc2b25edee6e4dcfb299e5669b905ee5d68ae73a8b76a5c  /root/nac-pilot-pilot-aruba-rc4/deployments/pilot/install.sh
+a8a31d6d1b5b576df4856317d4b65de8cd25e56aabd2889451b209ba6161a113  /usr/local/sbin/nac-freeradius-reload
+c738690d8a3940ed934733df2dde31b20b17409b377be23376390649584b59e4  /etc/systemd/system/nac-freeradius-reload.service
+d992840840bad3647c7bbb71afae59eaf4bd0981303b9465d7469c0306b75d1e  /etc/freeradius/3.0/sites-available/nac
+168ae4550ff79b9cfb5065a2113f66b5655ba2993ca93665beb77dcfb5078546  /etc/freeradius/3.0/mods-available/nac_rest
+6008b75fa581390d0beb46a4d7645b816ba537e73959d539413b20ae5724cefc  /etc/freeradius/3.0/mods-available/nac_json

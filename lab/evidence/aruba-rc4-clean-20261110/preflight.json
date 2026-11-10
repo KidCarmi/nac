@@ -1,0 +1,28 @@
+{
+  "captured_at": "2026-11-10T07:00:13.519917+00:00",
+  "policy_count": 0,
+  "radius_health": {
+    "freeradius_load": {
+      "at": "2026-11-10T06:55:14.87Z",
+      "detail": "FreeRADIUS restarted with this switch list and is running",
+      "state": "yes"
+    },
+    "outage_log_import": {
+      "at": "2026-11-10T06:59:43.719792572Z",
+      "detail": "outage log /var/log/freeradius/nac-outage.log read; 0 new entr(y/ies) imported",
+      "state": "yes"
+    },
+    "outage_semantics": "No authorization cache. While nacd is unreachable FreeRADIUS rejects new logins and re-authentications (Reply-Message \"NAC decision service unavailable\"); sessions already authorized stay up on the switch until they re-authenticate.",
+    "radius_client_file": {
+      "at": "2026-11-10T06:55:13.71909741Z",
+      "detail": "0 switch(es) written to /var/lib/nac/freeradius-clients.conf; FreeRADIUS restarts to load them (see freeradius_load for whether it did)",
+      "state": "yes"
+    }
+  },
+  "switch_count": 0,
+  "version": {
+    "build_date": "2026-11-09T19:57:53Z",
+    "commit": "0148bf8",
+    "version": "pilot-aruba-rc4"
+  }
+}

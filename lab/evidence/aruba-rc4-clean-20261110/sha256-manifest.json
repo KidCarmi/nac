@@ -1,0 +1,137 @@
+{
+  "candidate_commit": "0148bf88985c5da9086b54aafd002fbfbfe71b75",
+  "nacd_sha256": "dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7",
+  "generated_at_utc": "2026-11-10T07:53:35.8095802Z",
+  "entries": [
+    {
+      "path": "aruba_fetch_rc4_probe_guest.py",
+      "size": 2015,
+      "sha256": "5326ff2ea22b70685c54802689bf82b1f3fb1042af5582b3d77a46bc07e57fb6"
+    },
+    {
+      "path": "aruba_rc4_restart_eve_guest.py",
+      "size": 3380,
+      "sha256": "f156b8968cb627b4928f942921a3e2739284dd15aff831c3ae3c298e099192fc"
+    },
+    {
+      "path": "Aruba-Role-ACL-1007.unl",
+      "size": 5014,
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94"
+    },
+    {
+      "path": "corp-service-raw.txt",
+      "size": 452,
+      "sha256": "68a4e78a990adeeae3769721f99fe301b4b08eb6df3b31b83b1945cd942b76fc"
+    },
+    {
+      "path": "install-report.txt",
+      "size": 966,
+      "sha256": "dd788a80ef1ce1ce586ae73f180e3912d94d2f235487777a4c9998d212cd49f5"
+    },
+    {
+      "path": "installed-hashes.txt",
+      "size": 766,
+      "sha256": "cafb9226ebd3a77469a636cb06ec8ca9bc73ec4c52201c07c7c6d09eea268a50"
+    },
+    {
+      "path": "nac-outage.log",
+      "size": 710,
+      "sha256": "712f4eb3ca175867ffedaf19a926047b8f03b5fc7ceb7bdae6d6c702eca21cdc"
+    },
+    {
+      "path": "outage-capture.tar.gz",
+      "size": 8597,
+      "sha256": "163f39e604111bd55540caf744d627f7c8674f0ec57cf1ddb5269a311c4741b1"
+    },
+    {
+      "path": "packet-captures-continued.tar.gz",
+      "size": 144744,
+      "sha256": "be2a3465244113fc229194eb279e5e9d24636dd7c7d18d190590de1a8b4ad967"
+    },
+    {
+      "path": "packet-captures.tar.gz",
+      "size": 139269,
+      "sha256": "fa2ccc725f40c0b54e7814ee36cf08e221525c2c029358234aef142a51e73642"
+    },
+    {
+      "path": "postrestart-capture.tar.gz",
+      "size": 48915,
+      "sha256": "f78fc8e65d3f9ae70140b7f3f9d477bc287fab51dac6ce110377da73dece53ae"
+    },
+    {
+      "path": "postrestart-capture2.tar.gz",
+      "size": 54163,
+      "sha256": "81fb2af16d51f8e882a1017c3e0e59d2b841a929a1b908e1a60df2f8d142bb30"
+    },
+    {
+      "path": "postrestart-quarantine-probes.jsonl",
+      "size": 9478,
+      "sha256": "df003902852eea18ef87e199d3397e14b043431d1760a9dbee61456c311f5387"
+    },
+    {
+      "path": "postrestart-quarantine2-probes.jsonl",
+      "size": 10504,
+      "sha256": "e10f1c64fe0023869e6bee1696af2cef896d9e9f37e8daa1f15f1b128ea96206"
+    },
+    {
+      "path": "postrestart-restore-probes.jsonl",
+      "size": 13342,
+      "sha256": "cc357ac265fdfb876ee9cb8ae4592169a4fcc612b63841ee8ae67679908f8c17"
+    },
+    {
+      "path": "postrestart-restore2-probes.jsonl",
+      "size": 10644,
+      "sha256": "0c4dc8b77a1cae8627e51e6e739326a055bae63b13468d53757991586f5dd7c1"
+    },
+    {
+      "path": "preflight.json",
+      "size": 1157,
+      "sha256": "dcc1914c75b54c73d72138cd9e5e2c1eac8bad384d4f2abeb855028e4b3866d3"
+    },
+    {
+      "path": "quarantine-probes.jsonl",
+      "size": 10714,
+      "sha256": "e3132ab62ee2bd238cf34564612b93169cef0eeac21de1b2add5d9ecc25d9b9c"
+    },
+    {
+      "path": "README.md",
+      "size": 10233,
+      "sha256": "4c7e15845f2c805905d389e9294f14dae55ceb16a96245b192ad64aad3c69b48"
+    },
+    {
+      "path": "reload-chaos.log",
+      "size": 4500,
+      "sha256": "bfbe3230c179e570bf33286ef0bdffac3aea0ae199d7bd68f0b1f682a16c1826"
+    },
+    {
+      "path": "remediation-service-raw.txt",
+      "size": 497,
+      "sha256": "9ff433222f24a065e9e67f64f5bd0d7162b6dc548a08670fd958566c2d64a1e5"
+    },
+    {
+      "path": "restore-probes.jsonl",
+      "size": 13617,
+      "sha256": "7e154d55dc3231454d308ac5d7d075d4dbec0e193b0a4c4e1a6e516a113c433a"
+    },
+    {
+      "path": "rule-only-quarantine-probes.jsonl",
+      "size": 12101,
+      "sha256": "595dac21dad788734d7891bd331152cc3e9b94c2369b541980eeb52bc9671651"
+    },
+    {
+      "path": "rule-only-restore-probes.jsonl",
+      "size": 11671,
+      "sha256": "105a9c23a8c9ecbf977887a7a55466f33d6fceb38fb8e5d6a37bab36c74dc252"
+    },
+    {
+      "path": "sanitized-switch-config.txt",
+      "size": 1376,
+      "sha256": "8e683a0ee1e5c6626ba6d6b0548c8aa337fc0f5eec01fb94947136754546ef75"
+    },
+    {
+      "path": "systemd-crash-excerpt.txt",
+      "size": 1199,
+      "sha256": "bec07b23c48cff10be7c907fc3d51c895b200497bdcd4b9d8c842142ec7e2386"
+    }
+  ]
+}

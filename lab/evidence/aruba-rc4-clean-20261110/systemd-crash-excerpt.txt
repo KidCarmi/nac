@@ -1,0 +1,10 @@
+2026-11-10T07:19:31+00:00 nac-aruba-rc4 systemd[1]: Stopping freeradius.service - FreeRADIUS multi-protocol policy server...
+2026-11-10T07:19:31+00:00 nac-aruba-rc4 freeradius[6485]: Configuration appears to be OK
+2026-11-10T07:19:31+00:00 nac-aruba-rc4 systemd[1]: Started freeradius.service - FreeRADIUS multi-protocol policy server.
+2026-11-10T07:19:32+00:00 nac-aruba-rc4 systemd[1]: freeradius.service: Sent signal SIGKILL to main process 6487 (freeradius) on client request.
+2026-11-10T07:19:32+00:00 nac-aruba-rc4 systemd[1]: freeradius.service: Failed to send signal SIGKILL to auxiliary processes on client request: Invalid argument
+2026-11-10T07:19:32+00:00 nac-aruba-rc4 systemd[1]: freeradius.service: Main process exited, code=killed, status=9/KILL
+2026-11-10T07:19:32+00:00 nac-aruba-rc4 systemd[1]: freeradius.service: Failed with result 'signal'.
+2026-11-10T07:19:33+00:00 nac-aruba-rc4 freeradius[6610]: Configuration appears to be OK
+2026-11-10T07:19:33+00:00 nac-aruba-rc4 systemd[1]: Started freeradius.service - FreeRADIUS multi-protocol policy server.
+2026-11-10T07:19:33+00:00 nac-aruba-rc4 systemd[1]: Stopping freeradius.service - FreeRADIUS multi-protocol policy server...
