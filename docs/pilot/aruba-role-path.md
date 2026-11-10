@@ -143,13 +143,13 @@ regression [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e
 | 2.2 | D2 liveness wording | **PASS** | `15e89db` (console), `2609fdb` (API) | — |
 | 3.1 | Quarantine (role CoA) | **PASS** (console) | `15e89db` | VLAN and IP unchanged; no EAP. API path: rc3 `148e196`, same role code |
 | 3.2 | Restore (role CoA) | **PASS** (console) | `15e89db` | As 3.1 |
-| 3.3 | Missing role mapping | **NOT RUN** in the lab on rc4 | — | Covered by automated tests only |
-| 3.4 | Policy-denied Restore keeps the quarantine | **NOT RUN** in the lab on rc4 | — | Covered by automated tests only |
-| 4.1 | Persistence (re-auth, Stop/Start, nacd and FreeRADIUS restart) | **NOT RUN** on rc4 | rc3 `148e196` A5 PASS, same role code | The override survived the 4.5 restart |
-| 4.2 | CoA NAK | **NOT RUN** on rc4 | rc3 A6 PASS | — |
-| 4.3 | CoA timeout | **NOT RUN** on rc4 | rc3 A7 PASS | — |
-| 4.4 | Stale session | **NOT RUN** on rc4 | rc3 A8 PASS | — |
-| 4.5 | Planned full EVE restart | **FAIL (lab) for automatic recovery**; product regression after repair **PASS** | `15e89db` | Four lab repairs: 802.1X toggle on `1/1/1`, corp `udhcpd` start and `networkctl renew`, `ethtool -K … tx off`, the remediation route. Plus a ~2 min `networkd-wait-online` delay. No product defect established |
+| 3.3 | Missing role mapping | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending | Registering without the role got `422`. Earlier: automated tests only |
+| 3.4 | Policy-denied Restore keeps the quarantine | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending | `422`; the quarantine was not released |
+| 4.1 | Persistence (re-auth, Stop/Start, nacd and FreeRADIUS restart) | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending; rc3 `148e196` A5 | Survived nacd and FreeRADIUS restarts, a port reconnect with session replacement, and one replayed old accounting Stop |
+| 4.2 | CoA NAK | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending; rc3 A6 | Unknown-role CoA: NAK; the switch stayed `corp` until a manual re-authentication (the test trigger, not a repair) |
+| 4.3 | CoA timeout | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending; rc3 A7 | Network-silenced CoA timed out; the restriction applied at the next login, triggered manually (test method) |
+| 4.4 | Stale session | **PASS** (reported by ASTRA 2026-11-10 on exact rc4, package pending, not yet verified here) | pending; rc3 A8 | Action on the ended session rejected |
+| 4.5 | Planned full EVE restart | **FAIL (lab) for automatic recovery** (repeated cold restart, reported 2026-11-10); product regression after repair **PASS** | `15e89db`; repeat pending | **First run:** four lab repairs (802.1X toggle on `1/1/1`, corp `udhcpd` start and `networkctl renew`, `ethtool -K … tx off`, the remediation route) and a ~2 min `networkd-wait-online` delay. **Repeat, with P7 persisted:** DHCP, offload and the return route recovered on their own. The virtual AOS-CX still ignored EAPOL until an explicitly **manual** authenticator disable/enable. That step is not automatic recovery. No product defect established |
 | 4.6 | nacd outage | **PASS** | `15e89db` | Manual port cycles to trigger fresh logins (test method, not a repair) |
 | 5.1 | Arista admission and rejection | **PASS** | `f6552cd` | The switch's saved RADIUS target was the old rc10 address; corrected live, not saved. `networkctl renew` at first admission |
 | 5.2 | Arista rule-only change and API Quarantine/Restore | **PASS for enforcement** (API) | `f6552cd` | A manual `networkctl down/up` in all four transitions, ~35 s after each CoA |
@@ -161,19 +161,26 @@ regression [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e
 | — | Physical switch | **BLOCKED** | — | None authorized |
 
 **Open decisions for the owner:**
-- Whether rc3 results on unchanged role code (4.1–4.4) are accepted for rc4,
-  or rerun on the exact pin.
-- Whether 3.3/3.4 need a lab run, or automated coverage is enough.
+- ~~Accept rc3 for 4.1–4.4, or rerun on the exact pin~~ and ~~whether 3.3/3.4
+  need a lab run~~: ASTRA reran all of them on exact rc4 (reported
+  2026-11-10). They are confirmed once the package is published and verified.
+- **Row 4.5 now fails only on the virtual AOS-CX authenticator**, after the
+  lab items were persisted. The row stays FAIL. Can it close on a physical
+  switch (or a later AOS-CX image) that recovers without a manual toggle, or
+  is a documented operator step after a cold boot acceptable for the pilot?
+
+**After the gate (not part of PASS):** ASTRA is running a bounded 100-cycle
+Aruba Quarantine/Restore timing campaign, labelled steady-state only.
 
 ### Failure review: product vs lab vs virtual platform
 
 | Finding | Class | Why | Action |
 |---|---|---|---|
 | 4.5: endpoint held ~2 min by `networkd-wait-online` | Lab configuration | Endpoint image waits for all links | P7 |
-| 4.5: AOS-CX authenticator silent after cold boot until 802.1X toggled | **Virtual-platform limitation** (watch on hardware) | NAC was up; no EAPOL reached RADIUS; the switch-local toggle alone fixed it | P7; check on a physical switch |
-| 4.5: corp `udhcpd` not running after boot | Lab configuration | Started ad hoc, not as a unit | P7 |
-| 4.5: TX checksum offload back on (virtio) | Virtual platform + lab configuration | Bad SYN checksums at the service taps | P7 |
-| 4.5: remediation route to `10.70.10.0/24` lost | Lab configuration | Route was not persistent | P7 |
+| 4.5: AOS-CX authenticator silent after cold boot until 802.1X toggled | **Virtual-platform limitation** (watch on hardware) | NAC was up; no EAPOL reached RADIUS; the switch-local toggle alone fixed it. **Reproduced** on the repeated cold restart, with every other P7 item persisted | P7; check on a physical switch. The only remaining 4.5 blocker |
+| 4.5: corp `udhcpd` not running after boot | Lab configuration | Started ad hoc, not as a unit | P7; **persisted, recovered automatically on the repeat** |
+| 4.5: TX checksum offload back on (virtio) | Virtual platform + lab configuration | Bad SYN checksums at the service taps | P7; **persisted, recovered automatically on the repeat** |
+| 4.5: remediation route to `10.70.10.0/24` lost | Lab configuration | Route was not persistent | P7; **persisted, recovered automatically on the repeat** |
 | 5.1: first admission timed out | Lab configuration | Saved vEOS config targeted the old rc10 control guest (`10.70.99.4`); no RADIUS on the control tap | P6 |
 | 5.x restart: corp guest disk full | Lab configuration | Journal and package cache | P6 |
 | 5.x: Linux kept the old lease after a VLAN CoA | Endpoint DHCP behavior; product boundary of VLAN enforcement | The CoA keeps carrier up. The client only sent its unicast T1 renewal to the old server. Already documented in the recovery boundary | **Not a defect.** Re-measure hands-off (P8) |
