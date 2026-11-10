@@ -134,7 +134,7 @@ As of 2026-11-10:
 | Recipe | Research | Implementation | Qualification (lab, exact build) |
 |---|---|---|---|
 | Arista vEOS-lab 4.29.2F `vlan` (Tunnel-\* in Access-Accept and CoA) | source-backed | implemented (pilot line) | `deny_routed` demonstrated via readdressing; see the matrix |
-| Aruba AOS-CX Virtual 10.07.0004 local role (`Aruba-User-Role` in Access-Accept and CoA) | source-backed | implemented (`pilot-aruba-rc3`/`rc4`, KidCarmi/nac#3) | NAC-integrated evidence on exact `pilot-aruba-rc3` (`148e196`): corp → quarantine → corp with VLAN and IP unchanged; `deny_routed` (IPv4 TCP; UDP from the endpoint); `block_established_flow_data` (one TCP flow); `deny_same_subnet_sessions` (TCP). **`isolate_same_subnet_packets` unsupported** as tested; **`terminate_established_flows` not demonstrated**. `pilot-aruba-rc4` is under qualification |
+| Aruba AOS-CX Virtual 10.07.0004 local role (`Aruba-User-Role` in Access-Accept and CoA) | source-backed | implemented (`pilot-aruba-rc3`/`rc4`, KidCarmi/nac#3) | NAC-integrated evidence on exact `pilot-aruba-rc3` (`148e196`) and again on exact `pilot-aruba-rc4` (`15e89db`, console path): corp → quarantine → corp with VLAN and IP unchanged; `deny_routed` (IPv4 TCP; UDP from the endpoint); `block_established_flow_data` (one TCP flow); `deny_same_subnet_sessions` (TCP). **`isolate_same_subnet_packets` unsupported** as tested; **`terminate_established_flows` not demonstrated**. `pilot-aruba-rc4` is under qualification |
 | Aruba AOS-CX `Filter-Id` in CoA (PacketFence's recipe) | source-backed | absent | unverified: **not executable** |
 
 Execution of the Aruba recipe in the pilot is limited to the frozen
