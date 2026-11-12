@@ -159,6 +159,9 @@ regression [`f6552cd`](https://github.com/KidCarmi/nac/tree/f6552cdbfce696d6058e
 | — | Established TCP survival on Arista | **NOT RUN** | — | Aruba: not torn down, platform evidence `42be71f` |
 | — | Windows 10/11 | **BLOCKED** | — | No guest authorized |
 | — | Physical switch | **BLOCKED** | — | None authorized |
+| — | Aruba shared phone/PC port | **BLOCKED** | `6262914` handoff | No second authenticated device on `1/1/1`. The role CoA and the cold-boot reset were tested with one endpoint |
+| — | NAC-driven IPv6 and UDP containment | **BLOCKED** | `6262914` handoff | Only fixed-policy references (`c26c3ec`, `f441a25`), not through NAC. IPv6 remediation, routed, peer-initiated and established flows, and DHCPv6, are untested |
+| — | Peer-initiated containment | **UNVERIFIED** | `6262914` handoff; `3ff53a9` | A peer's IPv4 SYN still reached the endpoint (TCP didn't complete). Bidirectional isolation is not claimed |
 
 Follow-up package: [`2e953bd`](https://github.com/KidCarmi/nac/tree/2e953bd05859422d57089337935111ebfd2d36d9/lab/evidence/aruba-rc4-followup-20261110) (7/7 manifest entries verified here;
 the README pins `0148bf8`, nacd `dd2b6137…` and adapter `3c45063e…`). The raw
@@ -206,17 +209,48 @@ pilot.
 
 **Procedure** (after any switch cold boot or power loss):
 1. **Detect.** For each access port with a connected supplicant, check that
-   the switch shows an 802.1X client and that NAC shows a new RADIUS request
-   from that switch. On the Switches page, "Auth request seen" is fresh after
-   the boot. No client and no new request within about 2 minutes means the
+   the switch shows an 802.1X client (`show port-access clients interface
+   <port> detail`). Also check that NAC shows a new RADIUS request from that
+   switch: on the Switches page, "Auth request seen" is fresh after the boot.
+   No client and no new request within about 2 minutes means the
    authenticator is stuck. This is the 145 s case.
-2. **Recover.** On each affected port, disable and re-enable the 802.1X
-   authenticator, as ASTRA did. ASTRA is to supply the exact CLI lines from
-   the lab handoff; they are not guessed here. This is a switch-local action:
-   NAC state, policy and overrides are untouched.
-3. **Confirm.** The session appears in NAC with the expected role. A
-   quarantined identity comes back quarantined (4.1). Test protected and
-   remediation traffic.
+2. **Recover.** On the AOS-CX switch console, toggle the authenticator **on
+   the affected port only**. These are ASTRA's exact commands
+   ([handoff](https://github.com/KidCarmi/nac/blob/62629145f707118fce6f18796f8ee3614fe30592/lab/evidence/aruba-rc4-followup-20261110/cold-boot-handoff.md), `62629145`, 8/8 manifest entries verified here):
+
+   ```text
+   configure terminal
+   interface 1/1/1
+   aaa authentication port-access dot1x authenticator
+   disable
+   enable
+   end
+   show running-config interface 1/1/1
+   show port-access clients interface 1/1/1 detail
+   ```
+
+   - `disable` and `enable` are commands in the interface's `dot1x
+     authenticator` submode. `no enable` is rejected (`Invalid input`) and
+     does **not** reset anything.
+   - The commands affect only that port. They neither toggle the global
+     authenticator nor shut the interface down.
+   - **Impact:** every 802.1X client on that port can lose or repeat its
+     authorization during the toggle. Treat it as disruptive on a shared
+     phone/PC port; shared-port behavior is untested.
+   - This is switch-local: NAC state, policy and overrides are untouched.
+3. **Confirm.** Check, in order:
+   - the switch answered EAPOL, and a new RADIUS request reached NAC with a
+     valid EAP-TLS result
+   - the switch lists the client with the expected role
+   - the session appears in NAC with that role, and a quarantined identity
+     comes back quarantined (4.1)
+   - the endpoint has its DHCP address, route and DNS
+   - a **fresh** TCP connection gets HTTP 200 from protected services (or is
+     denied, under quarantine), and remediation answers
+
+   A configured `enable`, an Access-Accept or a displayed role alone is not
+   enough. If authentication succeeds but TCP fails, diagnose DHCP, offload
+   and return routing separately.
 4. **Record** the reset as a manual intervention. It is never reported as
    automatic recovery.
 
