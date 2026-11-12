@@ -1037,7 +1037,7 @@ components:
     ResolvedTarget:
       type: object
       description: "Everything the executor will act on for one session. A live mismatch with any of these at dispatch makes the target superseded or stops the execution; it is never re-planned."
-      required: [session_id, session_incarnation, switch_id, nas_port_id, mac, identity, assignment, recipe_id, recipe_revision, configuration_fingerprint, configuration_evidence_id, qualification_record_ids, desired_state_generation, strategy, strategy_limitations, impact]
+      required: [session_id, session_incarnation, switch_id, nas_port_id, mac, identity, assignment, recipe_id, recipe_revision, configuration_fingerprint, configuration_evidence_id, qualification_record_ids, topology, desired_state_generation, strategy, strategy_limitations, impact]
       additionalProperties: false
       properties:
         session_id: { type: string, format: uuid }
@@ -1072,6 +1072,7 @@ components:
         configuration_fingerprint: { type: string }
         configuration_evidence_id: { type: string, format: uuid }
         qualification_record_ids: { type: array, minItems: 1, items: { type: string, format: uuid } }
+        topology: { $ref: "#/components/schemas/TopologyAssessment" }
         desired_state_generation: { type: integer }
         strategy: { type: string, enum: [vlan, role_acl] }
         strategy_limitations: { type: array, items: { type: string } }
@@ -1201,7 +1202,7 @@ components:
 
     TrafficRequirement:
       type: object
-      description: "ADR-0009 §1: every requirement is explicit about direction, services (protocol and ports) and address families. A service without port ranges means every port of that protocol."
+      description: "ADR-0009 §1: every requirement is explicit about direction, services (protocol and explicit port ranges) and address families. Every port is the explicit range 1-65535; there is no omitted-ports form."
       required: [direction, services, address_families]
       additionalProperties: false
       properties:
@@ -1236,6 +1237,42 @@ components:
           additionalProperties: false
           properties:
             protocol: { enum: [icmp, any] }
+
+    TopologyAssessment:
+      description: |
+        ADR-0009 §2: the target port's topology and the evidence it rests on.
+        A session count is only a lower bound: it can prove sharing, never
+        exclusivity. `single_endpoint` requires current port-configuration
+        evidence that the port enforces a single host, or an approved,
+        unexpired lab attestation scoped to that port, with its evidence id
+        and validity. Otherwise the topology is `unknown`, and unknown is
+        never covered.
+      oneOf:
+        - type: object
+          required: [topology, basis, evidence_id, valid_until]
+          additionalProperties: false
+          properties:
+            topology: { const: single_endpoint }
+            basis: { enum: [port_configuration, lab_attestation] }
+            evidence_id: { type: string, format: uuid, description: "The ConfigurationEvidence (enforcing single-host mode or one-client limit) or the Attestation." }
+            host_mode: { type: string, enum: [single_host, client_limit_one], description: "For basis port_configuration: the enforcing setting observed." }
+            valid_until: { type: string, format: date-time }
+        - type: object
+          required: [topology, basis]
+          additionalProperties: false
+          properties:
+            topology: { enum: [phone_and_pc, multi_endpoint] }
+            basis: { enum: [sessions_lower_bound, port_configuration, lab_attestation] }
+            evidence_id: { type: string, format: uuid }
+            observed_sessions: { type: integer, minimum: 0 }
+            valid_until: { type: string, format: date-time }
+        - type: object
+          required: [topology, basis]
+          additionalProperties: false
+          properties:
+            topology: { const: unknown }
+            basis: { enum: [sessions_lower_bound, no_evidence] }
+            observed_sessions: { type: integer, minimum: 0, description: "Sessions seen. One or zero never establishes single_endpoint." }
 
     Prefix:
       type: string
@@ -1395,7 +1432,7 @@ components:
         profile: { $ref: "#/components/schemas/AccessProfileRef" }
         switch_id: { type: string, format: uuid }
         nas_port_id: { type: string }
-        target_topology: { type: string, enum: [single_endpoint, phone_and_pc, multi_endpoint, unknown], description: "From the port's current sessions. unknown is never covered." }
+        target_topology: { $ref: "#/components/schemas/TopologyAssessment" }
         evaluated_at: { type: string, format: date-time }
         configuration_fingerprint: { type: string }
         strategies:

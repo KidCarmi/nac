@@ -1,0 +1,12 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-14",
+  "schema": "TopologyAssessment",
+  "expect": "valid",
+  "why": "Two devices seen proves sharing (a lower bound).",
+  "instance": {
+    "topology": "phone_and_pc",
+    "basis": "sessions_lower_bound",
+    "observed_sessions": 2
+  }
+}

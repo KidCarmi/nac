@@ -51,7 +51,8 @@ A profile states **requirements**. Each requirement is a fact that must
 hold for the endpoint. Every requirement names:
 - its **traffic direction**: `from_endpoint`, `to_endpoint` or `both`
 - its **services**: each protocol (`tcp`, `udp`, `icmp`, `any`) and, for
-  TCP and UDP, its port ranges. A service without ports means every port.
+  TCP and UDP, its port ranges, always explicit. Every port is the explicit
+  range 1–65535; there is no "omitted ports" form.
 - its **address families**
 - where it is destination-specific, its **destination prefixes**
 
@@ -141,15 +142,14 @@ axis:
 - a superset of the address families
 - **service containment:** each requested protocol is tested, and each
   requested port range lies inside a tested range for that protocol. A
-  requirement without ports means every port, so only a tested
-  "all ports" range covers it.
+  requirement for every port states the range 1–65535, so only a tested
+  1–65535 range covers it.
 - **destination containment:** each requested prefix lies inside a tested
   prefix of the same class (equal or longer prefix, same family)
 - the same flow state
 - **the same authentication method**
-- **the same topology as the target port.** The target's topology comes
-  from its current sessions: one authenticated device means
-  `single_endpoint`. An unknown topology is never covered, and
+- **the same topology as the target port**, from the port's **topology
+  assessment** (below). An unknown topology is never covered, and
   `single_endpoint` evidence never covers `phone_and_pc` or
   `multi_endpoint`.
 - a configuration fingerprint equal to the target switch's **current** one,
@@ -162,13 +162,40 @@ port. An expired, superseded or absent record, a missing field, a mismatch
 on any axis, or changed ACL content under the same role name leaves the
 requirement **unmet**, with that reason. Unknown never matches.
 
+**Port topology is evidence, not a session count.** A PC can sit behind a
+phone that has no certificate. There can also be a silent downstream device,
+or an accounting event that was lost. So one visible authenticated session
+does not show that the port has one endpoint. The target port's **topology
+assessment** has a value and the basis it rests on:
+- **`single_endpoint`** has exactly two possible bases:
+  - **`port_configuration`:** current configuration evidence (§7) that the
+    port **enforces** a single host: a single-host mode or a one-client
+    limit, under which the switch blocks any other device. This is bound to
+    the fingerprint and the evidence's `valid_until`, and lapses with them.
+  - **`lab_attestation`:** an approved, unexpired attestation scoped to that
+    switch port (lab use, N1).
+
+  Nothing else qualifies. A session count, the absence of LLDP, or a single
+  FDB entry is never enough.
+- **`phone_and_pc` or `multi_endpoint`** may rest on observed sessions: two
+  or more devices seen is a lower bound that proves sharing. They may also
+  rest on configuration or an attestation.
+- **Otherwise `unknown`**, including one session, zero sessions, missing
+  accounting, or a host mode that allows more than one device. Unknown is
+  never covered.
+
+The resolved plan records each target's assessment, with its basis,
+evidence id and validity (ADR-0008 §5). A change to the port's host-mode
+configuration, or expiry of that evidence, invalidates eligibility and
+unexecuted approvals, like any configuration drift.
+
 **Acceptance scenarios for coverage** (contract tests for any implementation;
 the schema examples are in `api/openapi/proposed/examples/`):
 
 | ID | Scenario | Required outcome |
 |---|---|---|
 | A-R4-1 | Record tested TCP/8080 to `10.70.10.10/32`; the requirement is TCP/443 to the same host | Unmet: `port_not_covered` |
-| A-R4-2 | Record tested TCP/8080; the requirement is TCP with no ports (every port) | Unmet: `port_not_covered` |
+| A-R4-2 | Record tested TCP/8080; the requirement is TCP 1–65535 (every port, stated explicitly) | Unmet: `port_not_covered` |
 | A-R4-3 | Record tested `10.70.20.0/24`; the requirement is `10.70.30.0/24` | Unmet: `destination_not_contained` |
 | A-R4-4 | Record tested `10.70.10.0/24`; the requirement is `10.70.10.10/32` | Covered on this axis |
 | A-R4-5 | Record tested TCP `from_endpoint`; the requirement is UDP or `to_endpoint` | Unmet: `protocol_mismatch` / `direction_mismatch` |
@@ -179,6 +206,13 @@ the schema examples are in `api/openapi/proposed/examples/`):
 | A-R4-10 | Observed evidence past `valid_until`, with the fingerprint unchanged | Unmet: `configuration_evidence_expired` |
 | A-R4-11 | The ACL content changed under the same role name | Unmet: `configuration_changed`; unexecuted plans and approvals invalidated |
 | A-R4-12 | Every requirement is covered by current, matching records and evidence | Eligible, with each covering record id named |
+| A-R4-13 | A PC authenticates by EAP-TLS behind a phone with no certificate; only the PC appears in accounting; the port's host mode allows several devices | Topology `unknown` (basis: sessions); never `single_endpoint` from the count; unmet `topology_unknown` for `single_endpoint` records |
+| A-R4-14 | As A-R4-13, but the phone is also seen (MAB or LLDP-MED, for example) | Topology `phone_and_pc` (basis: sessions, a lower bound); `single_endpoint` records unmet (`topology_mismatch`) |
+| A-R4-15 | One session is visible, and an accounting Start or Stop for another device on the port was lost | Topology `unknown`; the count is never upgraded to `single_endpoint` |
+| A-R4-16 | One authenticated device, plus a silent downstream device that never authenticates | Topology `unknown`, unless current configuration evidence shows the port enforces a single host |
+| A-R4-17 | Current, fresh configuration evidence shows the port enforces a single host (one-client limit) | Topology `single_endpoint` (basis: `port_configuration`, with its evidence id and validity), bound in the resolved plan |
+| A-R4-18 | The A-R4-17 evidence expires, or the host mode changes to allow several devices | Topology `unknown`; eligibility lost; unexecuted approvals invalidated |
+| A-R4-19 | No LLDP neighbor and a single FDB entry, with nothing else | Topology `unknown` |
 
 **Eligibility is computed per profile version and target.** A strategy is
 **eligible** for one `(access profile, version)` on one `(switch, port)`

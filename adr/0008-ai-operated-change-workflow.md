@@ -290,6 +290,9 @@ requested, and stores it durably.
   - the recipe id and revision
   - the configuration fingerprint and its evidence ids
   - the qualification record ids (ADR-0009 §2)
+  - the port's **topology assessment**, with its basis, evidence id and
+    validity. A session count never establishes `single_endpoint`
+    (ADR-0009 §2)
   - the desired-state generation
   - the selected strategy and its limitations
   - the impact: shared-port dependents, the expected interruption, and

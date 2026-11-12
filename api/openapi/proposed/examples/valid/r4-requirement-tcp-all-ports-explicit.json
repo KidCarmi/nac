@@ -1,0 +1,27 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-2",
+  "schema": "TrafficRequirement",
+  "expect": "valid",
+  "why": "Every TCP port is stated explicitly as 1-65535.",
+  "instance": {
+    "direction": "from_endpoint",
+    "services": [
+      {
+        "protocol": "tcp",
+        "port_ranges": [
+          {
+            "from": 1,
+            "to": 65535
+          }
+        ]
+      }
+    ],
+    "address_families": [
+      "ipv4"
+    ],
+    "destinations": [
+      "10.70.10.0/24"
+    ]
+  }
+}

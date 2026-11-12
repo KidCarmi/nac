@@ -1,0 +1,14 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-17",
+  "schema": "TopologyAssessment",
+  "expect": "valid",
+  "why": "single_endpoint rests on current configuration evidence that the port enforces one host, with its evidence id and validity.",
+  "instance": {
+    "topology": "single_endpoint",
+    "basis": "port_configuration",
+    "evidence_id": "00000000-0000-4000-8000-000000000006",
+    "host_mode": "client_limit_one",
+    "valid_until": "2026-11-13T10:00:00Z"
+  }
+}

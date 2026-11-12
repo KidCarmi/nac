@@ -20,6 +20,7 @@ instance:
 - the typed supersession entries and their expected revisions
 - the services with their ports, and the destination prefixes
 - that each kind of configuration evidence carries its required fields
+- that `single_endpoint` topology carries a configuration or attestation basis, never a session count, and that ports are always explicit
 - the execution's authority state and stop reasons
 
 **Semantic rules are acceptance scenarios, not schema checks.** That covers:
@@ -55,4 +56,4 @@ for f in sorted(glob.glob("api/openapi/proposed/examples/*/*.json")):
     print("OK " if ok else "BAD", d["expect"], os.path.basename(f))
 ```
 
-All 26 instances behave as labelled (2026-11-12, `jsonschema` 4.26).
+All 34 instances behave as labelled (2026-11-12, `jsonschema` 4.26), also with `format_checker=Draft202012Validator.FORMAT_CHECKER`.
