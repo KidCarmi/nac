@@ -834,7 +834,10 @@ paths:
       description: |
         Registers a RADIUS client and rewrites the FreeRADIUS client file
         (FreeRADIUS restarts, about a second). `radius_secret` is required.
-        `segment_vlans` must include `quarantine`. `nas_ip` defaults to
+        `platform` is `arista-eos` (default; VLAN enforcement:
+        `segment_vlans` must include `quarantine`) or `aruba-aos-cx` (role
+        enforcement: `segment_roles` must include `quarantine`, no
+        `segment_vlans`, no eAPI fields). `nas_ip` defaults to
         `radius_source_ip`, `coa_port` to 3799. Secrets are write-only.
         Name and RADIUS source IP are unique (`409`). Audited as
         `switch.create`.
@@ -1170,7 +1173,9 @@ paths:
       description: |
         Records an operator `quarantine` override on the session **first**,
         then sends a CoA-Request asking the switch to apply the quarantine
-        VLAN. The override takes precedence over policy at every
+        VLAN (VLAN enforcement: the switch re-authenticates the session) or
+        the quarantine role (role enforcement: `Aruba-User-Role` in the CoA,
+        applied in place; VLAN and IP unchanged). The override takes precedence over policy at every
         authentication of this identity on this port (switch + port + MAC +
         certificate issuer and serial) until restored, even if the CoA
         fails. Policy publish/restore never clears it. If the switch replaces
@@ -1204,8 +1209,10 @@ paths:
         Clears the session's quarantine override, then sends a CoA so the
         re-authentication receives what the active policy decides. `422` if
         the session has no override (use `reauthenticate`) or is not
-        `active`; `409` if a CoA is already in flight. No request body.
-        Audited as `session.restore`.
+        `active`; `409` if a CoA is already in flight. On a role switch,
+        `422` also when the active policy would grant no role (a role CoA
+        cannot carry a reject): nothing is recorded and the session stays
+        quarantined. No request body. Audited as `session.restore`.
       x-required-permission: session:act
       responses:
         "202": { $ref: "#/components/responses/CoAAccepted" }
@@ -2101,10 +2108,20 @@ components:
     Switch:
       type: object
       description: A registered RADIUS client. Secrets are never returned, only whether they are set.
-      required: [id, name, radius_source_ip, nas_ip, radius_secret_set, coa_port, segment_vlans, access_ports, eos_version, radius_server_ip, eapi_password_set, created_at, updated_at]
+      required: [id, name, platform, enforcement, radius_source_ip, nas_ip, radius_secret_set, coa_port, segment_vlans, segment_roles, access_ports, eos_version, radius_server_ip, eapi_password_set, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        platform: { $ref: "#/components/schemas/SwitchPlatform" }
+        enforcement: { $ref: "#/components/schemas/SwitchEnforcement" }
+        segment_roles:
+          type: [object, "null"]
+          description: Role enforcement only. Segment name to a local role on the switch, returned as `Aruba-User-Role`.
+          additionalProperties: { type: string }
+          examples: [{ corp: nac-corp, quarantine: nac-quarantine }]
+        access_vlan:
+          type: integer
+          description: Role enforcement only. The access VLAN in the generated configuration; NAC never changes it.
         radius_source_ip: { type: string }
         nas_ip: { type: string }
         radius_secret_set: { type: boolean }
@@ -2131,6 +2148,22 @@ components:
         verified_session_id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    SwitchPlatform:
+      type: string
+      enum: [arista-eos, aruba-aos-cx]
+      description: |
+        `arista-eos`: tested on vEOS-lab 4.29.2F. `aruba-aos-cx`: the bounded
+        role path, tested on ArubaOS-CX Virtual 10.07 (no switch observation).
+    SwitchEnforcement:
+      type: string
+      enum: [vlan, role]
+      description: |
+        How a decision is applied. `vlan` (Arista): Tunnel-* attributes, and a
+        CoA makes the switch re-authenticate the session into the VLAN. `role`
+        (Aruba): `Aruba-User-Role` names a local role; a CoA changes the
+        session's role in place without re-authentication; the VLAN and the
+        endpoint's IP do not change. A missing mapping rejects; NAC never
+        falls back from one strategy to the other.
     SwitchView:
       allOf:
         - $ref: "#/components/schemas/Switch"
@@ -2140,11 +2173,24 @@ components:
             status: { $ref: "#/components/schemas/SwitchStatus" }
     SwitchInput:
       type: object
-      required: [name, radius_source_ip, segment_vlans]
+      required: [name, radius_source_ip]
       properties:
         name:
           type: string
           description: 1-63 letters, digits, `.`, `_` or `-`.
+        platform: { $ref: "#/components/schemas/SwitchPlatform" }
+        enforcement:
+          $ref: "#/components/schemas/SwitchEnforcement"
+          description: Defaults from the platform; this candidate accepts only `vlan` for Arista and `role` for Aruba.
+        segment_roles:
+          type: object
+          description: |
+            Role enforcement (required there). Segment name to a local role
+            name (letters, digits, `.`, `_`, `-`; max 64); roles must be
+            distinct and `quarantine` must be present. The role and its policy
+            must already exist on the switch.
+          additionalProperties: { type: string }
+        access_vlan: { type: integer, minimum: 1, maximum: 4094 }
         radius_source_ip:
           type: string
           description: |
@@ -2166,11 +2212,11 @@ components:
         coa_port: { type: integer, minimum: 1, maximum: 65535, default: 3799 }
         segment_vlans:
           type: object
-          description: Segment name (lower-case letters, digits, `-`, `_`; max 32) to a unique VLAN 1-4094; must include `quarantine`.
+          description: VLAN enforcement (required there; rejected for role enforcement). Segment name (lower-case letters, digits, `-`, `_`; max 32) to a unique VLAN 1-4094; must include `quarantine`.
           additionalProperties: { type: integer, minimum: 1, maximum: 4094 }
         access_ports:
           type: array
-          items: { type: string, examples: ["Ethernet1"] }
+          items: { type: string, examples: ["Ethernet1", "1/1/1"] }
         radius_server_ip:
           type: string
           description: The FreeRADIUS address the switch sends to (used in the generated configuration).
@@ -2279,6 +2325,7 @@ components:
         requested_action: { type: string }
         requested_segment: { type: string }
         requested_vlan: { type: integer }
+        requested_role: { type: string }
         started_at: { type: string, format: date-time }
         last_auth_at: { type: string, format: date-time }
         ended_at: { type: string, format: date-time }
@@ -2295,6 +2342,9 @@ components:
         action: { type: string }
         segment: { type: string }
         vlan: { type: integer }
+        role:
+          type: string
+          description: Role enforcement only; the local role returned as `Aruba-User-Role`.
         decision_id: { type: string, format: uuid }
         at: { type: string, format: date-time }
         override: { type: string }
@@ -2341,8 +2391,26 @@ components:
       allOf:
         - $ref: "#/components/schemas/Session"
         - type: object
-          required: [requested, observed, liveness, endpoint_reachability]
+          required: [requested, observed, liveness, endpoint_reachability, enforcement]
           properties:
+            enforcement:
+              type: object
+              description: |
+                How this switch applies the decision and what NAC can and
+                cannot know about it, stated per session so API and MCP
+                clients never infer it from the platform name. On a role
+                switch `observed.freshness` is always `unavailable`, and a
+                `CoA-ACK` is the final CoA state: it is not traffic
+                verification.
+              required: [platform, strategy, mechanism, observation, limitations]
+              properties:
+                platform: { $ref: "#/components/schemas/SwitchPlatform" }
+                strategy: { $ref: "#/components/schemas/SwitchEnforcement" }
+                mechanism: { type: string }
+                observation: { type: string }
+                limitations:
+                  type: array
+                  items: { type: string }
             requested: { $ref: "#/components/schemas/Requested" }
             observed: { $ref: "#/components/schemas/Observed" }
             last_coa: { $ref: "#/components/schemas/CoARequest" }
@@ -2449,6 +2517,13 @@ components:
         requested_vlan:
           type: integer
           description: Absent when the active policy would reject the session at re-authentication.
+        requested_role:
+          type: string
+          description: |
+            Role enforcement: the local role the CoA carried as
+            `Aruba-User-Role` (no Tunnel-* attributes). `acked` is final for a
+            role CoA; a later re-authentication is noted in `detail` but never
+            makes it `observed`.
         state: { $ref: "#/components/schemas/CoAState" }
         attempts: { type: integer }
         radius_id: { type: integer }

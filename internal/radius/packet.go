@@ -69,6 +69,7 @@ const (
 	AttrNASPort              byte = 5
 	AttrReplyMessage         byte = 18
 	AttrClass                byte = 25
+	AttrVendorSpecific       byte = 26
 	AttrCallingStationID     byte = 31
 	AttrNASIdentifier        byte = 32
 	AttrAcctSessionID        byte = 44
@@ -80,6 +81,12 @@ const (
 	AttrTunnelPrivateGroupID byte = 81
 	AttrNASPortID            byte = 87
 	AttrErrorCause           byte = 101
+)
+
+// Aruba vendor-specific attributes (FreeRADIUS dictionary.aruba).
+const (
+	VendorAruba       uint32 = 14823
+	ArubaAttrUserRole byte   = 1 // Aruba-User-Role, string
 )
 
 // Tunnel attribute values (RFC 2868).
@@ -156,6 +163,41 @@ func (p *Packet) AddTunnelInt(t byte, v uint32) {
 // in lab/coa-radius-timeline.txt, it is sent untagged.
 func (p *Packet) AddTunnelString(t byte, s string) {
 	p.Attributes = append(p.Attributes, Attribute{t, []byte(s)})
+}
+
+// AddVSAString appends a Vendor-Specific attribute (RFC 2865 §5.26) holding
+// one vendor sub-attribute with a string value, for example Aruba-User-Role
+// (vendor 14823, type 1).
+func (p *Packet) AddVSAString(vendor uint32, vendorType byte, s string) error {
+	if len(s) > 247 { // 253 - 4 (vendor id) - 2 (sub-attribute header)
+		return fmt.Errorf("vendor attribute %d/%d too long", vendor, vendorType)
+	}
+	v := make([]byte, 6, 6+len(s))
+	binary.BigEndian.PutUint32(v, vendor)
+	v[4], v[5] = vendorType, byte(len(s)+2)
+	p.Attributes = append(p.Attributes, Attribute{AttrVendorSpecific, append(v, s...)})
+	return nil
+}
+
+// VSAString returns the first vendor sub-attribute vendor/vendorType as a
+// string.
+func (p *Packet) VSAString(vendor uint32, vendorType byte) (string, bool) {
+	for _, a := range p.Attributes {
+		if a.Type != AttrVendorSpecific || len(a.Value) < 6 || binary.BigEndian.Uint32(a.Value) != vendor {
+			continue
+		}
+		for i := 4; i+2 <= len(a.Value); {
+			t, l := a.Value[i], int(a.Value[i+1])
+			if l < 2 || i+l > len(a.Value) {
+				break
+			}
+			if t == vendorType {
+				return string(a.Value[i+2 : i+l]), true
+			}
+			i += l
+		}
+	}
+	return "", false
 }
 
 // ErrMalformed is returned for undecodable packets.

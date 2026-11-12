@@ -31,7 +31,9 @@ type coaStore interface {
 // session and asks the switch, by CoA-Request, to re-authenticate it.
 //
 //   - quarantine: sets a session override; the re-authentication returns the
-//     quarantine VLAN regardless of policy.
+//     quarantine VLAN regardless of policy. On a role-enforcement (Aruba)
+//     switch the CoA itself carries the quarantine role (Aruba-User-Role)
+//     and the switch applies it without re-authentication.
 //   - restore: clears the override; the re-authentication returns what the
 //     ACTIVE policy version decides.
 //   - reauthenticate: no override change; applies the active policy version
@@ -71,9 +73,16 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 	case domain.CoARestore:
 		sess.Override, sess.OverrideBy, sess.OverrideAt = "", "", nil
 	}
-	seg, vlan, err := s.predict(ctx, sess, sw)
+	seg, vlan, role, err := s.predict(ctx, sess, sw)
 	if err != nil {
 		return nil, err
+	}
+	if sw.UsesRoles() && role == "" {
+		// A role CoA can only carry a role. Sending one without it, or a
+		// Disconnect, is outside this candidate, so refuse before anything
+		// is recorded: the session keeps its current override (fail-safe).
+		return nil, fmt.Errorf("%w: the active policy would not grant this session a role on %s (%s); no CoA was sent and the session override is unchanged. "+
+			"Change the policy or the switch role mapping first", domain.ErrInvalidInput, sw.Name, ifEmpty(seg, "deny"))
 	}
 
 	nasIP := sess.NASIPAddress
@@ -88,7 +97,7 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 		Target: domain.CoATarget{SwitchID: sw.ID, SwitchName: sw.Name, Address: net.JoinHostPort(sw.NASIP, strconv.Itoa(sw.CoAPort)),
 			NASIPAddress: nasIP, NASPortID: sess.NASPortID, CallingStationID: csid, UserName: sess.UserName,
 			SessionID: sess.ID, SessionStartedAt: sess.StartedAt},
-		RequestedSegment: seg, RequestedVLAN: vlan, CreatedBy: actor, CreatedAt: now, UpdatedAt: now}
+		RequestedSegment: seg, RequestedVLAN: vlan, RequestedRole: role, CreatedBy: actor, CreatedAt: now, UpdatedAt: now}
 	if err := s.store.InsertCoA(ctx, c); err != nil {
 		return nil, err
 	}
@@ -100,9 +109,12 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 		}
 	}
 	reason := fmt.Sprintf("operator %s requested %s; target %s %s %s", actor, kind, sw.Name, sess.NASPortID, csid)
-	if vlan != nil {
+	switch {
+	case role != "":
+		reason += fmt.Sprintf("; requested segment %s role %s (Aruba-User-Role CoA; VLAN and IP unchanged)", seg, role)
+	case vlan != nil:
 		reason += fmt.Sprintf("; requested segment %s VLAN %d", seg, *vlan)
-	} else {
+	default:
 		reason += "; the active policy would reject this session at re-authentication"
 	}
 	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: sess.MAC, NASPortID: sess.NASPortID,
@@ -121,25 +133,35 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 }
 
 // predict evaluates the session's latest recorded inputs under the active
-// version (honouring the override) to state the requested VLAN.
-func (s *Service) predict(ctx context.Context, sess *domain.Session, sw *domain.Switch) (string, *int, error) {
+// version (honouring the override) to state the requested authorization: a
+// VLAN on a VLAN-enforcement switch, a local role on a role-enforcement
+// switch. Neither nil VLAN nor empty role means the active policy would
+// reject the session at its next authentication.
+func (s *Service) predict(ctx context.Context, sess *domain.Session, sw *domain.Switch) (string, *int, string, error) {
 	if sess.Override == domain.CoAQuarantine {
+		if sw.UsesRoles() {
+			r, ok := sw.SegmentRoles["quarantine"]
+			if !ok || r == "" {
+				return "", nil, "", fmt.Errorf("%w: switch %s has no quarantine role mapping", domain.ErrInvalidInput, sw.Name)
+			}
+			return "quarantine", nil, r, nil
+		}
 		v, ok := sw.SegmentVLANs["quarantine"]
 		if !ok {
-			return "", nil, fmt.Errorf("%w: switch %s has no quarantine VLAN mapping", domain.ErrInvalidInput, sw.Name)
+			return "", nil, "", fmt.Errorf("%w: switch %s has no quarantine VLAN mapping", domain.ErrInvalidInput, sw.Name)
 		}
-		return "quarantine", &v, nil
+		return "quarantine", &v, "", nil
 	}
 	if sess.LastDecisionID == nil {
-		return "", nil, fmt.Errorf("%w: session has no recorded decision", domain.ErrInvalidInput)
+		return "", nil, "", fmt.Errorf("%w: session has no recorded decision", domain.ErrInvalidInput)
 	}
 	last, err := s.store.GetDecision(ctx, *sess.LastDecisionID)
 	if err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
 	set, err := s.rules.ActiveRuleSet(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
 	in := domain.Inputs{}
 	for k, v := range last.Inputs {
@@ -148,13 +170,16 @@ func (s *Service) predict(ctx context.Context, sess *domain.Session, sw *domain.
 	in["session.override"] = domain.Evidence{Status: domain.EvidenceMissing, Source: domain.SourceOperator, Note: "no operator override"}
 	d := s.eval.EvaluateRuleSet(last.Subject, in, set)
 	if d.Action == domain.ActionDeny {
-		return "", nil, nil
+		return "", nil, "", nil
+	}
+	if sw.UsesRoles() {
+		return d.Segment, nil, sw.SegmentRoles[d.Segment], nil
 	}
 	v, ok := sw.SegmentVLANs[d.Segment]
 	if !ok {
-		return d.Segment, nil, nil
+		return d.Segment, nil, "", nil
 	}
-	return d.Segment, &v, nil
+	return d.Segment, &v, "", nil
 }
 
 func (s *Service) updateCoA(ctx context.Context, c *domain.CoARequest, from ...string) bool {
@@ -189,7 +214,15 @@ func (s *Service) runCoA(ctx context.Context, id uuid.UUID, sw *domain.Switch) {
 		p.AddIPv4(radius.AttrNASIPAddress, [4]byte{ip[0], ip[1], ip[2], ip[3]})
 	}
 	p.AddString(radius.AttrNASPortID, t.NASPortID)
-	if c.RequestedVLAN != nil {
+	switch {
+	case c.RequestedRole != "":
+		// Aruba AOS-CX: a session-targeted role change. No Tunnel-*
+		// attributes, so the switch keeps the port VLAN.
+		if err := p.AddVSAString(radius.VendorAruba, radius.ArubaAttrUserRole, c.RequestedRole); err != nil {
+			s.finish(ctx, c, domain.CoAFailed, "could not encode Aruba-User-Role: "+err.Error(), nil)
+			return
+		}
+	case c.RequestedVLAN != nil:
 		p.AddTunnelInt(radius.AttrTunnelType, radius.TunnelTypeVLAN)
 		p.AddTunnelInt(radius.AttrTunnelMediumType, radius.TunnelMediumIEEE802)
 		p.AddTunnelString(radius.AttrTunnelPrivateGroupID, strconv.Itoa(*c.RequestedVLAN))
@@ -243,7 +276,11 @@ func (s *Service) runCoA(ctx context.Context, id uuid.UUID, sw *domain.Switch) {
 	}
 	switch resp.Code {
 	case radius.CodeCoAACK:
-		s.finishACK(ctx, c, cause)
+		if c.RequestedRole != "" {
+			s.finishRoleACK(ctx, c, cause)
+		} else {
+			s.finishACK(ctx, c, cause)
+		}
 	case radius.CodeCoANAK:
 		s.finish(ctx, c, domain.CoANak, "switch refused the CoA: "+radius.ErrorCauseText(uint32(cause))+
 			". The requested state still applies at the session's next authentication.", &cause) //nolint:gosec // Error-Cause is a small RFC 5176 code
@@ -293,6 +330,27 @@ func (s *Service) finishACK(ctx context.Context, c *domain.CoARequest, cause int
 	s.updateCoA(ctx, cur, domain.CoAAcked)
 }
 
+// finishRoleACK records a CoA-ACK for an Aruba role change. The switch
+// applies the role in place, without a re-authentication, and NAC has no
+// AOS-CX observation adapter, so there is nothing further to wait for. The
+// ACK says the switch accepted the request; it is not verification that the
+// endpoint's traffic is restricted.
+func (s *Service) finishRoleACK(ctx context.Context, c *domain.CoARequest, cause int) {
+	c.State = domain.CoAAcked
+	c.Detail = fmt.Sprintf("switch acknowledged (%s) the role change to %s. Aruba applies the role without re-authentication; "+
+		"NAC has no switch observation for AOS-CX, and an ACK is not verification that traffic is restricted. "+
+		"Verify on the switch (`show port-access clients`) and with traffic tests.", radius.ErrorCauseText(uint32(cause)), c.RequestedRole) //nolint:gosec // small code
+	if !s.updateCoA(ctx, c, domain.CoASent) {
+		cur, err := s.store.GetCoA(ctx, c.ID)
+		if err == nil {
+			cur.RespondedAt, cur.ErrorCause, cur.Attempts, cur.RadiusID = c.RespondedAt, c.ErrorCause, c.Attempts, c.RadiusID
+			s.updateCoA(ctx, cur, cur.State)
+		}
+	}
+	s.event(ctx, &domain.AuthEvent{SessionID: &c.SessionID, SwitchID: &c.SwitchID, NASPortID: c.Target.NASPortID,
+		Stage: domain.StageCoA, Result: "info", Source: "switch", CoAID: &c.ID, Reason: "CoA-ACK received for role " + c.RequestedRole + " (not traffic verification)"})
+}
+
 func (s *Service) finish(ctx context.Context, c *domain.CoARequest, state, detail string, cause *int) {
 	c.State, c.Detail = state, detail
 	if cause != nil && *cause != 0 {
@@ -305,4 +363,11 @@ func (s *Service) finish(ctx context.Context, c *domain.CoARequest, state, detai
 	}
 	s.event(ctx, &domain.AuthEvent{SessionID: &c.SessionID, SwitchID: &c.SwitchID, NASPortID: c.Target.NASPortID,
 		Stage: domain.StageCoA, Result: result, Source: "nacd", CoAID: &c.ID, Reason: "CoA " + state + ": " + detail})
+}
+
+func ifEmpty(s, def string) string {
+	if s == "" {
+		return def
+	}
+	return s
 }

@@ -6,32 +6,46 @@ import (
 	"github.com/google/uuid"
 )
 
-// Switch is a registered RADIUS client (an Arista access switch).
+// Switch platforms and enforcement strategies (ADR-0009). The defaults keep
+// the original Arista VLAN path.
+const (
+	PlatformAristaEOS  = "arista-eos"
+	PlatformArubaAOSCX = "aruba-aos-cx"
+
+	EnforcementVLAN = "vlan" // RADIUS VLAN (Tunnel-Private-Group-Id); the endpoint changes subnet
+	EnforcementRole = "role" // a local switch role named in Aruba-User-Role; VLAN and IP unchanged
+)
+
+// Switch is a registered RADIUS client (an access switch).
 type Switch struct {
-	ID                uuid.UUID      `json:"id"`
-	Name              string         `json:"name"`
-	RadiusSourceIP    string         `json:"radius_source_ip"`
-	NASIP             string         `json:"nas_ip"`
-	RadiusSecret      string         `json:"-"` // plaintext only in memory
-	SecretSet         bool           `json:"radius_secret_set"`
-	CoAPort           int            `json:"coa_port"`
-	SegmentVLANs      map[string]int `json:"segment_vlans"`
-	AccessPorts       []string       `json:"access_ports"`
-	EOSVersion        string         `json:"eos_version"`
-	RadiusServerIP    string         `json:"radius_server_ip"`
-	EAPIURL           string         `json:"eapi_url,omitempty"`
-	EAPIUsername      string         `json:"eapi_username,omitempty"`
-	EAPIPassword      string         `json:"-"`
-	EAPIPasswordSet   bool           `json:"eapi_password_set"`
-	LastRadiusAt      *time.Time     `json:"last_radius_at,omitempty"`
-	LastProbeAt       *time.Time     `json:"last_probe_at,omitempty"`
-	LastProbeOK       *bool          `json:"last_probe_ok,omitempty"`
-	LastProbeDetail   string         `json:"last_probe_detail,omitempty"`
-	VerifiedAt        *time.Time     `json:"verified_at,omitempty"`
-	VerifiedDetail    string         `json:"verified_detail,omitempty"`
-	VerifiedSessionID *uuid.UUID     `json:"verified_session_id,omitempty"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
+	ID                uuid.UUID         `json:"id"`
+	Name              string            `json:"name"`
+	RadiusSourceIP    string            `json:"radius_source_ip"`
+	NASIP             string            `json:"nas_ip"`
+	RadiusSecret      string            `json:"-"` // plaintext only in memory
+	SecretSet         bool              `json:"radius_secret_set"`
+	CoAPort           int               `json:"coa_port"`
+	SegmentVLANs      map[string]int    `json:"segment_vlans"`
+	Platform          string            `json:"platform"`
+	Enforcement       string            `json:"enforcement"`
+	SegmentRoles      map[string]string `json:"segment_roles"`
+	AccessVLAN        *int              `json:"access_vlan,omitempty"`
+	AccessPorts       []string          `json:"access_ports"`
+	EOSVersion        string            `json:"eos_version"`
+	RadiusServerIP    string            `json:"radius_server_ip"`
+	EAPIURL           string            `json:"eapi_url,omitempty"`
+	EAPIUsername      string            `json:"eapi_username,omitempty"`
+	EAPIPassword      string            `json:"-"`
+	EAPIPasswordSet   bool              `json:"eapi_password_set"`
+	LastRadiusAt      *time.Time        `json:"last_radius_at,omitempty"`
+	LastProbeAt       *time.Time        `json:"last_probe_at,omitempty"`
+	LastProbeOK       *bool             `json:"last_probe_ok,omitempty"`
+	LastProbeDetail   string            `json:"last_probe_detail,omitempty"`
+	VerifiedAt        *time.Time        `json:"verified_at,omitempty"`
+	VerifiedDetail    string            `json:"verified_detail,omitempty"`
+	VerifiedSessionID *uuid.UUID        `json:"verified_session_id,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 // IdentityBinding maps an authenticated certificate identity to a device.
@@ -80,6 +94,7 @@ type Session struct {
 	RequestedAction  string     `json:"requested_action,omitempty"`
 	RequestedSegment string     `json:"requested_segment,omitempty"`
 	RequestedVLAN    *int       `json:"requested_vlan,omitempty"`
+	RequestedRole    string     `json:"requested_role,omitempty"`
 	StartedAt        time.Time  `json:"started_at"`
 	LastAuthAt       time.Time  `json:"last_auth_at"`
 	EndedAt          *time.Time `json:"ended_at,omitempty"`
@@ -107,6 +122,7 @@ type DecisionRecord struct {
 	Action          PolicyAction `json:"action"`
 	Segment         string       `json:"segment,omitempty"`
 	VLAN            *int         `json:"vlan,omitempty"`
+	Role            string       `json:"role,omitempty"`
 	Result          string       `json:"result"` // accept | reject
 	Reason          string       `json:"reason"`
 }
@@ -179,6 +195,7 @@ type CoARequest struct {
 	Target             CoATarget  `json:"target"`
 	RequestedSegment   string     `json:"requested_segment,omitempty"`
 	RequestedVLAN      *int       `json:"requested_vlan,omitempty"`
+	RequestedRole      string     `json:"requested_role,omitempty"`
 	State              string     `json:"state"`
 	Attempts           int        `json:"attempts"`
 	RadiusID           *int       `json:"radius_id,omitempty"`
@@ -192,3 +209,7 @@ type CoARequest struct {
 	ObservedDecisionID *uuid.UUID `json:"observed_decision_id,omitempty"`
 	UpdatedAt          time.Time  `json:"updated_at"`
 }
+
+// UsesRoles reports whether NAC enforces on this switch with a local role
+// (Aruba-User-Role) instead of a VLAN.
+func (s *Switch) UsesRoles() bool { return s.Enforcement == EnforcementRole }

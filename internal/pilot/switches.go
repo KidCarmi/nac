@@ -22,8 +22,11 @@ import (
 
 var (
 	nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
+	roleRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 	portRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9/.:-]{0,63}$`)
-	segRe  = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
+	// AOS-CX names interfaces member/slot/port, e.g. 1/1/1.
+	arubaPortRe = regexp.MustCompile(`^[0-9]{1,2}/[0-9]{1,2}/[0-9]{1,3}$`)
+	segRe       = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
 // TestedEOSVersion is the only EOS version the generated configuration has
@@ -38,12 +41,21 @@ type SwitchInput struct {
 	RadiusSecret   string         `json:"radius_secret"` // empty on update = keep
 	CoAPort        int            `json:"coa_port"`
 	SegmentVLANs   map[string]int `json:"segment_vlans"`
-	AccessPorts    []string       `json:"access_ports"`
-	RadiusServerIP string         `json:"radius_server_ip"`
-	EAPIURL        string         `json:"eapi_url"`
-	EAPIUsername   string         `json:"eapi_username"`
-	EAPIPassword   string         `json:"eapi_password"` // empty on update = keep
-	ClearEAPI      bool           `json:"clear_eapi"`
+	// Platform is arista-eos (default) or aruba-aos-cx. Enforcement is vlan
+	// (default; Arista) or role (Aruba: a local role in Aruba-User-Role,
+	// keeping VLAN and IP). SegmentRoles maps segments to local role names
+	// for role enforcement; AccessVLAN is the access VLAN of the ports (used
+	// in the generated configuration only).
+	Platform       string            `json:"platform,omitempty"`
+	Enforcement    string            `json:"enforcement,omitempty"`
+	SegmentRoles   map[string]string `json:"segment_roles,omitempty"`
+	AccessVLAN     *int              `json:"access_vlan,omitempty"`
+	AccessPorts    []string          `json:"access_ports"`
+	RadiusServerIP string            `json:"radius_server_ip"`
+	EAPIURL        string            `json:"eapi_url"`
+	EAPIUsername   string            `json:"eapi_username"`
+	EAPIPassword   string            `json:"eapi_password"` // empty on update = keep
+	ClearEAPI      bool              `json:"clear_eapi"`
 }
 
 func validateSecret(s string) error {
@@ -90,6 +102,60 @@ func (s *Service) validateSwitch(in *SwitchInput, creating bool) error {
 	if in.CoAPort < 1 || in.CoAPort > 65535 {
 		add("coa_port: 1-65535")
 	}
+	if in.Platform == "" {
+		in.Platform = domain.PlatformAristaEOS
+	}
+	if in.Enforcement == "" {
+		in.Enforcement = domain.EnforcementVLAN
+		if in.Platform == domain.PlatformArubaAOSCX {
+			in.Enforcement = domain.EnforcementRole
+		}
+	}
+	switch {
+	case in.Platform != domain.PlatformAristaEOS && in.Platform != domain.PlatformArubaAOSCX:
+		add("platform: must be %q or %q", domain.PlatformAristaEOS, domain.PlatformArubaAOSCX)
+	case in.Platform == domain.PlatformAristaEOS && in.Enforcement != domain.EnforcementVLAN:
+		add("enforcement: Arista switches use %q (role enforcement has no capability record on Arista)", domain.EnforcementVLAN)
+	case in.Platform == domain.PlatformArubaAOSCX && in.Enforcement != domain.EnforcementRole:
+		add("enforcement: Aruba switches use %q in this candidate (VLAN enforcement on Aruba is not qualified)", domain.EnforcementRole)
+	}
+	if in.Enforcement == domain.EnforcementRole {
+		validateRoles(in, add)
+	} else {
+		validateVLANs(in, add)
+	}
+	if in.AccessVLAN != nil && (*in.AccessVLAN < 1 || *in.AccessVLAN > 4094) {
+		add("access_vlan: must be 1-4094")
+	}
+	if in.Platform == domain.PlatformArubaAOSCX && (in.EAPIURL != "" || in.EAPIUsername != "" || in.EAPIPassword != "") {
+		add("eapi_url: switch observation (eAPI) is Arista-only; leave it empty for Aruba")
+	}
+	for _, p := range in.AccessPorts {
+		switch {
+		case in.Platform == domain.PlatformArubaAOSCX && !arubaPortRe.MatchString(p):
+			add("access_ports: %q is not an AOS-CX interface name such as 1/1/1", p)
+		case in.Platform != domain.PlatformArubaAOSCX && !portRe.MatchString(p):
+			add("access_ports: %q is not an interface name such as Ethernet1", p)
+		}
+	}
+	if in.RadiusServerIP != "" {
+		if ip := net.ParseIP(in.RadiusServerIP); ip == nil {
+			add("radius_server_ip: must be an IP address (the FreeRADIUS address the switch sends to)")
+		}
+	}
+	if in.EAPIURL != "" && !strings.HasPrefix(in.EAPIURL, "https://") && !strings.HasPrefix(in.EAPIURL, "http://") {
+		add("eapi_url: must start with https:// (e.g. https://10.70.99.1)")
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+func validateVLANs(in *SwitchInput, add func(string, ...any)) {
+	if len(in.SegmentRoles) > 0 {
+		add("segment_roles: only used with enforcement %q", domain.EnforcementRole)
+	}
 	if len(in.SegmentVLANs) == 0 {
 		add(`segment_vlans: map each segment to a VLAN, e.g. {"corp": 10, "quarantine": 20}`)
 	}
@@ -109,23 +175,31 @@ func (s *Service) validateSwitch(in *SwitchInput, creating bool) error {
 	if _, ok := in.SegmentVLANs["quarantine"]; !ok {
 		add(`segment_vlans: a "quarantine" segment is required (operator session quarantine uses it)`)
 	}
-	for _, p := range in.AccessPorts {
-		if !portRe.MatchString(p) {
-			add("access_ports: %q is not an interface name such as Ethernet1", p)
+}
+
+func validateRoles(in *SwitchInput, add func(string, ...any)) {
+	if len(in.SegmentVLANs) > 0 {
+		add("segment_vlans: not used with enforcement %q (the endpoint keeps its VLAN); map segments with segment_roles", domain.EnforcementRole)
+	}
+	if len(in.SegmentRoles) == 0 {
+		add(`segment_roles: map each segment to a local switch role, e.g. {"corp": "corp", "quarantine": "quarantine"}`)
+	}
+	seen := map[string]string{}
+	for seg, role := range in.SegmentRoles {
+		if !segRe.MatchString(seg) {
+			add("segment_roles: segment %q must be lower-case letters, digits, '-' or '_'", seg)
 		}
-	}
-	if in.RadiusServerIP != "" {
-		if ip := net.ParseIP(in.RadiusServerIP); ip == nil {
-			add("radius_server_ip: must be an IP address (the FreeRADIUS address the switch sends to)")
+		if !roleRe.MatchString(role) {
+			add("segment_roles: role %q for %q must be 1-64 letters, digits, '.', '_' or '-' (a local role defined on the switch)", role, seg)
 		}
+		if other, dup := seen[role]; dup {
+			add("segment_roles: %q and %q both map to role %q", seg, other, role)
+		}
+		seen[role] = seg
 	}
-	if in.EAPIURL != "" && !strings.HasPrefix(in.EAPIURL, "https://") && !strings.HasPrefix(in.EAPIURL, "http://") {
-		add("eapi_url: must start with https:// (e.g. https://10.70.99.1)")
+	if _, ok := in.SegmentRoles["quarantine"]; !ok {
+		add(`segment_roles: a "quarantine" segment is required (operator session quarantine uses it)`)
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, strings.Join(errs, "; "))
-	}
-	return nil
 }
 
 // CreateSwitch registers a switch and regenerates the FreeRADIUS client file.
@@ -136,7 +210,8 @@ func (s *Service) CreateSwitch(ctx context.Context, in SwitchInput, actor string
 	now := s.now().UTC()
 	sw := &domain.Switch{ID: uuid.New(), Name: in.Name, RadiusSourceIP: in.RadiusSourceIP, NASIP: in.NASIP,
 		RadiusSecret: in.RadiusSecret, CoAPort: in.CoAPort, SegmentVLANs: in.SegmentVLANs, AccessPorts: in.AccessPorts,
-		EOSVersion: TestedEOSVersion, RadiusServerIP: in.RadiusServerIP, EAPIURL: strings.TrimRight(in.EAPIURL, "/"),
+		Platform: in.Platform, Enforcement: in.Enforcement, SegmentRoles: in.SegmentRoles, AccessVLAN: in.AccessVLAN,
+		EOSVersion: testedVersion(in.Platform), RadiusServerIP: in.RadiusServerIP, EAPIURL: strings.TrimRight(in.EAPIURL, "/"),
 		EAPIUsername: in.EAPIUsername, EAPIPassword: in.EAPIPassword, CreatedAt: now, UpdatedAt: now}
 	if err := s.store.SaveSwitch(ctx, sw); err != nil {
 		return nil, err
@@ -157,6 +232,8 @@ func (s *Service) UpdateSwitch(ctx context.Context, id uuid.UUID, in SwitchInput
 	}
 	sw.Name, sw.RadiusSourceIP, sw.NASIP, sw.CoAPort = in.Name, in.RadiusSourceIP, in.NASIP, in.CoAPort
 	sw.SegmentVLANs, sw.AccessPorts, sw.RadiusServerIP = in.SegmentVLANs, in.AccessPorts, in.RadiusServerIP
+	sw.Platform, sw.Enforcement, sw.SegmentRoles, sw.AccessVLAN = in.Platform, in.Enforcement, in.SegmentRoles, in.AccessVLAN
+	sw.EOSVersion = testedVersion(in.Platform)
 	if in.RadiusSecret != "" {
 		sw.RadiusSecret = in.RadiusSecret
 	}
@@ -255,18 +332,25 @@ func (s *Service) GetSwitch(ctx context.Context, id uuid.UUID) (*SwitchView, err
 
 func (s *Service) status(ctx context.Context, sw *domain.Switch, load StatusItem) SwitchStatus {
 	st := SwitchStatus{FreeRADIUSLoad: load}
-	if sw.SecretSet && len(sw.SegmentVLANs) > 0 {
-		at := load.At
-		if at == nil {
-			at = &sw.UpdatedAt
-		}
+	at := load.At
+	if at == nil {
+		at = &sw.UpdatedAt
+	}
+	switch {
+	case sw.SecretSet && sw.UsesRoles() && len(sw.SegmentRoles) > 0:
+		st.Configured = StatusItem{State: load.State, At: at, Detail: fmt.Sprintf("registered in NAC: RADIUS source %s, roles %s (Aruba-User-Role; VLAN and IP unchanged). FreeRADIUS: %s. "+
+			"The switch itself is configured by applying the reference AOS-CX configuration; NAC cannot confirm that until a request arrives.",
+			sw.RadiusSourceIP, formatRoles(sw.SegmentRoles), load.Detail)}
+	case sw.SecretSet && !sw.UsesRoles() && len(sw.SegmentVLANs) > 0:
 		st.Configured = StatusItem{State: load.State, At: at, Detail: fmt.Sprintf("registered in NAC: RADIUS source %s, VLANs %s. FreeRADIUS: %s. "+
 			"The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.",
 			sw.RadiusSourceIP, formatVLANs(sw.SegmentVLANs), load.Detail)}
-	} else {
-		st.Configured = StatusItem{State: "no", Detail: "RADIUS secret or VLAN mapping missing"}
+	default:
+		st.Configured = StatusItem{State: "no", Detail: "RADIUS secret or segment mapping missing"}
 	}
 	switch {
+	case sw.Platform == domain.PlatformArubaAOSCX:
+		st.Reachable = StatusItem{State: "unknown", Detail: "NAC has no management or observation adapter for Aruba in this candidate; it cannot probe the switch. RADIUS requests and CoA replies still prove the RADIUS path."}
 	case sw.EAPIURL == "":
 		st.Reachable = StatusItem{State: "unknown", Detail: "no switch management (eAPI) access configured; NAC cannot probe the switch. RADIUS requests still prove the RADIUS path."}
 	case sw.LastProbeAt == nil:
@@ -315,6 +399,19 @@ func (s *Service) verifiedNote(ctx context.Context, sw *domain.Switch) string {
 	default:
 		return "Record of a past verification: session " + id + " is no longer active (" + string(sess.State) + ")." + tail
 	}
+}
+
+func formatRoles(m map[string]string) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+m[k])
+	}
+	return strings.Join(parts, ", ")
 }
 
 func formatVLANs(m map[string]int) string {
@@ -391,7 +488,74 @@ func (s *Service) SwitchConfig(ctx context.Context, id uuid.UUID, includeSecret 
 	if includeSecret {
 		s.audit(ctx, "switch.config.reveal_secret", "switch", sw.ID.String(), "success", map[string]string{"name": sw.Name})
 	}
+	if sw.Platform == domain.PlatformArubaAOSCX {
+		return ArubaConfig(sw, includeSecret), nil
+	}
 	return EOSConfig(sw, includeSecret), nil
+}
+
+// TestedArubaVersion is the AOS-CX build the role path was lab-tested on with
+// a reference RADIUS server (ASTRA; third-party image, provenance unverified).
+const TestedArubaVersion = "ArubaOS-CX Virtual.10.07.0004"
+
+func testedVersion(platform string) string {
+	if platform == domain.PlatformArubaAOSCX {
+		return TestedArubaVersion
+	}
+	return TestedEOSVersion
+}
+
+// ArubaConfig is a reference AOS-CX configuration for the role path. The
+// commands follow ASTRA's lab setup on 10.07.0004 (global and per-port 802.1X
+// authenticator, RADIUS server and dynamic-authorization client in the mgmt
+// VRF). The local roles' access policies are site-specific and are emitted as
+// guidance only.
+func ArubaConfig(sw *domain.Switch, includeSecret bool) string {
+	key := "<RADIUS_SHARED_SECRET>"
+	if includeSecret {
+		key = sw.RadiusSecret
+	}
+	server := sw.RadiusServerIP
+	if server == "" {
+		server = "<NAC_CONTROL_NODE_IP>"
+	}
+	vlan := "<ACCESS_VLAN>"
+	if sw.AccessVLAN != nil {
+		vlan = fmt.Sprint(*sw.AccessVLAN)
+	}
+	ports := sw.AccessPorts
+	if len(ports) == 0 {
+		ports = []string{"<ACCESS_INTERFACE>"}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "! NAC pilot reference configuration for %s (Aruba AOS-CX, role enforcement)\n", sw.Name)
+	fmt.Fprintf(&b, "! Lab-tested on %s with a reference RADIUS server; the NAC-driven path is not yet lab-qualified.\n", TestedArubaVersion)
+	b.WriteString("! Review before applying. Lines starting with '!' are guidance, not commands.\n!\n")
+	fmt.Fprintf(&b, "radius-server host %s key plaintext %s vrf mgmt\n", server, key)
+	b.WriteString("! The global authenticator is required: without it the switch answers no EAPOL (lab root cause, 2026-11-08).\n")
+	b.WriteString("aaa authentication port-access dot1x authenticator\n    enable\n")
+	b.WriteString("! NAC sends role changes as RADIUS CoA from the control node:\n")
+	b.WriteString("radius dyn-authorization enable\n")
+	fmt.Fprintf(&b, "radius dyn-authorization client %s vrf mgmt secret-key plaintext %s\n!\n", server, key)
+	segs := make([]string, 0, len(sw.SegmentRoles))
+	for seg := range sw.SegmentRoles {
+		segs = append(segs, seg)
+	}
+	sort.Strings(segs)
+	b.WriteString("! Local roles NAC returns in Aruba-User-Role. Define each role on the switch with its access policy.\n")
+	for _, seg := range segs {
+		fmt.Fprintf(&b, "port-access role %s\n    vlan access %s\n", sw.SegmentRoles[seg], vlan)
+		if seg == "quarantine" {
+			b.WriteString("    ! associate policy <your quarantine policy>  (lab: permit remediation, drop other IPv4; ingress only)\n")
+		}
+	}
+	b.WriteString("!\n")
+	for _, p := range ports {
+		fmt.Fprintf(&b, "interface %s\n    no shutdown\n    no routing\n    vlan access %s\n", p, vlan)
+		b.WriteString("    aaa authentication port-access dot1x authenticator\n        enable\n")
+	}
+	b.WriteString("!\n! MAC authentication is not part of this path. Save the configuration (write memory).\n")
+	return b.String()
 }
 
 // RenderClients renders the FreeRADIUS client definitions for all switches.

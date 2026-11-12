@@ -6,6 +6,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### pilot-aruba-rc4 (proposed; supersedes pilot-aruba-rc3 for the D2 wording defect)
+- `pilot-aruba-rc3` plus the `pilot-rc14` liveness wording fix D2 (merged),
+  and nothing else. No enforcement change.
+
+### pilot-aruba-rc3 (proposed; supersedes pilot-aruba-rc2, whose D1 retest failed)
+- `pilot-aruba-rc2` plus the `pilot-rc13` reload-race fix (merged), and
+  nothing else.
+
+### pilot-aruba-rc2 (proposed; supersedes pilot-aruba-rc1 before any lab run)
+- `pilot-aruba-rc1` plus the known defect D1 fix from `pilot-rc12`, and
+  nothing else. Merged, not re-implemented. On the Aruba path, Configured
+  also follows what FreeRADIUS loaded.
+
+### pilot-aruba-rc1 (superseded; owner-approved bounded Aruba integration; carries D1)
+- **Aruba AOS-CX role enforcement.**
+  - A switch has a `platform` (`arista-eos` | `aruba-aos-cx`) and an
+    `enforcement` (`vlan` | `role`).
+  - On a role switch the decision selects a configured local role, returned
+    as `Aruba-User-Role`, with no Tunnel-* attributes. The VLAN and the IP
+    never change.
+  - A missing mapping rejects; there is no fallback.
+- **Session-targeted role CoA for Quarantine, Restore and Re-authenticate.**
+  - `acked` is final, and never presented as traffic verification.
+  - A Restore or Re-authenticate the policy would turn into a deny is
+    refused (`422`), and the session keeps its override.
+- **The identity-scoped quarantine override persists** as on the VLAN path.
+- **Session API and console:** a new `enforcement` block (platform,
+  strategy, mechanism, observation, limitations) and `requested.role`.
+  Observation is `unavailable` for AOS-CX.
+- **Switch form:** platform choice, role fields and AOS-CX reference
+  configuration. Validation accepts AOS-CX port names (`1/1/1`).
+- **FreeRADIUS outage path** also strips `Aruba-User-Role`.
+- **Tests:**
+  - `test/integration/aruba_role_test.go`
+  - Aruba checks in `scripts/e2e-freeradius.sh`
+  - `scripts/ui-aruba-role.js`
+  - an Arista CoA regression assertion
+- **Migration `0006`:** adds the switch, decision, session and CoA columns.
+  Existing switches become `arista-eos` / `vlan`.
+- **Scope and lab plan:** `docs/pilot/aruba-role-path.md`. Known defect D1
+  is not fixed in this candidate; see pilot-aruba-rc2.
 ### pilot-rc14 (proposed; operator-status wording fix D2; not yet lab-run)
 - **Session liveness wording (D2, ASTRA `pilot-aruba-rc3` console run).**
   - With accounting enabled, an active session that had a stored accounting

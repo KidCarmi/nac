@@ -34,23 +34,29 @@ func NewPilotRepo(pool *pgxpool.Pool, box *secrets.Box) *PilotRepo {
 
 const switchColumns = `id, name, radius_source_ip, nas_ip, radius_secret_enc, coa_port, segment_vlans, access_ports,
 	eos_version, radius_server_ip, eapi_url, eapi_username, eapi_password_enc, last_radius_at, last_probe_at,
-	last_probe_ok, last_probe_detail, verified_at, verified_detail, verified_session_id, created_at, updated_at`
+	last_probe_ok, last_probe_detail, verified_at, verified_detail, verified_session_id, created_at, updated_at,
+	platform, enforcement, segment_roles, access_vlan`
 
 func (r *PilotRepo) scanSwitch(row rowScanner) (*domain.Switch, error) {
 	var (
 		s                domain.Switch
 		secretEnc, pwEnc string
 		vlans, ports     []byte
+		roles            []byte
 	)
 	if err := row.Scan(&s.ID, &s.Name, &s.RadiusSourceIP, &s.NASIP, &secretEnc, &s.CoAPort, &vlans, &ports,
 		&s.EOSVersion, &s.RadiusServerIP, &s.EAPIURL, &s.EAPIUsername, &pwEnc, &s.LastRadiusAt, &s.LastProbeAt,
-		&s.LastProbeOK, &s.LastProbeDetail, &s.VerifiedAt, &s.VerifiedDetail, &s.VerifiedSessionID, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		&s.LastProbeOK, &s.LastProbeDetail, &s.VerifiedAt, &s.VerifiedDetail, &s.VerifiedSessionID, &s.CreatedAt, &s.UpdatedAt,
+		&s.Platform, &s.Enforcement, &roles, &s.AccessVLAN); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(vlans, &s.SegmentVLANs); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(ports, &s.AccessPorts); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(roles, &s.SegmentRoles); err != nil {
 		return nil, err
 	}
 	s.SecretSet, s.EAPIPasswordSet = secretEnc != "", pwEnc != ""
@@ -120,15 +126,29 @@ func (r *PilotRepo) SaveSwitch(ctx context.Context, s *domain.Switch) error {
 		s.AccessPorts = []string{}
 	}
 	ports, _ := json.Marshal(s.AccessPorts)
+	if s.SegmentVLANs == nil {
+		vlans = []byte("{}")
+	}
+	if s.SegmentRoles == nil {
+		s.SegmentRoles = map[string]string{}
+	}
+	roles, _ := json.Marshal(s.SegmentRoles)
+	if s.Platform == "" {
+		s.Platform = domain.PlatformAristaEOS
+	}
+	if s.Enforcement == "" {
+		s.Enforcement = domain.EnforcementVLAN
+	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO switches (id, name, radius_source_ip, nas_ip, radius_secret_enc, coa_port, segment_vlans, access_ports,
-			eos_version, radius_server_ip, eapi_url, eapi_username, eapi_password_enc, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+			eos_version, radius_server_ip, eapi_url, eapi_username, eapi_password_enc, created_at, updated_at,
+			platform, enforcement, segment_roles, access_vlan)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 		ON CONFLICT (id) DO UPDATE SET name=$2, radius_source_ip=$3, nas_ip=$4, radius_secret_enc=$5, coa_port=$6,
 			segment_vlans=$7, access_ports=$8, eos_version=$9, radius_server_ip=$10, eapi_url=$11, eapi_username=$12,
-			eapi_password_enc=$13, updated_at=$15`,
+			eapi_password_enc=$13, updated_at=$15, platform=$16, enforcement=$17, segment_roles=$18, access_vlan=$19`,
 		s.ID, s.Name, s.RadiusSourceIP, s.NASIP, secretEnc, s.CoAPort, vlans, ports, s.EOSVersion, s.RadiusServerIP,
-		s.EAPIURL, s.EAPIUsername, pwEnc, s.CreatedAt, s.UpdatedAt)
+		s.EAPIURL, s.EAPIUsername, pwEnc, s.CreatedAt, s.UpdatedAt, s.Platform, s.Enforcement, roles, s.AccessVLAN)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("%w: a switch with this name or RADIUS source IP already exists", domain.ErrConflict)
 	}
@@ -170,7 +190,11 @@ func (r *PilotRepo) SegmentMappings(ctx context.Context) (map[string]map[string]
 // segmentMappings reads switch name -> segment -> VLAN through q (a pool or
 // a transaction).
 func segmentMappings(ctx context.Context, q querier) (map[string]map[string]int, error) {
-	rows, err := q.Query(ctx, `SELECT name, segment_vlans FROM switches`)
+	// A role-enforced switch maps segments to local roles, not VLANs; it reports
+	// each role segment with VLAN 0 so policy validation sees it as mapped.
+	rows, err := q.Query(ctx, `SELECT name, CASE WHEN enforcement = 'role'
+		THEN COALESCE((SELECT jsonb_object_agg(k, 0) FROM jsonb_object_keys(segment_roles) AS k), '{}'::jsonb)
+		ELSE segment_vlans END FROM switches`)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +296,7 @@ func (r *PilotRepo) GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endp
 const sessionColumns = `s.id, s.switch_id, sw.name, s.nas_port_id, s.mac, s.calling_station_id, s.nas_ip_address, s.user_name,
 	s.acct_session_id, s.cert_issuer, s.cert_serial, s.cert_cn, s.endpoint_id, s.binding_id, s.state, s.override, s.override_by,
 	s.override_at, s.last_decision_id, s.requested_action, s.requested_segment, s.requested_vlan, s.started_at, s.last_auth_at,
-	s.ended_at, s.observed_status, s.observed_vlan, s.observed_at, s.observed_source, s.observed_detail`
+	s.ended_at, s.observed_status, s.observed_vlan, s.observed_at, s.observed_source, s.observed_detail, s.requested_role`
 
 const sessionFrom = ` FROM radius_sessions s JOIN switches sw ON sw.id = s.switch_id`
 
@@ -281,7 +305,7 @@ func scanSession(row rowScanner) (*domain.Session, error) {
 	err := row.Scan(&s.ID, &s.SwitchID, &s.SwitchName, &s.NASPortID, &s.MAC, &s.CallingStationID, &s.NASIPAddress, &s.UserName,
 		&s.AcctSessionID, &s.CertIssuer, &s.CertSerial, &s.CertCN, &s.EndpointID, &s.BindingID, &s.State, &s.Override, &s.OverrideBy,
 		&s.OverrideAt, &s.LastDecisionID, &s.RequestedAction, &s.RequestedSegment, &s.RequestedVLAN, &s.StartedAt, &s.LastAuthAt,
-		&s.EndedAt, &s.ObservedStatus, &s.ObservedVLAN, &s.ObservedAt, &s.ObservedSource, &s.ObservedDetail)
+		&s.EndedAt, &s.ObservedStatus, &s.ObservedVLAN, &s.ObservedAt, &s.ObservedSource, &s.ObservedDetail, &s.RequestedRole)
 	if noRows(err) {
 		return nil, domain.ErrNotFound
 	}
@@ -341,11 +365,12 @@ func (r *PilotRepo) UpdateSession(ctx context.Context, s *domain.Session) error 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE radius_sessions SET calling_station_id=$2, nas_ip_address=$3, user_name=$4, acct_session_id=$5, cert_issuer=$6,
 			cert_serial=$7, cert_cn=$8, endpoint_id=$9, binding_id=$10, state=$11,
-			last_decision_id=$12, requested_action=$13, requested_segment=$14, requested_vlan=$15, last_auth_at=$16, ended_at=$17
+			last_decision_id=$12, requested_action=$13, requested_segment=$14, requested_vlan=$15, last_auth_at=$16, ended_at=$17,
+			requested_role=$18
 		WHERE id=$1`,
 		s.ID, s.CallingStationID, s.NASIPAddress, s.UserName, s.AcctSessionID, s.CertIssuer, s.CertSerial, s.CertCN,
 		s.EndpointID, s.BindingID, s.State, s.LastDecisionID, s.RequestedAction,
-		s.RequestedSegment, s.RequestedVLAN, s.LastAuthAt, s.EndedAt)
+		s.RequestedSegment, s.RequestedVLAN, s.LastAuthAt, s.EndedAt, s.RequestedRole)
 	return err
 }
 
@@ -434,7 +459,7 @@ func (r *PilotRepo) ActiveSessionsOnSwitch(ctx context.Context, switchID uuid.UU
 // ---------------------------------------------------------------- decisions
 
 const decisionColumns = `id, occurred_at, session_id, switch_id, subject, inputs, policy_version, policy_version_id, matched_rule,
-	matched_rule_id, trace, insufficient, action, segment, vlan, result, reason`
+	matched_rule_id, trace, insufficient, action, segment, vlan, result, reason, role`
 
 // InsertDecision persists a decision record.
 func (r *PilotRepo) InsertDecision(ctx context.Context, d *domain.DecisionRecord) error {
@@ -445,9 +470,9 @@ func (r *PilotRepo) InsertDecision(ctx context.Context, d *domain.DecisionRecord
 	if d.PolicyVersion > 0 {
 		pv = &d.PolicyVersion
 	}
-	_, err := r.pool.Exec(ctx, `INSERT INTO auth_decisions (`+decisionColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+	_, err := r.pool.Exec(ctx, `INSERT INTO auth_decisions (`+decisionColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
 		d.ID, d.OccurredAt, d.SessionID, d.SwitchID, d.Subject, inputs, pv, d.PolicyVersionID, d.MatchedRule, d.MatchedRuleID,
-		trace, insuff, string(d.Action), d.Segment, d.VLAN, d.Result, d.Reason)
+		trace, insuff, string(d.Action), d.Segment, d.VLAN, d.Result, d.Reason, d.Role)
 	return err
 }
 
@@ -458,7 +483,7 @@ func scanDecision(row rowScanner) (*domain.DecisionRecord, error) {
 		pv                    *int
 	)
 	err := row.Scan(&d.ID, &d.OccurredAt, &d.SessionID, &d.SwitchID, &d.Subject, &inputs, &pv, &d.PolicyVersionID, &d.MatchedRule,
-		&d.MatchedRuleID, &trace, &insuff, &d.Action, &d.Segment, &d.VLAN, &d.Result, &d.Reason)
+		&d.MatchedRuleID, &trace, &insuff, &d.Action, &d.Segment, &d.VLAN, &d.Result, &d.Reason, &d.Role)
 	if noRows(err) {
 		return nil, domain.ErrNotFound
 	}
@@ -633,7 +658,7 @@ func (r *PilotRepo) LastEvent(ctx context.Context, stage string) (*domain.AuthEv
 // ---------------------------------------------------------------- CoA
 
 const coaColumns = `id, session_id, switch_id, kind, target, requested_segment, requested_vlan, state, attempts, radius_id,
-	error_cause, detail, created_by, created_at, sent_at, responded_at, observed_at, observed_decision_id, updated_at`
+	error_cause, detail, created_by, created_at, sent_at, responded_at, observed_at, observed_decision_id, updated_at, requested_role`
 
 func scanCoA(row rowScanner) (*domain.CoARequest, error) {
 	var (
@@ -642,7 +667,7 @@ func scanCoA(row rowScanner) (*domain.CoARequest, error) {
 	)
 	err := row.Scan(&c.ID, &c.SessionID, &c.SwitchID, &c.Kind, &target, &c.RequestedSegment, &c.RequestedVLAN, &c.State, &c.Attempts,
 		&c.RadiusID, &c.ErrorCause, &c.Detail, &c.CreatedBy, &c.CreatedAt, &c.SentAt, &c.RespondedAt, &c.ObservedAt,
-		&c.ObservedDecisionID, &c.UpdatedAt)
+		&c.ObservedDecisionID, &c.UpdatedAt, &c.RequestedRole)
 	if noRows(err) {
 		return nil, domain.ErrNotFound
 	}
@@ -672,9 +697,10 @@ func (r *PilotRepo) InsertCoA(ctx context.Context, c *domain.CoARequest) error {
 		return fmt.Errorf("%w: a CoA for this session is already in progress", domain.ErrConflict)
 	}
 	target, _ := json.Marshal(c.Target)
-	if _, err := tx.Exec(ctx, `INSERT INTO coa_requests (`+coaColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+	if _, err := tx.Exec(ctx, `INSERT INTO coa_requests (`+coaColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
 		c.ID, c.SessionID, c.SwitchID, c.Kind, target, c.RequestedSegment, c.RequestedVLAN, c.State, c.Attempts, c.RadiusID,
-		c.ErrorCause, c.Detail, c.CreatedBy, c.CreatedAt, c.SentAt, c.RespondedAt, c.ObservedAt, c.ObservedDecisionID, c.UpdatedAt); err != nil {
+		c.ErrorCause, c.Detail, c.CreatedBy, c.CreatedAt, c.SentAt, c.RespondedAt, c.ObservedAt, c.ObservedDecisionID, c.UpdatedAt,
+		c.RequestedRole); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

@@ -114,6 +114,17 @@ func TestQuarantineSurvivesAccountingStopAndSessionReplacement(t *testing.T) {
 	if st != "observed" {
 		t.Fatalf("Quarantine CoA not correlated with the replacement re-authentication: last_coa state %q", st)
 	}
+	// Arista regression (Aruba role path): a VLAN CoA carries the Tunnel
+	// attributes and never Aruba-User-Role.
+	veos.mu.Lock()
+	last := veos.got[len(veos.got)-1]
+	veos.mu.Unlock()
+	if v := last.String(radius.AttrTunnelPrivateGroupID); !strings.HasSuffix(v, "20") {
+		t.Fatalf("Arista quarantine CoA lost its VLAN: %q", v)
+	}
+	if _, ok := last.VSAString(radius.VendorAruba, radius.ArubaAttrUserRole); ok {
+		t.Fatal("Arista CoA carries Aruba-User-Role")
+	}
 
 	// Unplug and replug (Stop, later a fresh authentication): still quarantined.
 	acct("Stop", "acct-2")

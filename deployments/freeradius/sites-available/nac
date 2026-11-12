@@ -79,6 +79,7 @@ server nac {
 				&Tunnel-Type !* ANY
 				&Tunnel-Medium-Type !* ANY
 				&Tunnel-Private-Group-Id !* ANY
+				&Aruba-User-Role !* ANY
 			}
 			reject
 		}
