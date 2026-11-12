@@ -277,7 +277,13 @@ paths:
       - { name: approval_id, in: path, required: true, schema: { type: string, format: uuid } }
     post:
       operationId: revokeApproval
-      summary: Revoke an unused approval
+      summary: Revoke an approval; a consumed one withdraws its execution's authority
+      description: |
+        Revoking an unused approval invalidates it. Revoking a consumed
+        approval **withdraws the authority of its owning execution**: no
+        further activation, no first sends, and in-flight retries end at once
+        (ADR-0008 §5, continuing authority). The execution's own committed
+        activation stays in force and is reported. The withdrawal is final.
       x-required-permission: policy:approve
       x-delegated-scope: none
       responses:
@@ -369,9 +375,11 @@ paths:
       operationId: stopExecution
       summary: Stop new sends; report what was sent and what remains in force
       description: |
-        ADR-0008 §5 (R5). Moves the execution to `stopping`: no target gets
-        a first send afterwards, and pending targets become `not_sent`
-        (`stopped`). Sent targets finish only their in-progress,
+        ADR-0008 §5 (R5). Moves the execution to `stopping` under the
+        execution fence: if the Stop wins, no activation commits (an
+        activate-only plan publishes nothing); if the activation already
+        committed, it is listed in `still_in_force`. No target gets a first
+        send afterwards, and pending targets become `not_sent` (`stopped`). Sent targets finish only their in-progress,
         byte-identical retransmissions within the bounded window. Uncertain
         targets are reconciled read-only. The execution becomes `stopped`
         when nothing is in flight. **A committed activation stays in
@@ -720,22 +728,18 @@ components:
         validation_id: { type: string, format: uuid }
         simulation_id: { type: string, format: uuid }
         scope: { $ref: "#/components/schemas/ActivationScope" }
-        narrower_activations:
+        supersessions:
           type: array
           description: |
-            One entry for each current activation narrower than `scope` and
-            inside it: `retire` moves its units to the new activation, and
-            `keep` lets it keep shadowing. Any unlisted narrower activation is
-            kept, and the resolved plan shows that it keeps shadowing.
-            Nothing is retired implicitly.
-          items:
-            type: object
-            required: [activation_id, revision, action]
-            additionalProperties: false
-            properties:
-              activation_id: { type: string, format: uuid }
-              revision: { type: integer, minimum: 1 }
-              action: { type: string, enum: [retire, keep] }
+            ADR-0008 §5 (R2 residual). Names every current activation the plan
+            touches, with its expected revision. Every unit of `scope` held at
+            the same specificity needs a `replace` or `take_units` entry for
+            its holder, so publishing to `all` always replaces the current
+            `all` activation. Narrower activations inside `scope` are `retire`
+            or `keep`; an unlisted narrower one is kept. Nothing is superseded
+            implicitly. An unnamed holder, a wrong revision or units outside
+            `scope` get `422` (`/problems/scope-overlap`).
+          items: { $ref: "#/components/schemas/SupersessionInput" }
         stages:
           description: "Grammar: `activate`, optionally followed by `apply`, then optionally by `observe`. Nothing else."
           oneOf:
@@ -756,6 +760,35 @@ components:
               items: false
               minItems: 3
         stop_on_failure: { type: boolean, default: true }
+
+    SupersessionInput:
+      description: "One activation the plan supersedes or keeps, with the revision the plan expects it to have."
+      oneOf:
+        - type: object
+          description: "Same specificity, all of its units inside the new scope: superseded whole (for example the current `all` activation)."
+          required: [action, activation_id, expected_revision]
+          additionalProperties: false
+          properties:
+            action: { const: replace }
+            activation_id: { type: string, format: uuid }
+            expected_revision: { type: integer, minimum: 1 }
+        - type: object
+          description: "Same specificity: only these units move to the new activation; the holder keeps its other units under a new revision."
+          required: [action, activation_id, expected_revision, units]
+          additionalProperties: false
+          properties:
+            action: { const: take_units }
+            activation_id: { type: string, format: uuid }
+            expected_revision: { type: integer, minimum: 1 }
+            units: { type: array, minItems: 1, uniqueItems: true, items: { $ref: "#/components/schemas/ScopeUnit" } }
+        - type: object
+          description: "A narrower activation inside the new scope: retire moves its units to the new activation, keep lets it keep shadowing."
+          required: [action, activation_id, expected_revision]
+          additionalProperties: false
+          properties:
+            action: { enum: [retire, keep] }
+            activation_id: { type: string, format: uuid }
+            expected_revision: { type: integer, minimum: 1 }
 
     ActivateStageInput:
       type: object
@@ -923,23 +956,25 @@ components:
         scope_snapshot: { $ref: "#/components/schemas/ScopeSnapshot" }
         activation:
           type: object
-          required: [version_to_create, units, narrower_activations, post_change_resolution]
+          required: [version_to_create, units, supersessions, post_change_resolution]
           additionalProperties: false
           properties:
             version_to_create: { type: integer, description: "The policy version this plan creates; it is written once, at the activate stage." }
             units: { type: array, minItems: 1, items: { $ref: "#/components/schemas/ScopeUnit" } }
-            narrower_activations:
+            supersessions:
               type: array
+              description: "Every supersession the plan applies, as resolved and bound into the approval: the holder, its expected revision and the units that move."
               items:
                 type: object
-                required: [activation_id, revision, version, action, units]
+                required: [activation_id, expected_revision, version, specificity, action, units_moved]
                 additionalProperties: false
                 properties:
                   activation_id: { type: string, format: uuid }
-                  revision: { type: integer }
+                  expected_revision: { type: integer }
                   version: { type: integer }
-                  action: { type: string, enum: [retire, keep] }
-                  units: { type: array, items: { $ref: "#/components/schemas/ScopeUnit" } }
+                  specificity: { type: string, enum: [same, narrower] }
+                  action: { type: string, enum: [replace, take_units, retire, keep] }
+                  units_moved: { type: array, items: { $ref: "#/components/schemas/ScopeUnit" }, description: "Empty for keep." }
             partial_revisions:
               type: array
               description: "Existing cohorts that lose some units to this plan and keep the rest under a new revision."
@@ -1146,32 +1181,61 @@ components:
               description: "Transport state of pre-existing flows is torn down. Does NOT guarantee that application data is never sent later: an application may reconnect and resend."
             allow:
               type: array
-              description: "Services that stay reachable: remediation, DNS, DHCP, the NAC portal. Each entry is as explicit as a requirement: direction, protocols and address families."
+              description: "Services that stay reachable: remediation, DNS, DHCP, the NAC portal. Each entry is as explicit as a requirement: direction, services (protocol and ports), destination prefixes and address families."
               items:
                 type: object
-                required: [destination, direction, protocols, address_families]
+                required: [destinations, direction, services, address_families]
                 additionalProperties: false
                 properties:
-                  destination: { type: string, description: "Prefix or address." }
+                  destinations: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Prefix" } }
                   direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
-                  protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
-                  ports: { type: string }
+                  services: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Service" } }
                   address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
             address_families: { type: array, items: { type: string, enum: [ipv4, ipv6] } }
 
     TrafficRequirement:
       type: object
-      description: "ADR-0009 §1: every requirement is explicit about direction and protocol."
-      required: [direction, protocols, address_families]
+      description: "ADR-0009 §1: every requirement is explicit about direction, services (protocol and ports) and address families. A service without port ranges means every port of that protocol."
+      required: [direction, services, address_families]
       additionalProperties: false
       properties:
         direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
-        protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
+        services: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Service" } }
         address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
         destinations:
           type: array
           description: "Prefixes, where the requirement applies to specific destinations (deny_routed)."
-          items: { type: string }
+          items: { $ref: "#/components/schemas/Prefix" }
+
+    Service:
+      description: "A protocol with its port ranges (ADR-0009 §2 service containment). TCP and UDP name ranges; all ports is 1-65535. ICMP has no ports; `any` means every protocol and port."
+      oneOf:
+        - type: object
+          required: [protocol, port_ranges]
+          additionalProperties: false
+          properties:
+            protocol: { enum: [tcp, udp] }
+            port_ranges:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [from, to]
+                additionalProperties: false
+                properties:
+                  from: { type: integer, minimum: 1, maximum: 65535 }
+                  to: { type: integer, minimum: 1, maximum: 65535 }
+        - type: object
+          required: [protocol]
+          additionalProperties: false
+          properties:
+            protocol: { enum: [icmp, any] }
+
+    Prefix:
+      type: string
+      description: "An IPv4 or IPv6 prefix in CIDR form; a host is /32 or /128. Containment: a requested prefix is covered only by a tested prefix of the same family that contains it."
+      pattern: "^[0-9A-Fa-f:.]+/[0-9]{1,3}$"
+      examples: ["10.70.20.10/32", "10.70.10.0/24", "2001:db8:70:10::/64"]
 
     EnforcementCapability:
       type: object
@@ -1219,16 +1283,16 @@ components:
 
     TestedScope:
       type: object
-      description: "What a lab result actually exercised, on the same axes as a requirement (ADR-0009 §1). Matching is per axis; TCP from_endpoint never covers UDP or to_endpoint."
-      required: [requirement, direction, protocols, address_families, destination_class, flow_state]
+      description: "What a lab result actually exercised, on the same axes as a requirement (ADR-0009 §1). Matching is per axis with service and destination containment: TCP/8080 never covers TCP/443, one prefix never covers a prefix outside it, and TCP from_endpoint never covers UDP or to_endpoint."
+      required: [requirement, direction, services, address_families, destination_class, destinations, flow_state]
       additionalProperties: false
       properties:
         requirement: { type: string, enum: [deny_routed, deny_same_subnet_sessions, isolate_same_subnet_packets, block_established_flow_data, terminate_established_flows, allow] }
         direction: { type: string, enum: [from_endpoint, to_endpoint, both] }
-        protocols: { type: array, minItems: 1, items: { type: string, enum: [tcp, udp, icmp, any] } }
+        services: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Service" } }
         address_families: { type: array, minItems: 1, items: { type: string, enum: [ipv4, ipv6] } }
         destination_class: { type: string, enum: [routed, same_subnet, allow_entry] }
-        destinations: { type: array, items: { type: string } }
+        destinations: { type: array, minItems: 1, items: { $ref: "#/components/schemas/Prefix" } }
         flow_state: { type: string, enum: [new, established] }
 
     QualificationRecord:
@@ -1249,7 +1313,7 @@ components:
         platform: { $ref: "#/components/schemas/PlatformScope" }
         tested_scope: { $ref: "#/components/schemas/TestedScope" }
         authentication: { type: string, enum: [eap_tls, mab] }
-        topology: { type: string, examples: ["one endpoint per port", "phone + PC on one port"] }
+        topology: { type: string, enum: [single_endpoint, phone_and_pc, multi_endpoint], description: "Must equal the target port's topology. single_endpoint evidence never covers phone_and_pc or multi_endpoint; an unknown target topology is never covered." }
         configuration_fingerprint: { type: string }
         result: { type: string, enum: [demonstrated, unsupported, inconclusive] }
         evidence:
@@ -1266,16 +1330,39 @@ components:
         supersedes: { type: string, format: uuid }
 
     ConfigurationEvidence:
-      type: object
-      description: "ADR-0009 §7: evidence of the switch's current role/ACL definitions, implicit action, direction, VLAN, host mode and fallback settings. `unavailable` or expired evidence makes coverage unknown."
-      required: [id, kind, configuration_fingerprint]
-      additionalProperties: false
-      properties:
-        id: { type: string, format: uuid }
-        kind: { type: string, enum: [observed, operator_attestation, unavailable] }
-        configuration_fingerprint: { type: string }
-        observed_at: { type: string, format: date-time }
-        attestation: { $ref: "#/components/schemas/Attestation" }
+      description: |
+        ADR-0009 §7 (R4 residual): evidence of the switch's current role/ACL
+        definitions, implicit action, direction, VLAN, host mode and fallback
+        settings. Exactly one kind, each with its required fields. Observed
+        evidence is current only before `valid_until` (N9). Attested evidence
+        requires its attestation record and is current only before the
+        attestation's `expires_at`. `unavailable`, expired or incomplete
+        evidence never qualifies an action.
+      oneOf:
+        - type: object
+          required: [id, kind, configuration_fingerprint, observed_at, source, valid_until]
+          additionalProperties: false
+          properties:
+            id: { type: string, format: uuid }
+            kind: { const: observed }
+            configuration_fingerprint: { type: string, minLength: 1 }
+            observed_at: { type: string, format: date-time }
+            source: { type: string, minLength: 1, description: "The observation adapter, e.g. eapi." }
+            valid_until: { type: string, format: date-time }
+        - type: object
+          required: [id, kind, configuration_fingerprint, attestation]
+          additionalProperties: false
+          properties:
+            id: { type: string, format: uuid }
+            kind: { const: operator_attestation }
+            configuration_fingerprint: { type: string, minLength: 1 }
+            attestation: { $ref: "#/components/schemas/Attestation" }
+        - type: object
+          required: [id, kind]
+          additionalProperties: false
+          properties:
+            id: { type: string, format: uuid }
+            kind: { const: unavailable }
 
     Attestation:
       type: object
@@ -1302,6 +1389,7 @@ components:
         profile: { $ref: "#/components/schemas/AccessProfileRef" }
         switch_id: { type: string, format: uuid }
         nas_port_id: { type: string }
+        target_topology: { type: string, enum: [single_endpoint, phone_and_pc, multi_endpoint, unknown], description: "From the port's current sessions. unknown is never covered." }
         evaluated_at: { type: string, format: date-time }
         configuration_fingerprint: { type: string }
         strategies:
@@ -1326,7 +1414,7 @@ components:
                     qualification_record_id: { type: string, format: uuid }
                     unmet_reason:
                       type: string
-                      enum: [not_implemented, no_record, record_expired, direction_mismatch, protocol_mismatch, address_family_mismatch, destination_class_mismatch, flow_state_mismatch, platform_mismatch, recipe_revision_mismatch, configuration_changed, configuration_evidence_unavailable, attestation_not_accepted, result_not_demonstrated]
+                      enum: [not_implemented, no_record, record_expired, record_superseded, direction_mismatch, protocol_mismatch, port_not_covered, destination_not_contained, address_family_mismatch, destination_class_mismatch, flow_state_mismatch, authentication_mismatch, topology_mismatch, topology_unknown, platform_mismatch, recipe_revision_mismatch, configuration_changed, configuration_evidence_unavailable, configuration_evidence_expired, attestation_not_accepted, result_not_demonstrated]
 
     StrategySelection:
       type: object
@@ -1367,7 +1455,7 @@ components:
           type: string
           enum: [pending, not_sent, sent]
           description: "not_sent carries not_sent_reason; nothing reached the switch for this target."
-        not_sent_reason: { type: string, enum: [stopped, superseded, external_activation, authority_expired, incarnation_changed, configuration_drift] }
+        not_sent_reason: { type: string, enum: [stopped, superseded, external_activation, authority_expired, authority_withdrawn, evidence_invalid, incarnation_changed, configuration_drift] }
         selection: { $ref: "#/components/schemas/StrategySelection" }
         requested: { type: object, properties: { segment: { type: string }, vlan: { type: integer }, role: { type: string } } }
         coa_request_id: { type: string, format: uuid }
@@ -1412,11 +1500,16 @@ components:
             revised: { type: array, items: { type: object, required: [activation_id, revision], properties: { activation_id: { type: string, format: uuid }, revision: { type: integer } } } }
         authority:
           type: object
-          required: [principal, approval_id, authority_expires_at]
+          description: "Re-checked before the activation commit and before every first send (ADR-0008 §5, continuing authority): the approver, the approval, the executing principal, expiry and the bound evidence. A withdrawal is final and ends retries at once."
+          required: [principal, approval_id, approved_by, authority_expires_at, state]
           properties:
             principal: { $ref: "#/components/schemas/Principal" }
             approval_id: { type: string, format: uuid }
+            approved_by: { $ref: "#/components/schemas/Principal" }
             authority_expires_at: { type: string, format: date-time }
+            state: { type: string, enum: [active, withdrawn, expired] }
+            withdrawn_reason: { type: string, enum: [approver_disabled, approver_lost_permission, approval_revoked, principal_revoked, evidence_expired, evidence_superseded] }
+            withdrawn_at: { type: string, format: date-time }
         stages:
           type: array
           items:
@@ -1432,13 +1525,13 @@ components:
           description: "Present once a stop was requested or the executor stopped itself."
           required: [reason_kind, at]
           properties:
-            reason_kind: { type: string, enum: [operator_stop, external_activation, authority_expired, stage_failed] }
+            reason_kind: { type: string, enum: [operator_stop, external_activation, authority_expired, authority_withdrawn, stage_failed] }
             reason: { type: string }
             requested_by: { $ref: "#/components/schemas/Principal" }
             at: { type: string, format: date-time }
         still_in_force:
           type: array
-          description: "Activations this execution committed that remain current. Stopping never reverts them; overrides are untouched."
+          description: "Activations this execution committed that remain current. Stopping never reverts them; overrides are untouched. Empty when a Stop, withdrawal or expiry won the execution fence before the activation committed."
           items: { $ref: "#/components/schemas/Activation" }
         executed_by: { $ref: "#/components/schemas/Principal" }
         created_at: { type: string, format: date-time }

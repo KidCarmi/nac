@@ -112,12 +112,14 @@ result. Each record has:
 - the platform: vendor, model, OS/build, physical or virtual (all required)
 - the **tested traffic scope**, structured like a requirement (§1):
   - the requirement key and direction
-  - protocols and address families
-  - the destination class: routed prefixes, same-subnet peers or an allow
-    entry
+  - address families
+  - **services**: each protocol with the exact port ranges tested (TCP and
+    UDP require port ranges; ICMP has none). Example: TCP 8080 only.
+  - **destinations**: the exact prefixes tested, and their class (routed
+    prefixes, same-subnet peers or an allow entry)
   - fresh or established flows
-- the authentication method and topology (for example one endpoint per
-  port, or phone + PC)
+- the authentication method and the **topology**: `single_endpoint` (one
+  authenticated device on the port), `phone_and_pc` or `multi_endpoint`
 - the configuration fingerprint at test time (§7)
 - the result (`demonstrated`, `unsupported`, `inconclusive`)
 - evidence: the package reference and its manifest digest
@@ -128,17 +130,33 @@ never edited. A record without complete bindings (for example research
 notes) can be stored. It never qualifies an action.
 
 **Coverage matching.** A requested requirement (§1) is covered only by a
-`demonstrated`, unexpired record that matches it on **every** axis:
+`demonstrated`, unexpired, unsuperseded record that matches it on **every**
+axis:
 - the same recipe revision, operation and platform build
 - the same direction, or `both`
-- a superset of the protocols and address families
-- the same destination class and flow state
+- a superset of the address families
+- **service containment:** each requested protocol is tested, and each
+  requested port range lies inside a tested range for that protocol. A
+  requirement without ports means every port, so only a tested
+  "all ports" range covers it.
+- **destination containment:** each requested prefix lies inside a tested
+  prefix of the same class (equal or longer prefix, same family)
+- the same flow state
+- **the same authentication method**
+- **the same topology as the target port.** The target's topology comes
+  from its current sessions: one authenticated device means
+  `single_endpoint`. An unknown topology is never covered, and
+  `single_endpoint` evidence never covers `phone_and_pc` or
+  `multi_endpoint`.
 - a configuration fingerprint equal to the target switch's **current** one,
-  with current configuration evidence (§7)
+  backed by **current** configuration evidence (§7)
 
-A TCP, `from_endpoint` result never covers UDP or `to_endpoint`. An expired
-or absent record, a mismatch on any axis, or changed ACL content under the
-same role name leaves the requirement **unmet**, with that reason.
+So TCP/8080 evidence never covers TCP/443, `10.70.20.0/24` never covers
+`10.70.30.0/24`, a TCP `from_endpoint` result never covers UDP or
+`to_endpoint`, and single-host evidence never qualifies a phone + PC
+port. An expired, superseded or absent record, a missing field, a mismatch
+on any axis, or changed ACL content under the same role name leaves the
+requirement **unmet**, with that reason. Unknown never matches.
 
 **Eligibility is computed per profile version and target.** A strategy is
 **eligible** for one `(access profile, version)` on one `(switch, port)`
@@ -302,16 +320,25 @@ labelled separately from an integrated NAC pass.
   fingerprint are **invalidated** (ADR-0008 §4).
 - A role that keeps its name but changes its rules loses its qualified
   status.
-- Where automatic observation is unavailable (today, AOS-CX: NAC has no
-  observation adapter), an **explicitly approved, versioned operator
-  attestation** can be recorded. It is not a live verification. It carries:
-  - an id and version, and the issuer (the human who attested)
-  - `issued_at` and `expires_at`
-  - the configuration fingerprint it attests
-  - the statement and its limits
-
-  Each requirement declares whether attestation is acceptable for it. An
-  expired attestation counts as unavailable evidence.
+- **Configuration evidence has exactly one kind, and each kind requires its
+  own fields (R4 residual):**
+  - **`observed`:** the fingerprint, `observed_at`, the source (the
+    observation adapter) and `valid_until`. It is current only while the
+    current time is before `valid_until`, which defaults to `observed_at`
+    plus a maximum age (N9).
+  - **`operator_attestation`:** the fingerprint and the **attestation
+    record**, which is required. Where automatic observation is
+    unavailable (today, AOS-CX: NAC has no observation adapter), an
+    explicitly approved, versioned operator attestation can be recorded.
+    It is not a live verification. The record carries:
+    - an id and version, and the issuer (the human who attested)
+    - `issued_at` and `expires_at`
+    - the configuration fingerprint it attests
+    - the statement and its limits
+  - **`unavailable`:** never current.
+- Each requirement declares whether attestation is acceptable for it.
+  Evidence that is unavailable, expired, incomplete or of an unaccepted
+  kind never qualifies an action.
 - A firmware or driver change triggers re-evaluation; qualification is not
   inherited.
 

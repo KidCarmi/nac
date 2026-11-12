@@ -211,19 +211,34 @@ path.
   takes the current activation that holds the request's port unit, else
   its switch unit, else `all`.
 - **No equal-specificity overlap.** At most one current activation holds
-  any given port unit, and at most one holds any switch unit. A plan that
-  would add a unit that is already held must name the activation it
-  supersedes for that unit. Otherwise the plan is rejected before approval
-  (`422`, `/problems/scope-overlap`). There is no "newest wins".
-- **Partial supersession keeps the rest.** When a plan takes over some
-  units of an existing cohort, that cohort gets a new revision without
-  those units. Its other units keep their version.
+  any given port unit, and at most one holds any switch unit. Exactly one
+  current activation holds `all`. There is no "newest wins".
+- **Every supersession is a typed plan input (R2 residual).** The plan
+  input's `supersessions` list names each current activation the plan
+  touches, with its **expected revision**, and one action:
+  - **`replace`**: a same-specificity holder whose units are **all** inside
+    the new scope is superseded whole. Every publication to `all` replaces
+    the current `all` activation this way, so `all` → `all` is a
+    `replace` of the named holder and revision.
+  - **`take_units`**: a same-specificity cohort gives up **only the listed
+    units**. It gets a new revision without them, and its other units keep
+    their version. Example: take port P from a cohort holding P, Q and R;
+    Q and R are unchanged.
+  - **`retire`** or **`keep`**: for a narrower activation inside the new
+    scope (below).
+
+  Before approval, the server checks that every unit of the new scope held
+  at the same specificity is covered by a `replace` or `take_units` entry
+  for its current holder and revision. A unit with an unnamed holder, a
+  wrong revision, or a `take_units` list outside the new scope is rejected
+  (`422`, `/problems/scope-overlap`). The resolved plan binds every
+  supersession with the units it moves, so the approval covers it.
 - **Promotion and rollback name exactly what they retire.** A plan that
   widens a scope (port → switch → `all`) or rolls one back does not retire
   any narrower activation implicitly.
-  - The plan input lists each current narrower activation inside the new
-    scope as `retire` or `keep`. The console pre-fills `retire` for
-    narrower activations of the version being promoted, or rolled back
+  - The plan's `supersessions` list each current narrower activation inside
+    the new scope as `retire` or `keep`. The console pre-fills `retire`
+    for narrower activations of the version being promoted, or rolled back
     from.
   - The resolved plan shows the **post-change resolution of every unit**:
     which units the retirements move, and which narrower activations keep
@@ -233,12 +248,13 @@ path.
   - Example: port P is pinned to canary v2, and v2 is promoted to `all`
     with P retired. Rolling `all` back to v1 later resolves P to v1. Had P
     been kept, both plans would show that P stays on v2.
-- **Atomic.** The new activation, every retirement and every partial
-  revision are written in one transaction under the activation lock. That
-  transaction succeeds only if every touched activation still has the
-  revision in the approved scope snapshot. On any mismatch nothing is
-  written and the execution stops (`external_change`). Two concurrent
-  scope changes cannot both apply.
+- **Atomic.** The new activation, every `replace`, `take_units` and
+  `retire` are written in one transaction under the activation lock. That
+  transaction succeeds only if every touched activation still has its
+  expected revision. On any mismatch nothing is written and the execution
+  stops (`external_change`). Two concurrent scope changes cannot both
+  apply. A concurrent holder created after approval is never superseded,
+  because it isn't named; the plan stops instead.
 - The decision record stores the resolved version and the activation (id
   and revision) that supplied it. The console and API can then show, per
   session, which version applied and why.
@@ -319,6 +335,37 @@ snapshot. Any other change stops further dispatch with reason
 between stages. Version checks are **not** skipped after activation. They
 compare against what this execution itself committed.
 
+**Continuing authority after consumption (R1 residual).** Consuming the
+approval moves the "snapshot unchanged" rule to the expected-transition
+rule above. **It does not freeze the authority or the evidence.** Before
+the activation commit, and before each target's first send, the executor
+re-checks that:
+- **the approver** is still enabled and still holds `policy:approve`
+- **the approval** has not been revoked. Revoking a consumed approval
+  withdraws its execution's authority.
+- **the executing principal** is enabled, its token is not revoked, and a
+  delegate's human is still enabled
+- **the execution authority** has not expired (`authority_expires_at`)
+- **the evidence** bound in the resolved plan is still current: each
+  qualification record is unexpired and not superseded, and each target's
+  configuration evidence is unexpired, with an unchanged fingerprint.
+  **An identical fingerprint is not enough when its evidence expired**
+  (ADR-0009 §2, §7).
+
+Any failure **withdraws the execution's authority**, a security
+cancellation recorded with its reason (`approver_disabled`,
+`approver_lost_permission`, `approval_revoked`, `principal_revoked`,
+`authority_expired`, `evidence_expired`, `evidence_superseded`).
+- After a withdrawal, nothing new is activated or sent. The execution's
+  own already-committed activation stays in force and is reported; that is
+  the only exception, as above.
+- **A withdrawal also ends retries at once.** A request already sent is not
+  retransmitted, and it ends `uncertain` unless an answer arrived. This is
+  stricter than an operator Stop (N5): without authority, NAC sends
+  nothing more.
+- **A withdrawal is final.** An operator Stop afterwards only records the
+  stop; it cannot resume retries or reinstate authority.
+
 **Crash and restart (R1).** The activation row carries `created_by_execution`
 and the stage, unique per execution. After a restart the executor reads
 the execution ledger:
@@ -374,7 +421,8 @@ the plan is created is not enough, because an execution can wait in a
 queue.
 - Immediately before each target's **first send**, the executor re-checks:
   - the execution's state (not `stopping` or `stopped`) and that its
-    authority has not expired
+    authority is active: the continuing-authority checks above,
+    including the approver and the bound evidence
   - the principal's permissions and token revocation
   - the expected-transition rule above (section 4 for the approval itself)
   - the target's **desired-state generation** and its override state: a
@@ -408,18 +456,38 @@ queue.
 policy version leaves overrides in place, as today. Clearing one is a
 separate, explicit session action.
 
+**One execution fence for Stop, authority and activation (R5 residual).**
+The execution row is the fence.
+- **The activation transaction** locks the execution row (`SELECT … FOR
+  UPDATE`). It commits the activation only if, under that lock:
+  - the execution is `running`
+  - its authority is active (the continuing-authority checks above)
+  - `authority_expires_at` has not passed by the database clock
+- **Stop and authority withdrawal** take the same row lock. They move the
+  execution off `running` with a compare-and-set.
+- **So exactly one ordering is observed:**
+  - **Stop (or a withdrawal or expiry) wins:** no activation is committed.
+    The `activate` stage ends `not_started` and `still_in_force` is empty.
+    That includes an activate-only plan: a worker never publishes policy
+    just because no CoA was due.
+  - **The activation wins:** it is committed, and the Stop that follows
+    lists it in `still_in_force`.
+- **First sends** take the same lock briefly when they claim a target. A
+  Stop or withdrawal that commits first prevents the send.
+
 **Stopping an execution (R5).** `POST /executions/{id}/stop`, with a
 reason, may be called by a human with `policy:write` or by the delegated
 identity that started the execution. A stop only reduces sends. It works
 like this:
-- It atomically moves the execution to `stopping`. No target gets a
-  **first send** after that.
+- It moves the execution to `stopping` under the execution fence above.
+  No activation commits and no target gets a **first send** after that.
 - **Pending** targets become `not_sent (stopped)`.
 - **Sent** targets still waiting for an answer finish only their in-progress,
   byte-identical retransmissions within the existing bounded window. They
   end as `ack`, `nak`, `timeout` or `uncertain`. The first packet may
   already have acted, so abandoning the retries would only add
-  uncertainty (N5).
+  uncertainty (N5). **This applies only while authority stays active.** A
+  withdrawal ends retries at once (continuing authority, above).
 - **Uncertain** targets are reconciled read-only. Nothing new is sent.
 - The execution becomes `stopped` when no request is in flight.
 
