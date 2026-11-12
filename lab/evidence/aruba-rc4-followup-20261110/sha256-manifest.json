@@ -3,6 +3,10 @@
     "sha256": "e9fa6c47b3fea79a6003d03ad01dc79ccb883bd7ba857ded7ea9b8c0958cb101",
     "bytes": 1055
   },
+  "cold-boot-handoff.md": {
+    "sha256": "9559cc1f00cf23fe6d3d1bc0809bec287b673d7f7869f2b313a9ab1c856c3f35",
+    "bytes": 6852
+  },
   "cycles.csv": {
     "sha256": "1e8fc9d93ebf52eeb3cd1f194656656e1ae8e7bff4986a11a1bbeabccb7577af",
     "bytes": 10656
@@ -16,8 +20,8 @@
     "bytes": 1332
   },
   "README.md": {
-    "sha256": "6f48f46815069c41193f16b7b0e512c804330542c0cf0a76d0e752f54c4b155d",
-    "bytes": 8676
+    "sha256": "ee167204e9f3f07f9e3f15306bd85d2de948070f07968307c5cf6e203080832b",
+    "bytes": 9063
   },
   "timing-runner.py": {
     "sha256": "f357aac7b3d8ecbceaa4e3ca33f8346c71246ef8f3f07923cd9bc2b25a34d2da",

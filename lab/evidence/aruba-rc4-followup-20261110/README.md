@@ -2,6 +2,8 @@
 
 **Exact candidate:** `pilot-aruba-rc4` commit `0148bf88985c5da9086b54aafd002fbfbfe71b75`; installed `nacd` SHA-256 `dd2b61371585d317bf07684733996c69e265dfdb9e762e354eeca4f7821b49d7`; installed adapter aggregate SHA-256 `3c45063efb451ff86dac23d695e9c57c307b86ef8054b790a759cbb63e80db32`. No successor build was tested. Tests were agent-operated on isolated EVE VM 102, ArubaOS-CX Virtual 10.07.0004 and Arista vEOS-lab 4.29.2F. The [earlier clean-install package](../aruba-rc4-clean-20261110/README.md) and [Arista API regression](../arista-rc4-regression-20261110/README.md) remain separate baselines.
 
+**Cold-boot operator handoff:** [exact per-port AOS-CX commands, prerequisites, impact and verification](cold-boot-handoff.md). Automatic recovery remains **FAIL**; the authenticator toggle was a manual diagnostic workaround. That handoff also lists Windows, physical switch, prompt DHCP renewal, shared-port, IPv6, UDP and peer-initiated coverage that remains unqualified through NAC.
+
 ## Exact-candidate matrix
 
 | Case | Result | Evidence and limitation |
