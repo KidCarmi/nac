@@ -1,0 +1,11 @@
+{
+  "finding": "R5",
+  "acceptance": "—",
+  "schema": "Execution/properties/stop",
+  "expect": "invalid",
+  "why": "Stop reasons are a closed set.",
+  "instance": {
+    "reason_kind": "cancelled_somehow",
+    "at": "2026-11-12T12:00:01Z"
+  }
+}

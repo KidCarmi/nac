@@ -52,6 +52,12 @@ info:
     executor runs only the stored resolved plan. It never recomputes an
     assignment under an unchanged digest.
 
+    ## Examples
+    Focused positive and negative instances for the re-review residuals are
+    in `examples/`, with how to rerun them. The semantic rules (containment,
+    matching, expiry and the Stop race) are acceptance scenarios in
+    ADR-0008 §5 and ADR-0009 §2.
+
     ## What this contract changes in v1 (ADR-0008 decision 8, open decision O3)
     `POST /api/v1/policy-draft/publish` and
     `POST /api/v1/policy-versions/{number}/restore` would require an

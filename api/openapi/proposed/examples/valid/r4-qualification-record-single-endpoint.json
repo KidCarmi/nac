@@ -1,0 +1,53 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-6",
+  "schema": "QualificationRecord",
+  "expect": "valid",
+  "why": "A complete record; its single_endpoint topology never covers phone_and_pc.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000005",
+    "recipe_id": "arubacx.local-role.aruba-user-role",
+    "recipe_revision": "r1",
+    "operation": "coa",
+    "platform": {
+      "vendor": "HPE Aruba",
+      "model": "AOS-CX Virtual",
+      "os_build": "Virtual.10.07.0004",
+      "form": "virtual"
+    },
+    "tested_scope": {
+      "requirement": "deny_routed",
+      "direction": "from_endpoint",
+      "services": [
+        {
+          "protocol": "tcp",
+          "port_ranges": [
+            {
+              "from": 8080,
+              "to": 8080
+            }
+          ]
+        }
+      ],
+      "address_families": [
+        "ipv4"
+      ],
+      "destination_class": "routed",
+      "destinations": [
+        "10.70.10.10/32"
+      ],
+      "flow_state": "new"
+    },
+    "authentication": "eap_tls",
+    "topology": "single_endpoint",
+    "configuration_fingerprint": "sha256:ab",
+    "result": "demonstrated",
+    "evidence": {
+      "reference": "KidCarmi/nac@15e89db:lab/evidence/aruba-rc4-clean-20261110",
+      "manifest_sha256": "2c30cd629a7f452e4fd50c6d8eac392fbe0a65e962bdffbaf6ceaa1b21b6ea17"
+    },
+    "measured_at": "2026-11-10T07:47:20Z",
+    "valid_until": "2027-02-08T07:47:20Z",
+    "issuer": "ASTRA"
+  }
+}

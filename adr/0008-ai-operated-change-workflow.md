@@ -178,10 +178,14 @@ An approval is a stored record. It is never a boolean that a client sends.
   transaction (section 5) consumes the approval and records the execution
   that owns it. Reusing it, or using it for another CR, plan or scope,
   returns `409`. **After consumption, the approval applies only to its
-  owning execution**, and dispatch checks follow that execution's expected
-  transition rule (section 5), not the "snapshot unchanged" rule above. The
-  execution's own activation is therefore never mistaken for drift. An
-  unrelated activation still is.
+  owning execution**. Its dispatch checks follow that execution's expected
+  transition rule (section 5), not the "snapshot unchanged" rule above, so
+  the execution's own activation is never mistaken for drift, though an
+  unrelated activation still is. **Consumption does not freeze the
+  authority:** the approver, the approval, the executing principal, expiry
+  and every bound piece of evidence are re-checked before the activation
+  commit and before each first send (section 5, "Continuing authority after
+  consumption").
 - **Separation of duties.** The approver must not be `requested_by`.
   Whether the human named in `on_behalf_of` may approve their own AI's CR
   is open decision **O1**. Single-admin installs need an answer.
@@ -498,6 +502,30 @@ states **what remains in force**:
   rollback.
 - **A rollback is a separate CR with its own approval.**
 - **Operator overrides are untouched.**
+
+**Acceptance scenarios for the execution contract** (contract tests for any
+implementation; the schema examples are in
+`api/openapi/proposed/examples/`):
+
+| ID | Scenario | Required outcome |
+|---|---|---|
+| A-R1-1 | Consume the approval, activate, then apply | The apply proceeds: the execution's own activation is not drift |
+| A-R1-2 | Consume the approval, then an unrelated activation lands before apply | No further send; reason `external_activation` |
+| A-R1-3 | Consume the approval, then disable the approver (or remove `policy:approve`) before apply | Authority withdrawn (`approver_disabled` / `approver_lost_permission`); no new activation or send; the own committed activation alone stays and is reported |
+| A-R1-4 | Consume the approval, then let a bound qualification record or configuration evidence expire (fingerprint unchanged) before apply | Authority withdrawn (`evidence_expired`); no new mutation |
+| A-R1-5 | Revoke a consumed approval while a sent request awaits its answer | Retries end at once; the target ends `uncertain` unless an answer arrived |
+| A-R1-6 | Operator Stop after a withdrawal | Recorded only; retries are not resumed; authority stays withdrawn |
+| A-R1-7 | Crash and restart after the activate stage | No second activation; the approval is not consumed again |
+| A-R2-1 | Publish to `all` with a `replace` of the current `all` holder and its revision | Accepted; the holder is superseded |
+| A-R2-2 | Publish to `all` without naming the current `all` holder | `422 scope-overlap` before approval |
+| A-R2-3 | Take port P from a cohort holding P, Q and R (`take_units` [P]) | P moves to the new activation; the cohort gets a new revision holding Q and R at their old version |
+| A-R2-4 | A concurrent holder appears, or the named holder's revision changes, between approval and the activation commit | Nothing is written; the execution stops (`external_change`) |
+| A-R2-5 | Promote port → switch → `all`, then roll `all` back | Each plan lists every narrower activation as `retire` or `keep`; the post-change resolution shown at approval is what results |
+| A-R5-1 | Stop races an **activate-only** execution; Stop wins | No activation is committed; `activate` is `not_started`; `still_in_force` is empty |
+| A-R5-2 | Stop races an activate-only execution; the activation wins | The activation is committed and listed in `still_in_force` |
+| A-R5-3 | Stop races activate → apply after the activation committed | No first send after the Stop; the activation is listed in `still_in_force` |
+| A-R5-4 | `authority_expires_at` passes, or a withdrawal commits, before the activation | No activation is committed |
+| A-R5-5 | Edit or cancel races execute | Exactly one wins; the losers get `409` and change nothing |
 
 ### 6. Delegated identities for AI clients
 

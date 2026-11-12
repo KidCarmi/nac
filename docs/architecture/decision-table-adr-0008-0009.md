@@ -85,6 +85,13 @@ remain **proposed, not accepted**.
   - unknown topology is never covered
   - expired or incomplete attestations don't qualify
 
+**Examples and acceptance scenarios:**
+- 26 focused positive and negative instances for the residuals, each
+  labelled with its finding, acceptance scenario and expected result, are in
+  [`api/openapi/proposed/examples/`](../../api/openapi/proposed/examples/README.md).
+- The acceptance scenarios are A-R1-1 to A-R5-5 in ADR-0008 §5, and A-R4-1
+  to A-R4-12 in ADR-0009 §2.
+
 This checks the response and request contract only; nothing is implemented.
 
 ## What this does not authorize

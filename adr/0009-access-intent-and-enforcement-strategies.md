@@ -48,10 +48,14 @@ become profiles: `corp` → full access, `quarantine` → the quarantine
 profile.
 
 A profile states **requirements**. Each requirement is a fact that must
-hold for the endpoint. Every requirement names its **traffic direction**
-(`from_endpoint`, `to_endpoint` or `both`), its **protocols** (`tcp`,
-`udp`, `icmp`, `any`) and its **address families**. One that doesn't is
-invalid; nothing is implied by a requirement's name.
+hold for the endpoint. Every requirement names:
+- its **traffic direction**: `from_endpoint`, `to_endpoint` or `both`
+- its **services**: each protocol (`tcp`, `udp`, `icmp`, `any`) and, for
+  TCP and UDP, its port ranges. A service without ports means every port.
+- its **address families**
+- where it is destination-specific, its **destination prefixes**
+
+One that doesn't is invalid; nothing is implied by a requirement's name.
 
 | Requirement | Meaning | Example (quarantine) |
 |---|---|---|
@@ -60,7 +64,7 @@ invalid; nothing is implied by a requirement's name.
 | `isolate_same_subnet_packets` | Packets from same-subnet peers do not reach the endpoint at all (L2 packet isolation). A stronger claim than the line above | — (Q4) |
 | `block_established_flow_data` | While restricted, no data passes on flows that existed before the restriction | tcp; `both` (Q5) |
 | `terminate_established_flows` | Transport state of pre-existing flows is torn down | — (Q5) |
-| `allow` | Services that stay reachable: remediation, DNS, DHCP, the NAC portal, by address, protocol and port | remediation `10.70.20.10/32` tcp/8080 |
+| `allow` | Services that stay reachable: remediation, DNS, DHCP, the NAC portal, by destination prefix, direction, protocol and port ranges | remediation `10.70.20.10/32` tcp/8080, `from_endpoint` |
 | `address_families` | `ipv4`, `ipv6` | both |
 
 **Blocking and teardown are different claims.**
@@ -157,6 +161,24 @@ So TCP/8080 evidence never covers TCP/443, `10.70.20.0/24` never covers
 port. An expired, superseded or absent record, a missing field, a mismatch
 on any axis, or changed ACL content under the same role name leaves the
 requirement **unmet**, with that reason. Unknown never matches.
+
+**Acceptance scenarios for coverage** (contract tests for any implementation;
+the schema examples are in `api/openapi/proposed/examples/`):
+
+| ID | Scenario | Required outcome |
+|---|---|---|
+| A-R4-1 | Record tested TCP/8080 to `10.70.10.10/32`; the requirement is TCP/443 to the same host | Unmet: `port_not_covered` |
+| A-R4-2 | Record tested TCP/8080; the requirement is TCP with no ports (every port) | Unmet: `port_not_covered` |
+| A-R4-3 | Record tested `10.70.20.0/24`; the requirement is `10.70.30.0/24` | Unmet: `destination_not_contained` |
+| A-R4-4 | Record tested `10.70.10.0/24`; the requirement is `10.70.10.10/32` | Covered on this axis |
+| A-R4-5 | Record tested TCP `from_endpoint`; the requirement is UDP or `to_endpoint` | Unmet: `protocol_mismatch` / `direction_mismatch` |
+| A-R4-6 | Record topology `single_endpoint`; the target port has a phone and a PC | Unmet: `topology_mismatch` |
+| A-R4-7 | The target port's topology is unknown | Unmet: `topology_unknown` |
+| A-R4-8 | Record authenticated with EAP-TLS; the target session is MAB | Unmet: `authentication_mismatch` |
+| A-R4-9 | Configuration evidence is an attestation without its record, or one past `expires_at` | Rejected by the schema, or unmet: `configuration_evidence_expired` |
+| A-R4-10 | Observed evidence past `valid_until`, with the fingerprint unchanged | Unmet: `configuration_evidence_expired` |
+| A-R4-11 | The ACL content changed under the same role name | Unmet: `configuration_changed`; unexecuted plans and approvals invalidated |
+| A-R4-12 | Every requirement is covered by current, matching records and evidence | Eligible, with each covering record id named |
 
 **Eligibility is computed per profile version and target.** A strategy is
 **eligible** for one `(access profile, version)` on one `(switch, port)`

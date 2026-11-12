@@ -1,0 +1,25 @@
+{
+  "finding": "R2",
+  "acceptance": "A-R2-4",
+  "schema": "PlanInput",
+  "expect": "invalid",
+  "why": "Every supersession carries the holder revision it expects.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "all"
+    },
+    "supersessions": [
+      {
+        "action": "replace",
+        "activation_id": "00000000-0000-4000-8000-000000000010"
+      }
+    ],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "finding": "R2",
+  "acceptance": "A-R2-3",
+  "schema": "PlanInput",
+  "expect": "valid",
+  "why": "Takes only port 1/1/1 from a multi-port cohort; its other ports keep their version.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "cohort",
+      "ports": [
+        {
+          "switch_id": "00000000-0000-4000-8000-000000000003",
+          "nas_port_id": "1/1/1"
+        }
+      ]
+    },
+    "supersessions": [
+      {
+        "action": "take_units",
+        "activation_id": "00000000-0000-4000-8000-000000000011",
+        "expected_revision": 2,
+        "units": [
+          {
+            "kind": "port",
+            "switch_id": "00000000-0000-4000-8000-000000000003",
+            "nas_port_id": "1/1/1"
+          }
+        ]
+      }
+    ],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

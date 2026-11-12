@@ -1,0 +1,36 @@
+{
+  "finding": "R2",
+  "acceptance": "A-R2-5",
+  "schema": "PlanInput",
+  "expect": "valid",
+  "why": "Promotion to all replaces the all holder, retires the promoted canary and keeps an unrelated one.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "all"
+    },
+    "supersessions": [
+      {
+        "action": "replace",
+        "activation_id": "00000000-0000-4000-8000-000000000010",
+        "expected_revision": 3
+      },
+      {
+        "action": "retire",
+        "activation_id": "00000000-0000-4000-8000-000000000012",
+        "expected_revision": 1
+      },
+      {
+        "action": "keep",
+        "activation_id": "00000000-0000-4000-8000-000000000013",
+        "expected_revision": 4
+      }
+    ],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

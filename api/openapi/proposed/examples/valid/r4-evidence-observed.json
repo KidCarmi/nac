@@ -1,0 +1,15 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-10",
+  "schema": "ConfigurationEvidence",
+  "expect": "valid",
+  "why": "Observed evidence with time, source and validity.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "kind": "observed",
+    "configuration_fingerprint": "sha256:ab",
+    "observed_at": "2026-11-12T10:00:00Z",
+    "source": "eapi",
+    "valid_until": "2026-11-13T10:00:00Z"
+  }
+}

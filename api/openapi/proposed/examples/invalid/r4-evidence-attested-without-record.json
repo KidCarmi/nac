@@ -1,0 +1,12 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-9",
+  "schema": "ConfigurationEvidence",
+  "expect": "invalid",
+  "why": "The re-review's counterexample: attestation kind without the attestation.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "kind": "operator_attestation",
+    "configuration_fingerprint": "sha256:ab"
+  }
+}
