@@ -91,6 +91,14 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const sv = await main();
     step('Session: role requested, enforcement=role, switch not observed',
       sv.includes('nac-corp') && sv.includes('Aruba-User-Role') && sv.includes('unavailable') && sv.includes('not traffic verification'));
+    // U2: on a role switch nothing re-authenticates, so the action is not labelled that way.
+    const applyBtn = 'button:has-text("Apply active policy")';
+    const noReauth = !(await p.isVisible('button:has-text("Re-authenticate")'));
+    await p.click(applyBtn); await p.waitForSelector('#confirm-dialog[open]');
+    const applyMsg = await p.textContent('#confirm-dialog .dialog-msg');
+    await p.click('#confirm-cancel');
+    step('Session (role switch): "Apply active policy", no "Re-authenticate"; the confirm says the switch does not re-authenticate',
+      noReauth && applyMsg.includes('Apply the active policy to this session') && applyMsg.includes('does not re-authenticate'));
 
     // 4. Quarantine via in-page confirm.
     await p.click('button.danger:has-text("Quarantine")'); await p.waitForSelector('#confirm-dialog[open]');

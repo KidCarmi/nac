@@ -120,6 +120,106 @@ What the states mean:
 
   Only Restore clears it, exactly as on the VLAN path.
 
+## Proposed successor: `pilot-aruba-rc5` (U2 only; not under qualification)
+
+Prepared so that U2 is fixed without touching the frozen rc4. It is handed
+to ASTRA only when the owner asks.
+
+| What | Value |
+|---|---|
+| Candidate commit | `5ddc15732a7a49bc65df9a0338351cb9dbec55b0` (branch `claude/nac-aruba-rc5-u2`) |
+| nacd SHA-256 | `43efe22aa63cf54cb4aaf5216cb58bfee65efb61dc56c8aff69499843d95f6dc` (built twice here, identical) |
+| Build | `make pilot-bundle VERSION=pilot-aruba-rc5` (Go 1.25.0, linux/amd64, CGO off) |
+| Change from rc4 | `web/ui/app.js` (the console is embedded in nacd, so the nacd hash changes) and two UI test scripts; `git diff 0148bf8 5ddc157` outside `*.md` is only those three files |
+| Unchanged, so the rc4 pins still apply | FreeRADIUS adapter `3c45063e…`, reload helper `a8a31d6d…`, reload unit `c738690d…`, installer `a80fe967…`, all other installed files |
+
+**What changes.** On a role switch the button reads "Apply active policy",
+and its confirmation asks to "Apply the active policy to this session". The
+action still sends a role CoA, and nothing re-authenticates. VLAN switches
+keep "Re-authenticate (apply active policy)", because there the switch does
+re-authenticate. The policy page hint names both. The API action
+`reauthenticate` is unchanged, so the API and MCP contract does not move.
+
+**Verified here:**
+- `scripts/ui-aruba-role.js` 14/14 and `scripts/ui-walkthrough.js` 14/14,
+  each against a fresh nacd
+- the new Aruba assertion **fails on the rc4 console** and passes on rc5
+- `go vet`, `go test ./...` and golangci-lint are green
+
+**Rows to rerun on rc5** (by what changed: nacd, console only):
+- **P1:** install the rc5 bundle and check nacd `43efe22a…` and the
+  unchanged file pins
+- **1.6, 3.1 and 3.2 in the console:** the changed screen. Use Apply active
+  policy once and record the role CoA
+- **1.3:** the changed policy-page hint (text only)
+- **1.2 and 2.1 as nacd smoke**
+- **5.2 console:** only if the Arista console row is run; that label is
+  unchanged
+
+**Carried from rc4 without a rerun:** every other row. Decisions, CoA,
+RADIUS, the adapter, the reload path and the installer are byte-identical.
+
+**Lab result on exact rc5** (ASTRA, 2026-11-13, [`8164c56`](https://github.com/KidCarmi/nac/blob/8164c56f7e48b38eb317e716f83614fcb4a5f3eb/lab/evidence/aruba-rc5-5ddc157-20261113/README.md), 6/6
+manifest entries verified here; the manifest names `5ddc157` and nacd
+`43efe22a…`). This is a separate evaluation: it is not release clearance,
+and rc4's results are not changed or replaced.
+
+**Install:** nacd only, swapped into a disposable copy-on-write child of the
+stopped rc4 control disk; `/version` and the installed hash matched. A
+readiness check in the install harness raced service start; nacd reached
+ready without repair.
+
+| Row | Result | Evidence and limits |
+|---|---|---|
+| P1 | **PASS** | As above |
+| 1.2 | **PASS** | Disposable switch: Configured `pending` at 08:55:40Z, then `yes` and Loaded `yes` at 08:55:41Z; deleted after |
+| 1.3 | **PASS** | New hint shown; a rule-name-only draft previewed zero changes; v5 published, then v2 restored |
+| 1.6 | **PASS** | "Apply active policy" shown, no "Re-authenticate"; the confirmation says nothing re-authenticates. CoA `0xc5` with `Aruba-User-Role` `corp`, ACK in 23.5 ms; no Tunnel-\* and no EAPOL; VLAN 10 and IP unchanged; shown `acked`, not verification. The API action is still `reauthenticate`, by contract |
+| 3.1 | **PASS for enforcement**; transition timing **NOT RUN** | CoA `0x2c` `quarantine`, ACKed; fresh corp TCP timed out and remediation answered 200 (59 steady-state samples). The transition probe logger exited early, so no timing is claimed |
+| 3.2 | **PASS** | CoA `0xf4` `corp`, ACKed; first corp SYN-ACK +0.116 s after the request (same-clock pcap); fresh HTTP 200; no EAPOL, VLAN or IP change, and no manual endpoint action |
+| 2.1 | **PASS, 20/20** | D1 C1–C6 on real systemd; cleanup left no chaos clients |
+| 5.2 (Arista console) | **BLOCKED** | The control guest had no SSH service; enabling it was rejected as an access expansion. No rc5 Arista action was run; the Arista baseline disk and the rc4 overlay were restored |
+| Cold boot, automatic | **FAIL** (carried) | The virtual AOS-CX again needed the manual port-scoped authenticator reset before testing. That is not automatic recovery |
+| Windows, physical switch, shared port, IPv6, UDP, DHCP renewal | **BLOCKED / NOT RUN** | Not inferred from the ACK or from rc4 |
+
+**Owner disposition (2026-11-13): U2 closed for the tested Aruba rc5 path.**
+The owner independently verified the 6/6 manifest entries, the probe records
+and the D1 log. The limits stay exact:
+- P1 was a binary swap onto an rc4-derived overlay, not a new clean-install
+  qualification.
+- Quarantine timing is NOT RUN. The probes are steady-state: 59 samples, no
+  corp 200 and remediation 200 throughout.
+- The 0.116 s restore figure is a single sample, from the sanitized
+  timeline. It is not a percentile or an SLA.
+- Cold-start automatic recovery remains FAIL, and the Arista console row
+  remains BLOCKED until a separately authorized management path exists.
+- This is not full rc5 qualification and not release clearance.
+
+**Harness note (ASTRA):** before the next timing use, the probe harness must
+confirm logger readiness and a successful baseline probe before the action
+is triggered. It must detect an early exit and mark the timing invalid. A
+missing measurement is not a performance regression.
+
+**Finding U3 (console/config copy, not enforcement).** The generated AOS-CX
+reference configuration still says "the NAC-driven path is not yet
+lab-qualified" (`internal/pilot/switches.go`). That is stale since the
+NAC-integrated rc3/rc4 evidence.
+- **rc5 is not changed:** fixing it changes nacd, so it needs a successor
+  candidate.
+- **Proposed wording:** "NAC-driven role CoA lab-qualified on
+  ArubaOS-CX Virtual 10.07.0004 (isolated lab, `pilot-aruba-rc4`); not
+  verified on physical hardware".
+- **Rows to rerun with it:** 1.2 (the config text) plus the nacd smoke rows
+  1.3 and 2.1.
+- **Owner disposition:** U3 is stale generated reference text, not an
+  enforcement defect. The correction, with a test assertion, is staged on
+  branch `claude/nac-u3-aruba-config-copy`. It is batched into the next
+  planned candidate, not given its own lab cycle.
+
+**Final lab state** (per ASTRA): the Aruba and Arista topologies and the rc5
+child are stopped, and the Arista baseline and the rc4 overlay are
+restored.
+
 ## Qualification matrix: `pilot-aruba-rc4` (consolidated)
 
 One row per acceptance-matrix case (expected outcomes are in
