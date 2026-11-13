@@ -1,0 +1,36 @@
+09:09:51 baseline: path=active/success service=inactive/success restarts_fr=0
+09:09:51 PASS [baseline] FreeRADIUS has the current clients file
+09:09:53 PASS [C1 single register] loaded after 2s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794560992939218000 file_ns=1794560991830671662 file_sha=260d3681f606 record=ok/260d3681f606@2026-11-13T09:09:53.218Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:09:54 PASS [C1 single register nacd] nacd says loaded=yes, and it is
+09:09:54 C1 nacd says configured: yes (registered in NAC: RADIUS source 10.250.99.9, VLANs corp=10, quarantine=20. FreeRADIUS: FreeRADIUS restarted with this switch list and is running. The switch itself is configured by applying the generated EOS configuration; NAC cannot confirm that until a request arrives.)
+09:09:55 PASS [C2 burst of 8 registrations] loaded after 1s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794560995188139000 file_ns=1794560994260605112 file_sha=51b96f7b8357 record=ok/51b96f7b8357@2026-11-13T09:09:55.237Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:09:55 PASS [C2 burst of 8 registrations nacd] nacd says loaded=yes, and it is
+09:09:55 PASS [C2 file] 8/8 in clients file
+09:09:56 PASS [C3 burst of 8 secret rotations] loaded after 1s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794560996567112000 file_ns=1794560995754564790 file_sha=00be523804b3 record=ok/00be523804b3@2026-11-13T09:09:56.613Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:09:56 PASS [C3 burst of 8 secret rotations nacd] nacd says loaded=yes, and it is
+09:09:56 PASS [C3 file] latest secret written
+09:09:56 PASS [C4 rejected] nacd rejected ::ffff:10.250.99.200: {
+  "type": "/problems/validation",
+  "title": "Validation failed",
+  "status": 422,
+  "detail": "radius_source_ip: must be the IPv4 address FreeRADIUS sees as the packet source, in dotted form such as 10.70.99.1 (IPv4-mapped IPv6 such as ::ffff:10.70.99.1 is not accepted: FreeRADIUS rejects or misreads it); nas_ip: must be an IPv4 address in dotted form such as 10.70.99.1 (sent as NAS-IP-Address in CoA)",
+  "instance": "84d1a2f751616a66"
+}
+09:09:56 PASS [C4b rejected] nacd rejected ::ffff:afa:63c8: {
+  "type": "/problems/validation",
+  "title": "Validation failed",
+  "status": 422,
+  "detail": "radius_source_ip: must be the IPv4 address FreeRADIUS sees as the packet source, in dotted form such as 10.70.99.1 (IPv4-mapped IPv6 such as ::ffff:10.70.99.1 is not accepted: FreeRADIUS rejects or misreads it); nas_ip: must be an IPv4 address in dotted form such as 10.70.99.1 (sent as NAS-IP-Address in CoA)",
+  "instance": "be4a979c6f970c09"
+}
+Failed to kill unit freeradius.service: Failed to send signal SIGKILL to auxiliary processes: Invalid argument
+09:09:58 PASS [C5 kill during reload] loaded after 1s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794560998126159000 file_ns=1794560997009531248 file_sha=ff5d0bbe5172 record=ok/ff5d0bbe5172@2026-11-13T09:09:58.199Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:09:58 PASS [C5 kill during reload nacd] nacd says loaded=yes, and it is
+09:10:18 PASS [C6 stopped] FreeRADIUS stayed stopped
+09:10:18 PASS [C6 stopped nacd] nacd says no, and FreeRADIUS does not have the current list: FreeRADIUS did not load this switch list: FreeRADIUS is stopped, so the client list is not loaded (start it: systemctl start freeradius)
+09:10:20 PASS [C6 restarted] loaded after 0s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794561019874176000 file_ns=1794560998590489491 file_sha=4baed577ff2f record=ok/4baed577ff2f@2026-11-13T09:10:19.926Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:10:20 PASS [C6 restarted nacd] nacd says loaded=yes, and it is
+09:10:21 PASS [cleanup] loaded after 1s: FreeRADIUS restarted after the last write with exactly the current list (active=yes fr_start_ns=1794561021219129000 file_ns=1794561020261965879 file_sha=4a9b5f0fdbc4 record=ok/4a9b5f0fdbc4@2026-11-13T09:10:21.272Z valid=yes); path=active/success service=inactive/success restarts_fr=0
+09:10:21 PASS [cleanup nacd] nacd says loaded=yes, and it is
+09:10:21 PASS [cleanup] no chaos switches left
+09:10:21 done: 20 PASS, 0 FAIL

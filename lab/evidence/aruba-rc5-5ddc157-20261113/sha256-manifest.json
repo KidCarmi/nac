@@ -1,0 +1,37 @@
+{
+  "candidate_commit": "5ddc15732a7a49bc65df9a0338351cb9dbec55b0",
+  "nacd_sha256": "43efe22aa63cf54cb4aaf5216cb58bfee65efb61dc56c8aff69499843d95f6dc",
+  "generated_at_utc": "2026-11-13T09:20:02.036567+00:00",
+  "entries": [
+    {
+      "path": "Aruba-Role-ACL-1007.unl",
+      "size": 5014,
+      "sha256": "004c7fbf948fa3e9fe06367c94a889c88a73afb56c0b65719006e10f3970ae94"
+    },
+    {
+      "path": "packet-summary.md",
+      "size": 1722,
+      "sha256": "0a6866ef9006c723d5513ab17b5e9d38754c40b93efafc9f47096c8f0f18620a"
+    },
+    {
+      "path": "rc5-d1-chaos.log",
+      "size": 4500,
+      "sha256": "7ca780a365fe82257da083594c3dc72a38c7b8e826eacdc22fdb80cb9d09f3cf"
+    },
+    {
+      "path": "rc5-quarantine-probes.jsonl",
+      "size": 9121,
+      "sha256": "46dff6a87cf7f8de7996c1e30ff046d16ee5e32dfbd8f0eff6ee9d4f2dd3c4d4"
+    },
+    {
+      "path": "rc5-restore-probes.jsonl",
+      "size": 9179,
+      "sha256": "b36af2107e600f71c0bba31caaf7f7819c382bb2b9674637f86f4366c520b5a6"
+    },
+    {
+      "path": "README.md",
+      "size": 10001,
+      "sha256": "fcddbe77f2c022b0607644ed3b74a7ed1cb71632d0f41da854a8559cc33c2caa"
+    }
+  ]
+}
