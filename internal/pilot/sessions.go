@@ -106,12 +106,16 @@ type EndpointReachability struct {
 	Note  string `json:"note"`
 }
 
-func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Switch) SessionView {
+// buildView derives a session view ONLY from records read in one snapshot
+// (see postgres.SessionSnapshot): the session row, its switch, its CoA
+// requests and its events. It reads nothing itself, so last_coa, liveness and
+// the observed state can never come from different moments. now is the time
+// the view is built; ages and freshness are measured against it.
+func (s *Service) buildView(sess domain.Session, sw *domain.Switch, coas []domain.CoARequest, evs []domain.AuthEvent, now time.Time) SessionView {
 	v := SessionView{Session: sess}
 	v.Requested = Requested{Action: sess.RequestedAction, Segment: sess.RequestedSegment, VLAN: sess.RequestedVLAN,
 		Role: sess.RequestedRole, DecisionID: sess.LastDecisionID, At: sess.LastAuthAt, Override: sess.Override}
 	v.Enforcement = enforcementFor(sw)
-	now := s.now().UTC()
 	switch {
 	case sw != nil && sw.UsesRoles():
 		v.Observed = Observed{Freshness: "unavailable", Note: "switch state is not observed: NAC has no observation adapter for " + sw.Platform +
@@ -136,14 +140,14 @@ func (s *Service) view(ctx context.Context, sess domain.Session, sw *domain.Swit
 			v.Observed.Matches = &m
 		}
 	}
-	if coas, err := s.store.SessionCoAs(ctx, sess.ID); err == nil && len(coas) > 0 {
-		v.LastCoA = &coas[len(coas)-1]
+	if len(coas) > 0 {
+		// The newest CoA associated with THIS session: one it targeted or
+		// one its own re-authentication observed (SessionCoAs), from the
+		// same list the detail returns as coa_requests.
+		last := coas[len(coas)-1]
+		v.LastCoA = &last
 	}
-	var acct *acctSeen
-	if evs, err := s.store.SessionEvents(ctx, &sess); err == nil {
-		acct = lastAccounting(sess.ID, evs)
-	}
-	v.Liveness = liveness(sess, v.Observed, acct, now)
+	v.Liveness = liveness(sess, v.Observed, lastAccounting(sess.ID, evs), now)
 	v.EndpointReachability = EndpointReachability{State: "not_observed", Note: reachabilityNote(v)}
 	return v
 }
@@ -239,21 +243,19 @@ type SessionQuery struct {
 	Search   string
 }
 
-// ListSessions lists sessions with requested/observed state.
+// ListSessions lists sessions with requested/observed state. Every row, and
+// every row's last_coa and liveness, comes from one snapshot of the database
+// (the same contract as SessionDetail); a row is still a record of what NAC
+// knew at that instant, not a live switch reading.
 func (s *Service) ListSessions(ctx context.Context, q SessionQuery) ([]SessionView, error) {
-	sessions, err := s.store.ListSessions(ctx, postgres.SessionFilter{State: q.State, SwitchID: q.SwitchID, Search: q.Search})
+	items, err := s.store.SessionListSnapshot(ctx, postgres.SessionFilter{State: q.State, SwitchID: q.SwitchID, Search: q.Search})
 	if err != nil {
 		return nil, err
 	}
-	sws := map[uuid.UUID]*domain.Switch{}
-	out := make([]SessionView, 0, len(sessions))
-	for _, sess := range sessions {
-		sw, ok := sws[sess.SwitchID]
-		if !ok {
-			sw, _ = s.store.GetSwitch(ctx, sess.SwitchID)
-			sws[sess.SwitchID] = sw
-		}
-		out = append(out, s.view(ctx, sess, sw))
+	now := s.now().UTC()
+	out := make([]SessionView, 0, len(items))
+	for _, it := range items {
+		out = append(out, s.buildView(it.Session, it.Switch, it.CoAs, it.Events, now))
 	}
 	return out, nil
 }
@@ -284,36 +286,39 @@ type SessionDetail struct {
 }
 
 // SessionDetail returns the full explanation of one session.
+//
+// The session, its switch row, endpoint, binding, decisions, CoA requests and
+// events are read from ONE database snapshot, and every derived field
+// (requested, observed, last_coa, liveness, last_decision, timeline,
+// explanation) is built from those records only, so a response never mixes
+// the session before an operator action with a CoA after it. The switch
+// status block (FreeRADIUS client file, probe, verification) is commissioning
+// state about the switch, computed after the snapshot from the snapshot's
+// switch row; it is not part of the session's consistency contract.
 func (s *Service) SessionDetail(ctx context.Context, id uuid.UUID) (*SessionDetail, error) {
-	sess, err := s.store.GetSession(ctx, id)
+	snap, err := s.store.SessionSnapshot(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	swv, _ := s.GetSwitch(ctx, sess.SwitchID)
-	var sw *domain.Switch
-	if swv != nil {
-		sw = &swv.Switch
+	sess := &snap.Session
+	d := &SessionDetail{SessionView: s.buildView(*sess, snap.Switch, snap.CoAs, snap.Events, s.now().UTC()),
+		Endpoint: snap.Endpoint, Binding: snap.Binding, Decisions: snap.Decisions, CoAs: snap.CoAs}
+	if snap.Switch != nil {
+		d.Switch = s.switchView(ctx, snap.Switch)
 	}
-	d := &SessionDetail{SessionView: s.view(ctx, *sess, sw), Switch: swv}
-	if sess.EndpointID != nil {
-		d.Endpoint, _ = s.store.GetEndpoint(ctx, *sess.EndpointID)
+	// The current decision is the one the session row names, not the newest
+	// decision row: RADIUS authorization records the decision and then
+	// updates the session in a separate statement, so for a moment a newer
+	// decision can exist that the session (requested, liveness) does not
+	// reflect yet. It is still listed under decisions.
+	if id := sess.LastDecisionID; id != nil {
+		for i := range d.Decisions {
+			if d.Decisions[i].ID == *id {
+				d.LastDecision = &d.Decisions[i]
+			}
+		}
 	}
-	if sess.BindingID != nil {
-		d.Binding, _ = s.store.GetBinding(ctx, *sess.BindingID)
-	}
-	if d.Decisions, err = s.store.SessionDecisions(ctx, sess.ID); err != nil {
-		return nil, err
-	}
-	if len(d.Decisions) > 0 {
-		d.LastDecision = &d.Decisions[len(d.Decisions)-1]
-	}
-	if d.CoAs, err = s.store.SessionCoAs(ctx, sess.ID); err != nil {
-		return nil, err
-	}
-	events, err := s.store.SessionEvents(ctx, sess)
-	if err != nil {
-		return nil, err
-	}
+	events := snap.Events
 	if len(events) >= postgres.SessionEventLimit {
 		d.Timeline = append(d.Timeline, TimelineEntry{At: events[0].OccurredAt, Kind: "event", Stage: "timeline", Result: "info",
 			Summary: fmt.Sprintf("only the %d most recent events are shown; older events are in GET /api/v1/auth-events?mac=%s",

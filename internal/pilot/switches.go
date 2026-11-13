@@ -330,6 +330,17 @@ func (s *Service) GetSwitch(ctx context.Context, id uuid.UUID) (*SwitchView, err
 	return &SwitchView{Switch: *sw, Status: s.status(ctx, sw, s.loadState(sws))}, nil
 }
 
+// switchView is the switch block of a session detail: the switch row read in
+// the session's snapshot, with its current commissioning status. nil if the
+// switch list cannot be read (as before: the session is still shown).
+func (s *Service) switchView(ctx context.Context, sw *domain.Switch) *SwitchView {
+	sws, err := s.store.ListSwitches(ctx)
+	if err != nil {
+		return nil
+	}
+	return &SwitchView{Switch: *sw, Status: s.status(ctx, sw, s.loadState(sws))}
+}
+
 func (s *Service) status(ctx context.Context, sw *domain.Switch, load StatusItem) SwitchStatus {
 	st := SwitchStatus{FreeRADIUSLoad: load}
 	at := load.At
