@@ -182,6 +182,24 @@ ready without repair.
 | Cold boot, automatic | **FAIL** (carried) | The virtual AOS-CX again needed the manual port-scoped authenticator reset before testing. That is not automatic recovery |
 | Windows, physical switch, shared port, IPv6, UDP, DHCP renewal | **BLOCKED / NOT RUN** | Not inferred from the ACK or from rc4 |
 
+**Owner disposition (2026-11-13): U2 closed for the tested Aruba rc5 path.**
+The owner independently verified the 6/6 manifest entries, the probe records
+and the D1 log. The limits stay exact:
+- P1 was a binary swap onto an rc4-derived overlay, not a new clean-install
+  qualification.
+- Quarantine timing is NOT RUN. The probes are steady-state: 59 samples, no
+  corp 200 and remediation 200 throughout.
+- The 0.116 s restore figure is a single sample, from the sanitized
+  timeline. It is not a percentile or an SLA.
+- Cold-start automatic recovery remains FAIL, and the Arista console row
+  remains BLOCKED until a separately authorized management path exists.
+- This is not full rc5 qualification and not release clearance.
+
+**Harness note (ASTRA):** before the next timing use, the probe harness must
+confirm logger readiness and a successful baseline probe before the action
+is triggered. It must detect an early exit and mark the timing invalid. A
+missing measurement is not a performance regression.
+
 **Finding U3 (console/config copy, not enforcement).** The generated AOS-CX
 reference configuration still says "the NAC-driven path is not yet
 lab-qualified" (`internal/pilot/switches.go`). That is stale since the
@@ -193,6 +211,10 @@ NAC-integrated rc3/rc4 evidence.
   verified on physical hardware".
 - **Rows to rerun with it:** 1.2 (the config text) plus the nacd smoke rows
   1.3 and 2.1.
+- **Owner disposition:** U3 is stale generated reference text, not an
+  enforcement defect. The correction, with a test assertion, is staged on
+  branch `claude/nac-u3-aruba-config-copy`. It is batched into the next
+  planned candidate, not given its own lab cycle.
 
 **Final lab state** (per ASTRA): the Aruba and Arista topologies and the rc5
 child are stopped, and the Arista baseline and the rc4 overlay are
