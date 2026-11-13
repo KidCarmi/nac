@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Staged for the next candidate (not a candidate; no lab run of its own)
+- **U3:** the generated AOS-CX reference configuration no longer says the
+  NAC-driven path is "not yet lab-qualified". It now states what was
+  lab-tested with NAC, on which platform, and what was not (physical
+  switches; packet isolation or teardown). `TestArubaConfig_QualificationWording`
+  asserts the wording. Rows to rerun in the candidate that carries it: 1.2,
+  plus 1.3 and 2.1 as nacd smoke.
+
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
   On a role switch the policy action is labelled "Apply active policy"

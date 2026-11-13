@@ -494,8 +494,10 @@ func (s *Service) SwitchConfig(ctx context.Context, id uuid.UUID, includeSecret 
 	return EOSConfig(sw, includeSecret), nil
 }
 
-// TestedArubaVersion is the AOS-CX build the role path was lab-tested on with
-// a reference RADIUS server (ASTRA; third-party image, provenance unverified).
+// TestedArubaVersion is the AOS-CX build the role path was lab-tested on:
+// first with a reference RADIUS server, then NAC-driven on exact
+// pilot-aruba-rc4 (ASTRA, isolated virtual lab; third-party image,
+// provenance unverified).
 const TestedArubaVersion = "ArubaOS-CX Virtual.10.07.0004"
 
 func testedVersion(platform string) string {
@@ -529,7 +531,8 @@ func ArubaConfig(sw *domain.Switch, includeSecret bool) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "! NAC pilot reference configuration for %s (Aruba AOS-CX, role enforcement)\n", sw.Name)
-	fmt.Fprintf(&b, "! Lab-tested on %s with a reference RADIUS server; the NAC-driven path is not yet lab-qualified.\n", TestedArubaVersion)
+	fmt.Fprintf(&b, "! Lab-tested with NAC on %s (isolated virtual lab, pilot-aruba-rc4): role assignment at admission and role CoA.\n", TestedArubaVersion)
+	b.WriteString("! Not verified on physical switches. A role blocks new connections per its policy; it is not packet isolation or connection teardown.\n")
 	b.WriteString("! Review before applying. Lines starting with '!' are guidance, not commands.\n!\n")
 	fmt.Fprintf(&b, "radius-server host %s key plaintext %s vrf mgmt\n", server, key)
 	b.WriteString("! The global authenticator is required: without it the switch answers no EAPOL (lab root cause, 2026-11-08).\n")
