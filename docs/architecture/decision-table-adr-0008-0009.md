@@ -100,10 +100,16 @@ remain **proposed, not accepted**.
   21 checks, including A-R4-20 to A-R4-22: single-host plus a phone,
   per-session versus whole-port actions.
 - **Next slice:** [implementation plan for the change-request
-  core](implementation-plan-change-request-core.md). It covers draft,
-  validation, replay, approval and audit, with activation and dispatch
-  disabled, and lists the decisions it depends on (O1, O5, minimal
-  operator management, CR vs. `/policy-draft`).
+  core](implementation-plan-change-request-core.md), revised for the
+  owner's sequencing.
+  - Slice A covers review-only change requests: revisioned CRs, recorded
+    validation, frozen-input historical replay, and transactional audit.
+    It depends on none of O1, O5 or operator management.
+  - Slice B (approval) is a later, separate step and needs O1, O5 and
+    minimal operator management.
+  - Activation and dispatch stay unavailable.
+  - Being allocated does not make the ADR defaults or the topology and
+    qualification contracts accepted.
 
 This checks the response and request contract only; nothing is implemented.
 
