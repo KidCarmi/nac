@@ -425,6 +425,11 @@ func TestPilotWorkflow_EndToEnd(t *testing.T) {
 		lc, _ := detail["last_coa"].(map[string]any)
 		return lc != nil && lc["id"] == coaID && lc["state"] == "observed"
 	})
+	// The session view reads the session row and its CoA rows in separate
+	// queries, so the poll that first saw "observed" may hold the session
+	// row from just before the re-authentication saved it. The session is
+	// saved before the CoA is marked observed, so a fresh read is final.
+	h.do("GET", "/api/v1/sessions/"+sessID, nil, 200, &detail, true)
 	if detail["requested"].(map[string]any)["vlan"].(float64) != 20 || detail["override"] != "quarantine" {
 		t.Fatalf("quarantine not applied: %+v", detail["requested"])
 	}
@@ -463,6 +468,8 @@ func TestPilotWorkflow_EndToEnd(t *testing.T) {
 		lc, _ := detail["last_coa"].(map[string]any)
 		return lc != nil && lc["kind"] == "restore" && lc["state"] == "observed"
 	})
+	// Fresh read: see the note at "CoA observed".
+	h.do("GET", "/api/v1/sessions/"+sessID, nil, 200, &detail, true)
 	if ov, _ := detail["override"].(string); detail["requested"].(map[string]any)["vlan"].(float64) != 10 || ov != "" {
 		t.Fatalf("restore did not return corp: requested=%+v override=%q", detail["requested"], ov)
 	}
