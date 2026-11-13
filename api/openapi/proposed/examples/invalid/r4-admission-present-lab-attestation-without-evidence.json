@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "AdmissionAssessment",
+  "expect": "invalid",
+  "why": "A lab-attested value needs its evidence id and validity.",
+  "instance": {
+    "value": "multiple_clients_present",
+    "basis": "lab_attestation"
+  }
+}

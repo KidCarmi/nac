@@ -290,13 +290,16 @@ requested, and stores it durably.
   - the recipe id and revision
   - the configuration fingerprint and its evidence ids
   - the qualification record ids (ADR-0009 §2)
-  - the port's **topology assessment**, with its basis, evidence id and
-    validity. A session count never establishes `single_endpoint`
+  - the port's **topology assessment** in two dimensions, admission and
+    physical dependencies, each with its basis, evidence id and validity.
+    A session count never establishes exclusive admission, and an
+    admission setting never establishes that nothing else is on the link
     (ADR-0009 §2)
   - the desired-state generation
   - the selected strategy and its limitations
-  - the impact: shared-port dependents, the expected interruption, and
-    whether the address changes
+  - the impact: shared-port dependents, the physical dependencies
+    (present, unknown or none), whether the action is per-session or
+    whole-port, the expected interruption, and whether the address changes
 - **Canonical digest.** `plan_digest` is SHA-256 over the RFC 8785 (JCS)
   canonical JSON of the whole resolved plan, `plan_digest` excluded. It
   includes the CR id and revision, `content_digest`, and the validation

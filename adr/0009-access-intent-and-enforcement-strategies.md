@@ -123,8 +123,10 @@ result. Each record has:
   - **destinations**: the exact prefixes tested, and their class (routed
     prefixes, same-subnet peers or an allow entry)
   - fresh or established flows
-- the authentication method and the **topology**: `single_endpoint` (one
-  authenticated device on the port), `phone_and_pc` or `multi_endpoint`
+- the authentication method, the **action scope** (`per_session` or
+  `whole_port`), and the **tested topology**: admission
+  (`exclusive_single_client` or `multiple_clients_present`) and physical
+  dependencies (`no_dependency` or `dependency_present`), as below
 - the configuration fingerprint at test time (§7)
 - the result (`demonstrated`, `unsupported`, `inconclusive`)
 - evidence: the package reference and its manifest digest
@@ -148,46 +150,86 @@ axis:
   prefix of the same class (equal or longer prefix, same family)
 - the same flow state
 - **the same authentication method**
-- **the same topology as the target port**, from the port's **topology
-  assessment** (below). An unknown topology is never covered, and
-  `single_endpoint` evidence never covers `phone_and_pc` or
-  `multi_endpoint`.
+- **the same topology as the target port, for the action's scope**, from
+  the port's **topology assessment** (below):
+  - a **per-session** record (for example a session-targeted role CoA) needs
+    the same **admission** value
+  - a **whole-port** record (anything that affects every device on the
+    link: a link reset, a PoE cycle, a port-wide re-authentication) also
+    needs the same **physical-dependency** value, and only `no_dependency`
+    can authorize it
+
+  An unknown value is never covered.
 - a configuration fingerprint equal to the target switch's **current** one,
   backed by **current** configuration evidence (§7)
 
 So TCP/8080 evidence never covers TCP/443, `10.70.20.0/24` never covers
 `10.70.30.0/24`, a TCP `from_endpoint` result never covers UDP or
-`to_endpoint`, and single-host evidence never qualifies a phone + PC
-port. An expired, superseded or absent record, a missing field, a mismatch
+`to_endpoint`, a single-client admission record never qualifies a port that admits
+several clients, and an admission setting never authorizes a whole-port
+action. An expired, superseded or absent record, a missing field, a mismatch
 on any axis, or changed ACL content under the same role name leaves the
 requirement **unmet**, with that reason. Unknown never matches.
 
-**Port topology is evidence, not a session count.** A PC can sit behind a
-phone that has no certificate. There can also be a silent downstream device,
-or an accounting event that was lost. So one visible authenticated session
-does not show that the port has one endpoint. The target port's **topology
-assessment** has a value and the basis it rests on:
-- **`single_endpoint`** has exactly two possible bases:
-  - **`port_configuration`:** current configuration evidence (§7) that the
-    port **enforces** a single host: a single-host mode or a one-client
-    limit, under which the switch blocks any other device. This is bound to
-    the fingerprint and the evidence's `valid_until`, and lapses with them.
-  - **`lab_attestation`:** an approved, unexpired attestation scoped to that
-    switch port (lab use, N1).
+**Port topology is evidence, not a session count, and admission is not
+physical topology.** A PC can sit behind a phone that has no certificate.
+There can also be a silent downstream device, or an accounting event that
+was lost. And a port that admits only one authenticated client can still
+carry a phone or a small switch in front of that client. So the target
+port's **topology assessment** has two dimensions. Each has a value and the
+basis it rests on, with its provenance and validity.
 
-  Nothing else qualifies. A session count, the absence of LLDP, or a single
-  FDB entry is never enough.
-- **`phone_and_pc` or `multi_endpoint`** may rest on observed sessions: two
-  or more devices seen is a lower bound that proves sharing. They may also
-  rest on configuration or an attestation.
-- **Otherwise `unknown`**, including one session, zero sessions, missing
-  accounting, or a host mode that allows more than one device. Unknown is
-  never covered.
+**1. Admission:** what the switch admits on the port.
+- **`exclusive_single_client`:** the switch admits at most one
+  authenticated client. Basis:
+  - `port_configuration`: current configuration evidence (§7) of an
+    enforcing single-host mode or a one-client limit, with its evidence id
+    and `valid_until`
+  - `lab_attestation`: an approved, unexpired attestation scoped to that
+    port (N1)
+- **`multiple_clients_present`:** at least two **distinct** clients are
+  admitted now. Basis:
+  - `sessions_lower_bound`: an observation reference, its time and
+    validity, and a distinct-client lower bound of at least 2. Two
+    sessions prove sharing; they don't identify a phone, and they don't
+    prove exactly two devices.
+  - `lab_attestation`
+- **`multiple_clients_allowed`:** the configuration admits several clients
+  (multi-auth or multi-host). Basis: `port_configuration`, with its
+  evidence id and validity. This proves that several clients are allowed,
+  not that they are present.
+- **`unknown`:** anything else, including one or zero sessions, lost
+  accounting, or missing evidence. The observation may be partial.
 
-The resolved plan records each target's assessment, with its basis,
-evidence id and validity (ADR-0008 §5). A change to the port's host-mode
-configuration, or expiry of that evidence, invalidates eligibility and
-unexecuted approvals, like any configuration drift.
+**2. Physical dependencies:** what else shares the link, whether admitted
+or not. A device whose data traffic is blocked can still lose power or link
+when the port is reset.
+- **`no_dependency`:** basis `dependency_evidence` (a fresh, approved
+  record of what is cabled to the port) or `lab_attestation`, with its
+  evidence id and validity.
+- **`dependency_present`:** basis `dependency_evidence` (for example an
+  LLDP-MED phone advertisement or PoE draw by a known device class) or
+  `lab_attestation`, with its evidence id and validity. The kind is
+  `phone`, `switch_or_hub`, `other` or `unidentified`. A session count
+  never identifies the kind.
+- **`unknown`:** anything else. **An admission setting never establishes
+  `no_dependency`**, and neither does the absence of LLDP or a single FDB
+  entry.
+
+**What each action needs:**
+- **Per-session actions** (role CoA, session-targeted CoA) need a matching
+  **admission** value. Physical dependencies are not a precondition, but
+  they are always reported in the target's **impact**: present, unknown or
+  none.
+- **Whole-port actions** need `physical_dependencies = no_dependency`, with
+  fresh evidence, in addition to admission. **A single-host or one-client
+  setting alone never authorizes a whole-port action.** With unknown or
+  present dependencies, a whole-port action is not eligible.
+
+The resolved plan records both dimensions per target, with their bases,
+evidence ids and validity (ADR-0008 §5). A change to the port's host-mode
+configuration, or expiry of any of that evidence, invalidates eligibility
+and unexecuted approvals, like any configuration drift.
 
 **Acceptance scenarios for coverage** (contract tests for any implementation;
 the schema examples are in `api/openapi/proposed/examples/`):
@@ -199,20 +241,23 @@ the schema examples are in `api/openapi/proposed/examples/`):
 | A-R4-3 | Record tested `10.70.20.0/24`; the requirement is `10.70.30.0/24` | Unmet: `destination_not_contained` |
 | A-R4-4 | Record tested `10.70.10.0/24`; the requirement is `10.70.10.10/32` | Covered on this axis |
 | A-R4-5 | Record tested TCP `from_endpoint`; the requirement is UDP or `to_endpoint` | Unmet: `protocol_mismatch` / `direction_mismatch` |
-| A-R4-6 | Record topology `single_endpoint`; the target port has a phone and a PC | Unmet: `topology_mismatch` |
-| A-R4-7 | The target port's topology is unknown | Unmet: `topology_unknown` |
+| A-R4-6 | Per-session record with admission `exclusive_single_client`; the target port has two distinct clients present | Unmet: `admission_mismatch` |
+| A-R4-7 | The target port's admission is unknown | Unmet: `admission_unknown` |
 | A-R4-8 | Record authenticated with EAP-TLS; the target session is MAB | Unmet: `authentication_mismatch` |
 | A-R4-9 | Configuration evidence is an attestation without its record, or one past `expires_at` | Rejected by the schema, or unmet: `configuration_evidence_expired` |
 | A-R4-10 | Observed evidence past `valid_until`, with the fingerprint unchanged | Unmet: `configuration_evidence_expired` |
 | A-R4-11 | The ACL content changed under the same role name | Unmet: `configuration_changed`; unexecuted plans and approvals invalidated |
 | A-R4-12 | Every requirement is covered by current, matching records and evidence | Eligible, with each covering record id named |
-| A-R4-13 | A PC authenticates by EAP-TLS behind a phone with no certificate; only the PC appears in accounting; the port's host mode allows several devices | Topology `unknown` (basis: sessions); never `single_endpoint` from the count; unmet `topology_unknown` for `single_endpoint` records |
-| A-R4-14 | As A-R4-13, but the phone is also seen (MAB or LLDP-MED, for example) | Topology `phone_and_pc` (basis: sessions, a lower bound); `single_endpoint` records unmet (`topology_mismatch`) |
-| A-R4-15 | One session is visible, and an accounting Start or Stop for another device on the port was lost | Topology `unknown`; the count is never upgraded to `single_endpoint` |
-| A-R4-16 | One authenticated device, plus a silent downstream device that never authenticates | Topology `unknown`, unless current configuration evidence shows the port enforces a single host |
-| A-R4-17 | Current, fresh configuration evidence shows the port enforces a single host (one-client limit) | Topology `single_endpoint` (basis: `port_configuration`, with its evidence id and validity), bound in the resolved plan |
-| A-R4-18 | The A-R4-17 evidence expires, or the host mode changes to allow several devices | Topology `unknown`; eligibility lost; unexecuted approvals invalidated |
-| A-R4-19 | No LLDP neighbor and a single FDB entry, with nothing else | Topology `unknown` |
+| A-R4-13 | A PC authenticates by EAP-TLS behind a phone with no certificate; only the PC appears in accounting; the host mode allows several clients | Admission `multiple_clients_allowed` (configuration) or `unknown`; never `exclusive_single_client` from the count. Physical dependencies `unknown`. Per-session records for exclusive admission: unmet `admission_mismatch` / `admission_unknown` |
+| A-R4-14 | As A-R4-13, but the phone also authenticates (MAB, for example), giving two distinct clients | Admission `multiple_clients_present` (sessions lower bound ≥ 2, with an observation reference). The kind of the second device is not inferred from the count |
+| A-R4-15 | One session is visible, and an accounting event for another device was lost | Admission `unknown`; never upgraded to exclusive |
+| A-R4-16 | One authenticated device, plus a silent downstream device that never authenticates; no configuration evidence | Admission `unknown`; physical dependencies `unknown` |
+| A-R4-17 | Fresh configuration evidence shows an enforcing one-client limit | Admission `exclusive_single_client` (basis `port_configuration`, evidence id and validity), bound in the resolved plan. Physical dependencies are **not** inferred from it |
+| A-R4-18 | The A-R4-17 evidence expires, or the host mode changes to admit several clients | Admission `unknown` or `multiple_clients_allowed`; eligibility lost; unexecuted approvals invalidated |
+| A-R4-19 | No LLDP neighbor and a single FDB entry, with nothing else | Admission `unknown`; physical dependencies `unknown` |
+| A-R4-20 | **Single-host configured, and the PC sits behind a phone with no certificate** | Admission `exclusive_single_client` (configuration). Physical dependencies `unknown`, or `dependency_present` (kind `phone`) if LLDP-MED evidence shows it. A **per-session** role CoA can be eligible, and its impact lists the dependency as unknown or present. **A whole-port action is not eligible** |
+| A-R4-21 | **The same exclusive admission, but a shared physical link**: a whole-port action (link reset or PoE cycle) is requested | Not eligible: `physical_dependency_unknown` or `physical_dependency_present`. The admission setting does not authorize it |
+| A-R4-22 | A fresh dependency record (or a scoped lab attestation) shows nothing else on the link, with exclusive admission | A whole-port record can cover the port, if every other axis matches |
 
 **Eligibility is computed per profile version and target.** A strategy is
 **eligible** for one `(access profile, version)` on one `(switch, port)`
@@ -237,7 +282,8 @@ Port bounce is **not** an enforcement strategy. It is a recovery action,
 and an explicit last resort. It needs all of these:
 - demonstrated platform support
 - a recorded shared-port impact
-- the device model's single-endpoint check (ADR-0010)
+- fresh `no_dependency` physical evidence for the port (§2): an admission
+  setting is not enough (ADR-0010)
 - its own approval in the change workflow (ADR-0008)
 
 The records live in

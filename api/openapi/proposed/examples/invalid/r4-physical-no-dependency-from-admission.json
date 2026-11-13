@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-21",
+  "schema": "PhysicalAssessment",
+  "expect": "invalid",
+  "why": "An admission setting never establishes no_dependency.",
+  "instance": {
+    "value": "no_dependency",
+    "basis": "port_configuration",
+    "evidence_id": "00000000-0000-4000-8000-000000000006",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-15",
+  "schema": "AdmissionAssessment",
+  "expect": "valid",
+  "why": "One visible session is a partial observation: unknown.",
+  "instance": {
+    "value": "unknown",
+    "basis": "sessions_lower_bound",
+    "observation_id": "00000000-0000-4000-8000-000000000040",
+    "observed_clients": 1
+  }
+}

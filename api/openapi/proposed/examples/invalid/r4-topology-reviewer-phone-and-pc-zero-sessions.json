@@ -1,0 +1,12 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "TopologyAssessment",
+  "expect": "invalid",
+  "why": "Reviewer's reproduced instance 3: shared topology claimed from zero sessions. Rejected.",
+  "instance": {
+    "topology": "phone_and_pc",
+    "basis": "sessions_lower_bound",
+    "observed_sessions": 0
+  }
+}

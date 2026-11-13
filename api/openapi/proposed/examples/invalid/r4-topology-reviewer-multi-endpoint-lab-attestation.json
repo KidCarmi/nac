@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "TopologyAssessment",
+  "expect": "invalid",
+  "why": "Reviewer's reproduced instance 2: a known shared topology without evidence or validity. Rejected.",
+  "instance": {
+    "topology": "multi_endpoint",
+    "basis": "lab_attestation"
+  }
+}

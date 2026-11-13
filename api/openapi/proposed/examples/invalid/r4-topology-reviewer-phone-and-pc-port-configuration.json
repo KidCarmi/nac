@@ -3,9 +3,9 @@
   "acceptance": "\u2014",
   "schema": "TopologyAssessment",
   "expect": "invalid",
-  "why": "unknown cannot claim a configuration basis; with enforcing evidence the topology would be known.",
+  "why": "Reviewer's reproduced instance 1: a known shared topology without provenance. Rejected.",
   "instance": {
-    "topology": "unknown",
+    "topology": "phone_and_pc",
     "basis": "port_configuration"
   }
 }

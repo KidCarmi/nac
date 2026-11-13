@@ -1078,11 +1078,13 @@ components:
         strategy_limitations: { type: array, items: { type: string } }
         impact:
           type: object
-          required: [shared_port_dependents, changes_address]
+          required: [shared_port_dependents, changes_address, action_scope, physical_dependencies]
           additionalProperties: false
           properties:
-            shared_port_dependents: { type: integer, minimum: 0 }
+            shared_port_dependents: { type: integer, minimum: 0, description: "Other admitted sessions on the port." }
             changes_address: { type: boolean }
+            action_scope: { type: string, enum: [per_session, whole_port] }
+            physical_dependencies: { type: string, enum: [no_dependency, dependency_present, unknown], description: "From the topology assessment; always reported, also for per-session actions." }
             expected_interruption: { type: string, examples: ["vEOS-lab: an ACKed VLAN-bearing CoA interrupted forwarding for up to ~58 s"] }
 
     ApprovalRequest:
@@ -1239,40 +1241,100 @@ components:
             protocol: { enum: [icmp, any] }
 
     TopologyAssessment:
+      type: object
       description: |
-        ADR-0009 §2: the target port's topology and the evidence it rests on.
-        A session count is only a lower bound: it can prove sharing, never
-        exclusivity. `single_endpoint` requires current port-configuration
-        evidence that the port enforces a single host, or an approved,
-        unexpired lab attestation scoped to that port, with its evidence id
-        and validity. Otherwise the topology is `unknown`, and unknown is
-        never covered.
+        ADR-0009 §2: the target port's topology in two separately evidenced
+        dimensions. **Admission** (what the switch admits) governs
+        per-session actions. **Physical dependencies** (what else shares the
+        link, admitted or not) gate whole-port actions, and only
+        `no_dependency` can authorize one. An admission setting never
+        establishes `no_dependency`. Every known value carries its basis,
+        provenance and validity; unknown is never covered.
+      required: [admission, physical]
+      additionalProperties: false
+      properties:
+        admission: { $ref: "#/components/schemas/AdmissionAssessment" }
+        physical: { $ref: "#/components/schemas/PhysicalAssessment" }
+
+    AdmissionAssessment:
+      description: "What the switch admits on the port. A session count is a lower bound: it can show that distinct clients are present, never exclusivity. Two sessions don't identify a phone or prove exactly two devices."
       oneOf:
         - type: object
-          required: [topology, basis, evidence_id, valid_until]
+          description: "Exclusive, from enforcing port configuration."
+          required: [value, basis, evidence_id, host_mode, valid_until]
           additionalProperties: false
           properties:
-            topology: { const: single_endpoint }
-            basis: { enum: [port_configuration, lab_attestation] }
-            evidence_id: { type: string, format: uuid, description: "The ConfigurationEvidence (enforcing single-host mode or one-client limit) or the Attestation." }
-            host_mode: { type: string, enum: [single_host, client_limit_one], description: "For basis port_configuration: the enforcing setting observed." }
+            value: { const: exclusive_single_client }
+            basis: { const: port_configuration }
+            evidence_id: { type: string, format: uuid, description: "The ConfigurationEvidence showing the enforcing setting." }
+            host_mode: { enum: [single_host, client_limit_one] }
             valid_until: { type: string, format: date-time }
         - type: object
-          required: [topology, basis]
+          description: "Exclusive or present, from an approved, unexpired lab attestation scoped to this port."
+          required: [value, basis, evidence_id, valid_until]
           additionalProperties: false
           properties:
-            topology: { enum: [phone_and_pc, multi_endpoint] }
-            basis: { enum: [sessions_lower_bound, port_configuration, lab_attestation] }
+            value: { enum: [exclusive_single_client, multiple_clients_present] }
+            basis: { const: lab_attestation }
+            evidence_id: { type: string, format: uuid, description: "The Attestation." }
+            valid_until: { type: string, format: date-time }
+        - type: object
+          description: "Present, from observed sessions: a reference to the observation, its time and validity, and a consistent distinct-client lower bound of at least 2."
+          required: [value, basis, observation_id, observed_at, valid_until, distinct_clients_min]
+          additionalProperties: false
+          properties:
+            value: { const: multiple_clients_present }
+            basis: { const: sessions_lower_bound }
+            observation_id: { type: string, format: uuid }
+            observed_at: { type: string, format: date-time }
+            valid_until: { type: string, format: date-time }
+            distinct_clients_min: { type: integer, minimum: 2 }
+        - type: object
+          description: "Several clients allowed by configuration (multi-auth or multi-host); not proof that several are present."
+          required: [value, basis, evidence_id, host_mode, valid_until]
+          additionalProperties: false
+          properties:
+            value: { const: multiple_clients_allowed }
+            basis: { const: port_configuration }
             evidence_id: { type: string, format: uuid }
-            observed_sessions: { type: integer, minimum: 0 }
+            host_mode: { enum: [multi_auth, multi_host] }
             valid_until: { type: string, format: date-time }
         - type: object
-          required: [topology, basis]
+          description: "Unknown. The observation may be partial; it is never covered."
+          required: [value, basis]
           additionalProperties: false
           properties:
-            topology: { const: unknown }
-            basis: { enum: [sessions_lower_bound, no_evidence] }
-            observed_sessions: { type: integer, minimum: 0, description: "Sessions seen. One or zero never establishes single_endpoint." }
+            value: { const: unknown }
+            basis: { enum: [no_evidence, sessions_lower_bound] }
+            observation_id: { type: string, format: uuid }
+            observed_clients: { type: integer, minimum: 0, description: "Clients seen; one or zero never establishes exclusivity." }
+
+    PhysicalAssessment:
+      description: "What else shares the link, admitted or not. A device whose data traffic is blocked can still lose link or power on a port reset. Only no_dependency, from fresh dependency evidence or a scoped lab attestation, can authorize a whole-port action."
+      oneOf:
+        - type: object
+          required: [value, basis, evidence_id, valid_until]
+          additionalProperties: false
+          properties:
+            value: { const: no_dependency }
+            basis: { enum: [dependency_evidence, lab_attestation] }
+            evidence_id: { type: string, format: uuid, description: "A fresh, approved record of what is cabled to the port, or the attestation." }
+            valid_until: { type: string, format: date-time }
+        - type: object
+          required: [value, basis, evidence_id, valid_until, kind]
+          additionalProperties: false
+          properties:
+            value: { const: dependency_present }
+            basis: { enum: [dependency_evidence, lab_attestation] }
+            evidence_id: { type: string, format: uuid, description: "For example an LLDP-MED advertisement record, or the attestation." }
+            valid_until: { type: string, format: date-time }
+            kind: { enum: [phone, switch_or_hub, other, unidentified] }
+        - type: object
+          required: [value, basis]
+          additionalProperties: false
+          properties:
+            value: { const: unknown }
+            basis: { const: no_evidence }
 
     Prefix:
       type: string
@@ -1346,7 +1408,7 @@ components:
         (ADR-0009 §2, R4). Only a `demonstrated`, unexpired record with
         complete bindings and a configuration fingerprint equal to the
         target's current one can cover a requirement.
-      required: [id, recipe_id, recipe_revision, operation, platform, tested_scope, authentication, topology, configuration_fingerprint, result, evidence, measured_at, valid_until, issuer]
+      required: [id, recipe_id, recipe_revision, operation, platform, tested_scope, authentication, action_scope, tested_topology, configuration_fingerprint, result, evidence, measured_at, valid_until, issuer]
       additionalProperties: false
       properties:
         id: { type: string, format: uuid }
@@ -1356,7 +1418,15 @@ components:
         platform: { $ref: "#/components/schemas/PlatformScope" }
         tested_scope: { $ref: "#/components/schemas/TestedScope" }
         authentication: { type: string, enum: [eap_tls, mab] }
-        topology: { type: string, enum: [single_endpoint, phone_and_pc, multi_endpoint], description: "Must equal the target port's topology. single_endpoint evidence never covers phone_and_pc or multi_endpoint; an unknown target topology is never covered." }
+        action_scope: { type: string, enum: [per_session, whole_port], description: "per_session records need a matching admission value; whole_port records also need physical no_dependency on the target." }
+        tested_topology:
+          type: object
+          description: "The topology the lab result was obtained on (ADR-0009 §2)."
+          required: [admission, physical]
+          additionalProperties: false
+          properties:
+            admission: { type: string, enum: [exclusive_single_client, multiple_clients_present] }
+            physical: { type: string, enum: [no_dependency, dependency_present] }
         configuration_fingerprint: { type: string }
         result: { type: string, enum: [demonstrated, unsupported, inconclusive] }
         evidence:
@@ -1457,7 +1527,7 @@ components:
                     qualification_record_id: { type: string, format: uuid }
                     unmet_reason:
                       type: string
-                      enum: [not_implemented, no_record, record_expired, record_superseded, direction_mismatch, protocol_mismatch, port_not_covered, destination_not_contained, address_family_mismatch, destination_class_mismatch, flow_state_mismatch, authentication_mismatch, topology_mismatch, topology_unknown, platform_mismatch, recipe_revision_mismatch, configuration_changed, configuration_evidence_unavailable, configuration_evidence_expired, attestation_not_accepted, result_not_demonstrated]
+                      enum: [not_implemented, no_record, record_expired, record_superseded, direction_mismatch, protocol_mismatch, port_not_covered, destination_not_contained, address_family_mismatch, destination_class_mismatch, flow_state_mismatch, authentication_mismatch, admission_mismatch, admission_unknown, physical_dependency_unknown, physical_dependency_present, platform_mismatch, recipe_revision_mismatch, configuration_changed, configuration_evidence_unavailable, configuration_evidence_expired, attestation_not_accepted, result_not_demonstrated]
 
     StrategySelection:
       type: object

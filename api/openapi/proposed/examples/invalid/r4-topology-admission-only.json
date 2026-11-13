@@ -1,0 +1,16 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-20",
+  "schema": "TopologyAssessment",
+  "expect": "invalid",
+  "why": "Both dimensions are required; physical dependencies are always assessed.",
+  "instance": {
+    "admission": {
+      "value": "exclusive_single_client",
+      "basis": "port_configuration",
+      "evidence_id": "00000000-0000-4000-8000-000000000006",
+      "host_mode": "single_host",
+      "valid_until": "2026-11-14T08:00:00Z"
+    }
+  }
+}

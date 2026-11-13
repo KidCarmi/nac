@@ -66,6 +66,7 @@ revision addresses only those; the fixed portions are not reopened.
 | **R2** | Same-specificity replacement had no input contract | `PlanInput.supersessions` with typed entries: `replace` (a same-specificity holder whose units are all inside the scope, including every `all` → `all`), `take_units` (only the listed units of a same-specificity cohort; the rest keep their version) and `retire`/`keep` (narrower). Each has an **expected revision**. An unnamed holder, a wrong revision, or units outside the scope get `422`. The resolved plan binds each supersession and its moved units | ADR-0008 §5 "Every supersession is a typed plan input"; OpenAPI `SupersessionInput`, `ResolvedPlan.activation.supersessions` |
 | **R4** | Coverage lost service precision; configuration evidence was structurally optional | Tested scopes and requirements carry **services** (protocol and port ranges) and **destination prefixes**. Coverage needs service containment (TCP/8080 never covers 443) and prefix containment, plus an **equal** authentication method and topology: `single_endpoint` never covers `phone_and_pc`, and unknown is never covered. `ConfigurationEvidence` is a discriminated union: `observed` requires `observed_at`, `source` and `valid_until` (N9); `operator_attestation` requires its attestation record with expiry; `unavailable` never qualifies | ADR-0009 §2 "Coverage matching", §7; OpenAPI `Service`, `Prefix`, `TestedScope`, `TrafficRequirement`, `AccessProfile.allow`, `ConfigurationEvidence`, `QualificationRecord.topology`, `EligibilityResult` |
 | **R4 (second re-review)** | One authenticated session was treated as proof of `single_endpoint`; prose allowed omitted ports | A session count is only a **lower bound**: it can prove sharing, never exclusivity. `single_endpoint` requires current configuration evidence that the port **enforces** a single host (single-host mode or a one-client limit), or a scoped, unexpired lab attestation. Otherwise the topology is `unknown`. LLDP absence or one FDB entry is never enough. The assessment, with its basis, evidence id and validity, is bound per target in the resolved plan. Ports are always explicit; every port is 1–65535 | ADR-0009 §2 "Port topology is evidence, not a session count", A-R4-13 to A-R4-19; ADR-0008 §5 resolved plan; OpenAPI `TopologyAssessment`, `ResolvedTarget.topology`, `EligibilityResult.target_topology`, `TrafficRequirement` |
+| **R4 (third review)** | An admission setting was treated as physical exclusivity; the shared-topology branch didn't enforce provenance | Topology has two dimensions. **Admission** (`exclusive_single_client`, `multiple_clients_present`, `multiple_clients_allowed` or unknown) governs per-session actions. **Physical dependencies** (`no_dependency`, `dependency_present` or unknown) gate whole-port actions, and only `no_dependency` from fresh dependency evidence or a scoped lab attestation can authorize one. **A single-host or one-client setting alone never authorizes a whole-port action.** Every known value of both dimensions carries a basis-specific evidence reference and validity. A sessions lower bound needs an observation reference and at least 2 distinct clients, and never identifies a phone. Records carry `action_scope` and `tested_topology` | ADR-0009 §2 "Port topology is evidence… admission is not physical topology", A-R4-6/7 and A-R4-13 to A-R4-22; ADR-0008 §5 resolved plan and impact; OpenAPI `TopologyAssessment`, `AdmissionAssessment`, `PhysicalAssessment`, `QualificationRecord.action_scope`/`tested_topology`, `ResolvedTarget.impact` |
 | **R5** | Stop did not fence the activation | The execution row is one fence. The activation transaction locks it and commits only if the execution is `running` and its authority is active and unexpired by the database clock. Stop, withdrawal and expiry move the state off `running` under the same lock. Exactly one ordering: if Stop wins, **no activation commits**, including for an activate-only plan; if activation wins, Stop lists it in `still_in_force` | ADR-0008 §5 "One execution fence"; OpenAPI `stopExecution`, `Execution.still_in_force` |
 
 N7 (90-day qualification validity) and every other default in this table
@@ -87,15 +88,22 @@ remain **proposed, not accepted**.
   - expired or incomplete attestations don't qualify
 
 **Examples and acceptance scenarios:**
-- 34 focused positive and negative instances for the residuals, each
+- 52 focused positive and negative instances for the residuals, each
   labelled with its finding, acceptance scenario and expected result, are in
   [`api/openapi/proposed/examples/`](../../api/openapi/proposed/examples/README.md).
 - The acceptance scenarios are A-R1-1 to A-R5-5 in ADR-0008 §5, and A-R4-1
-  to A-R4-19 in ADR-0009 §2.
-- After the second re-review: all 56 `$ref`s resolve, and all 44 component
-  schemas pass the metaschema. All 34 examples behave as labelled, also
-  with format checking. The coverage-rule script has 18 checks, including
-  the topology cases A-R4-13 to A-R4-18.
+  to A-R4-22 in ADR-0009 §2.
+- After the third review: all 58 `$ref`s resolve, and all 46 component
+  schemas pass the metaschema. All 52 examples behave as labelled, also
+  with format checking; that includes the reviewer's three reproduced
+  topology instances, which are now rejected. The coverage-rule script has
+  21 checks, including A-R4-20 to A-R4-22: single-host plus a phone,
+  per-session versus whole-port actions.
+- **Next slice:** [implementation plan for the change-request
+  core](implementation-plan-change-request-core.md). It covers draft,
+  validation, replay, approval and audit, with activation and dispatch
+  disabled, and lists the decisions it depends on (O1, O5, minimal
+  operator management, CR vs. `/policy-draft`).
 
 This checks the response and request contract only; nothing is implemented.
 

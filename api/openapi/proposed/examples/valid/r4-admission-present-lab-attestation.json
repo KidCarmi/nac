@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "AdmissionAssessment",
+  "expect": "valid",
+  "why": "Several clients present, from a scoped lab attestation.",
+  "instance": {
+    "value": "multiple_clients_present",
+    "basis": "lab_attestation",
+    "evidence_id": "00000000-0000-4000-8000-000000000007",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

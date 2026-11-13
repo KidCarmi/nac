@@ -3,7 +3,7 @@
   "acceptance": "A-R4-6",
   "schema": "QualificationRecord",
   "expect": "valid",
-  "why": "A complete record; its single_endpoint topology never covers phone_and_pc.",
+  "why": "A complete per-session record: tested with exclusive admission and nothing else on the link. It never covers a port with several clients present, and it authorizes no whole-port action.",
   "instance": {
     "id": "00000000-0000-4000-8000-000000000005",
     "recipe_id": "arubacx.local-role.aruba-user-role",
@@ -39,7 +39,6 @@
       "flow_state": "new"
     },
     "authentication": "eap_tls",
-    "topology": "single_endpoint",
     "configuration_fingerprint": "sha256:ab",
     "result": "demonstrated",
     "evidence": {
@@ -48,6 +47,11 @@
     },
     "measured_at": "2026-11-10T07:47:20Z",
     "valid_until": "2027-02-08T07:47:20Z",
-    "issuer": "ASTRA"
+    "issuer": "ASTRA",
+    "action_scope": "per_session",
+    "tested_topology": {
+      "admission": "exclusive_single_client",
+      "physical": "no_dependency"
+    }
   }
 }

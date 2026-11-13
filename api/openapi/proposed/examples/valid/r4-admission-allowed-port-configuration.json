@@ -1,0 +1,14 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-13",
+  "schema": "AdmissionAssessment",
+  "expect": "valid",
+  "why": "Configuration admits several clients (multi-auth); not proof that several are present.",
+  "instance": {
+    "value": "multiple_clients_allowed",
+    "basis": "port_configuration",
+    "evidence_id": "00000000-0000-4000-8000-000000000006",
+    "host_mode": "multi_auth",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

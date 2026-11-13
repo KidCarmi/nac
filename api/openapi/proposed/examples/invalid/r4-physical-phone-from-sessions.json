@@ -1,0 +1,14 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-14",
+  "schema": "PhysicalAssessment",
+  "expect": "invalid",
+  "why": "A session count never identifies a phone or any dependency.",
+  "instance": {
+    "value": "dependency_present",
+    "basis": "sessions_lower_bound",
+    "evidence_id": "00000000-0000-4000-8000-000000000040",
+    "valid_until": "2026-11-14T08:00:00Z",
+    "kind": "phone"
+  }
+}

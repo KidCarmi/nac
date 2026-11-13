@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-22",
+  "schema": "PhysicalAssessment",
+  "expect": "invalid",
+  "why": "no_dependency needs its evidence id and validity.",
+  "instance": {
+    "value": "no_dependency",
+    "basis": "dependency_evidence"
+  }
+}

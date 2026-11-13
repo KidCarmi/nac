@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "AdmissionAssessment",
+  "expect": "invalid",
+  "why": "Configuration can show several clients are allowed, never that they are present.",
+  "instance": {
+    "value": "multiple_clients_present",
+    "basis": "port_configuration",
+    "evidence_id": "00000000-0000-4000-8000-000000000006",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}
