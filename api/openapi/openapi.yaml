@@ -1086,7 +1086,11 @@ paths:
       tags: [Sessions]
       operationId: listSessions
       summary: List sessions with requested vs observed state
-      description: Newest authentication first, at most 200.
+      description: |
+        Newest authentication first, at most 200. The rows, and each row's
+        `last_coa`, override and liveness, are read from one database
+        snapshot (as for `GET /api/v1/sessions/{id}`). A row is what NAC had
+        recorded at that instant, not a live switch reading.
       x-required-permission: network:read
       parameters:
         - name: state
@@ -1119,6 +1123,22 @@ paths:
         The session with its switch, device, binding, decisions (with inputs
         and rule trace), CoA requests, chronological timeline (the newest
         1000 events) and an operator-language `explanation`.
+
+        Consistency: the session, its switch record, device, binding,
+        decisions, CoA requests and events are read from ONE database
+        snapshot, and every derived field (`requested`, `observed`,
+        `last_coa`, `liveness`, `last_decision`, `timeline`, `explanation`)
+        is built from those records only. `last_coa` is always the newest
+        entry of `coa_requests`. A response therefore never combines the
+        session before an operator action with the CoA after it. The
+        `switch.status` block (FreeRADIUS client file, probe, verification)
+        is switch commissioning state computed after the snapshot and is not
+        part of this guarantee.
+
+        A coherent snapshot is not fresh switch or endpoint state: freshness,
+        source and unknown states are still stated in `observed`,
+        `liveness` and `endpoint_reachability`, and an operator action
+        committed after the snapshot appears on the next read.
       x-required-permission: network:read
       responses:
         "200":
@@ -2458,7 +2478,14 @@ components:
             switch: { $ref: "#/components/schemas/SwitchView" }
             endpoint: { $ref: "#/components/schemas/Endpoint" }
             binding: { $ref: "#/components/schemas/IdentityBinding" }
-            last_decision: { $ref: "#/components/schemas/DecisionRecord" }
+            last_decision:
+              description: |
+                The decision the session currently applies (the one its
+                `requested.decision_id` names). A newer decision recorded in
+                the same instant but not yet applied to the session is listed
+                in `decisions` only.
+              allOf:
+                - $ref: "#/components/schemas/DecisionRecord"
             decisions:
               type: array
               items: { $ref: "#/components/schemas/DecisionRecord" }
