@@ -1,0 +1,15 @@
+{
+  "finding": "R1",
+  "acceptance": "A-R1-3",
+  "schema": "Execution/properties/authority",
+  "expect": "invalid",
+  "why": "The approver and the authority state are required so they can be re-checked.",
+  "instance": {
+    "principal": {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "kind": "delegated"
+    },
+    "approval_id": "00000000-0000-4000-8000-000000000021",
+    "authority_expires_at": "2026-11-12T14:00:00Z"
+  }
+}

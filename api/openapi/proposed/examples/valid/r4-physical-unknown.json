@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-16",
+  "schema": "PhysicalAssessment",
+  "expect": "valid",
+  "why": "No dependency evidence: unknown.",
+  "instance": {
+    "value": "unknown",
+    "basis": "no_evidence"
+  }
+}

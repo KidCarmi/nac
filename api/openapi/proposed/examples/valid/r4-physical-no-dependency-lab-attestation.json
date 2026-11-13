@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-22",
+  "schema": "PhysicalAssessment",
+  "expect": "valid",
+  "why": "Nothing else on the link, from a scoped lab attestation.",
+  "instance": {
+    "value": "no_dependency",
+    "basis": "lab_attestation",
+    "evidence_id": "00000000-0000-4000-8000-000000000007",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

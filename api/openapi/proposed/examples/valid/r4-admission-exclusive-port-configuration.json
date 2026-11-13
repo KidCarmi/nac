@@ -1,0 +1,14 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-17",
+  "schema": "AdmissionAssessment",
+  "expect": "valid",
+  "why": "Exclusive admission from enforcing configuration evidence, with its id, host mode and validity.",
+  "instance": {
+    "value": "exclusive_single_client",
+    "basis": "port_configuration",
+    "evidence_id": "00000000-0000-4000-8000-000000000006",
+    "host_mode": "client_limit_one",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

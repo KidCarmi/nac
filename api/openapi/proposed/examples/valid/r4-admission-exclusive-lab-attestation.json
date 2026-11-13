@@ -1,0 +1,13 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "AdmissionAssessment",
+  "expect": "valid",
+  "why": "Exclusive admission from a scoped, unexpired lab attestation.",
+  "instance": {
+    "value": "exclusive_single_client",
+    "basis": "lab_attestation",
+    "evidence_id": "00000000-0000-4000-8000-000000000007",
+    "valid_until": "2026-11-14T08:00:00Z"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-14",
+  "schema": "AdmissionAssessment",
+  "expect": "invalid",
+  "why": "A sessions lower bound needs at least 2 distinct clients and an observation reference.",
+  "instance": {
+    "value": "multiple_clients_present",
+    "basis": "sessions_lower_bound",
+    "observation_id": "00000000-0000-4000-8000-000000000040",
+    "observed_at": "2026-11-13T08:00:00Z",
+    "valid_until": "2026-11-14T08:00:00Z",
+    "distinct_clients_min": 0
+  }
+}

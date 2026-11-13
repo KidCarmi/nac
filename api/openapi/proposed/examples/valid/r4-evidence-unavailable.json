@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "—",
+  "schema": "ConfigurationEvidence",
+  "expect": "valid",
+  "why": "Valid to record; it never qualifies an action.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "kind": "unavailable"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-2",
+  "schema": "Service",
+  "expect": "invalid",
+  "why": "TCP and UDP name their port ranges.",
+  "instance": {
+    "protocol": "tcp"
+  }
+}

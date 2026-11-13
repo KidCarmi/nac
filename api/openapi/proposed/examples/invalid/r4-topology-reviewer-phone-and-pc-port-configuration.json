@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "TopologyAssessment",
+  "expect": "invalid",
+  "why": "Reviewer's reproduced instance 1: a known shared topology without provenance. Rejected.",
+  "instance": {
+    "topology": "phone_and_pc",
+    "basis": "port_configuration"
+  }
+}

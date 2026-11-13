@@ -1,0 +1,12 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-14",
+  "schema": "AdmissionAssessment",
+  "expect": "invalid",
+  "why": "Two sessions without an observation reference or validity cannot be checked.",
+  "instance": {
+    "value": "multiple_clients_present",
+    "basis": "sessions_lower_bound",
+    "distinct_clients_min": 2
+  }
+}

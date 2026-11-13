@@ -1,0 +1,20 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-20",
+  "schema": "TopologyAssessment",
+  "expect": "valid",
+  "why": "Single-host configured, PC behind a phone: exclusive admission, but physical dependencies unknown. Per-session actions can be eligible; whole-port actions are not.",
+  "instance": {
+    "admission": {
+      "value": "exclusive_single_client",
+      "basis": "port_configuration",
+      "evidence_id": "00000000-0000-4000-8000-000000000006",
+      "host_mode": "single_host",
+      "valid_until": "2026-11-14T08:00:00Z"
+    },
+    "physical": {
+      "value": "unknown",
+      "basis": "no_evidence"
+    }
+  }
+}
