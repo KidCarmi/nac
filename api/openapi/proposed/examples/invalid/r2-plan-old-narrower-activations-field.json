@@ -1,0 +1,20 @@
+{
+  "finding": "R2",
+  "acceptance": "—",
+  "schema": "PlanInput",
+  "expect": "invalid",
+  "why": "The old field is gone; supersessions replaces it.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "all"
+    },
+    "narrower_activations": [],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

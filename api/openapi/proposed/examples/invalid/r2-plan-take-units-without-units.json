@@ -1,0 +1,26 @@
+{
+  "finding": "R2",
+  "acceptance": "A-R2-3",
+  "schema": "PlanInput",
+  "expect": "invalid",
+  "why": "take_units must list the units it takes.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "all"
+    },
+    "supersessions": [
+      {
+        "action": "take_units",
+        "activation_id": "00000000-0000-4000-8000-000000000011",
+        "expected_revision": 2
+      }
+    ],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

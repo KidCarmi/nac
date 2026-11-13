@@ -1,0 +1,12 @@
+{
+  "finding": "R1",
+  "acceptance": "A-R1-3",
+  "schema": "TargetOutcome",
+  "expect": "valid",
+  "why": "A target never sent because authority was withdrawn.",
+  "instance": {
+    "session_id": "00000000-0000-4000-8000-000000000030",
+    "dispatch": "not_sent",
+    "not_sent_reason": "authority_withdrawn"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-10",
+  "schema": "ConfigurationEvidence",
+  "expect": "invalid",
+  "why": "Observed evidence needs observed_at, source and valid_until.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "kind": "observed",
+    "configuration_fingerprint": "sha256:ab"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-9",
+  "schema": "Attestation",
+  "expect": "invalid",
+  "why": "An attestation without expires_at cannot be checked for freshness.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000007",
+    "version": 1,
+    "issuer": {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "kind": "operator"
+    },
+    "issued_at": "2026-11-12T10:00:00Z",
+    "configuration_fingerprint": "sha256:ab",
+    "statement": "Roles corp and quarantine match the reviewed ACLs",
+    "limits": "switch 10.70.99.1 only"
+  }
+}

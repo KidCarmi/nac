@@ -1,0 +1,16 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-1",
+  "schema": "TestedScope",
+  "expect": "invalid",
+  "why": "Coverage cannot be matched without services and destinations.",
+  "instance": {
+    "requirement": "deny_routed",
+    "direction": "from_endpoint",
+    "address_families": [
+      "ipv4"
+    ],
+    "destination_class": "routed",
+    "flow_state": "new"
+  }
+}

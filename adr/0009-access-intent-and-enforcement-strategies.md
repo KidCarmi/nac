@@ -48,10 +48,15 @@ become profiles: `corp` → full access, `quarantine` → the quarantine
 profile.
 
 A profile states **requirements**. Each requirement is a fact that must
-hold for the endpoint. Every requirement names its **traffic direction**
-(`from_endpoint`, `to_endpoint` or `both`), its **protocols** (`tcp`,
-`udp`, `icmp`, `any`) and its **address families**. One that doesn't is
-invalid; nothing is implied by a requirement's name.
+hold for the endpoint. Every requirement names:
+- its **traffic direction**: `from_endpoint`, `to_endpoint` or `both`
+- its **services**: each protocol (`tcp`, `udp`, `icmp`, `any`) and, for
+  TCP and UDP, its port ranges, always explicit. Every port is the explicit
+  range 1–65535; there is no "omitted ports" form.
+- its **address families**
+- where it is destination-specific, its **destination prefixes**
+
+One that doesn't is invalid; nothing is implied by a requirement's name.
 
 | Requirement | Meaning | Example (quarantine) |
 |---|---|---|
@@ -60,7 +65,7 @@ invalid; nothing is implied by a requirement's name.
 | `isolate_same_subnet_packets` | Packets from same-subnet peers do not reach the endpoint at all (L2 packet isolation). A stronger claim than the line above | — (Q4) |
 | `block_established_flow_data` | While restricted, no data passes on flows that existed before the restriction | tcp; `both` (Q5) |
 | `terminate_established_flows` | Transport state of pre-existing flows is torn down | — (Q5) |
-| `allow` | Services that stay reachable: remediation, DNS, DHCP, the NAC portal, by address, protocol and port | remediation `10.70.20.10/32` tcp/8080 |
+| `allow` | Services that stay reachable: remediation, DNS, DHCP, the NAC portal, by destination prefix, direction, protocol and port ranges | remediation `10.70.20.10/32` tcp/8080, `from_endpoint` |
 | `address_families` | `ipv4`, `ipv6` | both |
 
 **Blocking and teardown are different claims.**
@@ -100,15 +105,123 @@ driver ADR, PR #4):
 - **Offline fixtures and unit tests prove code behavior only.** They don't
   change qualification.
 - **Nothing is inherited from vendor documentation.**
-- **Selectable** requires all of:
-  - `implemented`
-  - `demonstrated` for every requirement of the profile in the matching
-    platform scope
-  - an evidence record that is current for that configuration (§7)
 - **Scope** is vendor, family, model, OS/build, physical or virtual, the
   operation, the authentication method, the configuration fingerprint (§7)
   and the topology. One successful build does not extend to a version
   range.
+
+**Qualification records (R4).** Qualification is not a status field on a
+capability. It is a set of **immutable qualification records**, one per lab
+result. Each record has:
+- an id, the recipe id and **revision**, and the operation
+- the platform: vendor, model, OS/build, physical or virtual (all required)
+- the **tested traffic scope**, structured like a requirement (§1):
+  - the requirement key and direction
+  - address families
+  - **services**: each protocol with the exact port ranges tested (TCP and
+    UDP require port ranges; ICMP has none). Example: TCP 8080 only.
+  - **destinations**: the exact prefixes tested, and their class (routed
+    prefixes, same-subnet peers or an allow entry)
+  - fresh or established flows
+- the authentication method and the **topology**: `single_endpoint` (one
+  authenticated device on the port), `phone_and_pc` or `multi_endpoint`
+- the configuration fingerprint at test time (§7)
+- the result (`demonstrated`, `unsupported`, `inconclusive`)
+- evidence: the package reference and its manifest digest
+- `measured_at`, `valid_until` and the issuer (the lab)
+
+A correction is a new record that supersedes the old one; a record is
+never edited. A record without complete bindings (for example research
+notes) can be stored. It never qualifies an action.
+
+**Coverage matching.** A requested requirement (§1) is covered only by a
+`demonstrated`, unexpired, unsuperseded record that matches it on **every**
+axis:
+- the same recipe revision, operation and platform build
+- the same direction, or `both`
+- a superset of the address families
+- **service containment:** each requested protocol is tested, and each
+  requested port range lies inside a tested range for that protocol. A
+  requirement for every port states the range 1–65535, so only a tested
+  1–65535 range covers it.
+- **destination containment:** each requested prefix lies inside a tested
+  prefix of the same class (equal or longer prefix, same family)
+- the same flow state
+- **the same authentication method**
+- **the same topology as the target port**, from the port's **topology
+  assessment** (below). An unknown topology is never covered, and
+  `single_endpoint` evidence never covers `phone_and_pc` or
+  `multi_endpoint`.
+- a configuration fingerprint equal to the target switch's **current** one,
+  backed by **current** configuration evidence (§7)
+
+So TCP/8080 evidence never covers TCP/443, `10.70.20.0/24` never covers
+`10.70.30.0/24`, a TCP `from_endpoint` result never covers UDP or
+`to_endpoint`, and single-host evidence never qualifies a phone + PC
+port. An expired, superseded or absent record, a missing field, a mismatch
+on any axis, or changed ACL content under the same role name leaves the
+requirement **unmet**, with that reason. Unknown never matches.
+
+**Port topology is evidence, not a session count.** A PC can sit behind a
+phone that has no certificate. There can also be a silent downstream device,
+or an accounting event that was lost. So one visible authenticated session
+does not show that the port has one endpoint. The target port's **topology
+assessment** has a value and the basis it rests on:
+- **`single_endpoint`** has exactly two possible bases:
+  - **`port_configuration`:** current configuration evidence (§7) that the
+    port **enforces** a single host: a single-host mode or a one-client
+    limit, under which the switch blocks any other device. This is bound to
+    the fingerprint and the evidence's `valid_until`, and lapses with them.
+  - **`lab_attestation`:** an approved, unexpired attestation scoped to that
+    switch port (lab use, N1).
+
+  Nothing else qualifies. A session count, the absence of LLDP, or a single
+  FDB entry is never enough.
+- **`phone_and_pc` or `multi_endpoint`** may rest on observed sessions: two
+  or more devices seen is a lower bound that proves sharing. They may also
+  rest on configuration or an attestation.
+- **Otherwise `unknown`**, including one session, zero sessions, missing
+  accounting, or a host mode that allows more than one device. Unknown is
+  never covered.
+
+The resolved plan records each target's assessment, with its basis,
+evidence id and validity (ADR-0008 §5). A change to the port's host-mode
+configuration, or expiry of that evidence, invalidates eligibility and
+unexecuted approvals, like any configuration drift.
+
+**Acceptance scenarios for coverage** (contract tests for any implementation;
+the schema examples are in `api/openapi/proposed/examples/`):
+
+| ID | Scenario | Required outcome |
+|---|---|---|
+| A-R4-1 | Record tested TCP/8080 to `10.70.10.10/32`; the requirement is TCP/443 to the same host | Unmet: `port_not_covered` |
+| A-R4-2 | Record tested TCP/8080; the requirement is TCP 1–65535 (every port, stated explicitly) | Unmet: `port_not_covered` |
+| A-R4-3 | Record tested `10.70.20.0/24`; the requirement is `10.70.30.0/24` | Unmet: `destination_not_contained` |
+| A-R4-4 | Record tested `10.70.10.0/24`; the requirement is `10.70.10.10/32` | Covered on this axis |
+| A-R4-5 | Record tested TCP `from_endpoint`; the requirement is UDP or `to_endpoint` | Unmet: `protocol_mismatch` / `direction_mismatch` |
+| A-R4-6 | Record topology `single_endpoint`; the target port has a phone and a PC | Unmet: `topology_mismatch` |
+| A-R4-7 | The target port's topology is unknown | Unmet: `topology_unknown` |
+| A-R4-8 | Record authenticated with EAP-TLS; the target session is MAB | Unmet: `authentication_mismatch` |
+| A-R4-9 | Configuration evidence is an attestation without its record, or one past `expires_at` | Rejected by the schema, or unmet: `configuration_evidence_expired` |
+| A-R4-10 | Observed evidence past `valid_until`, with the fingerprint unchanged | Unmet: `configuration_evidence_expired` |
+| A-R4-11 | The ACL content changed under the same role name | Unmet: `configuration_changed`; unexecuted plans and approvals invalidated |
+| A-R4-12 | Every requirement is covered by current, matching records and evidence | Eligible, with each covering record id named |
+| A-R4-13 | A PC authenticates by EAP-TLS behind a phone with no certificate; only the PC appears in accounting; the port's host mode allows several devices | Topology `unknown` (basis: sessions); never `single_endpoint` from the count; unmet `topology_unknown` for `single_endpoint` records |
+| A-R4-14 | As A-R4-13, but the phone is also seen (MAB or LLDP-MED, for example) | Topology `phone_and_pc` (basis: sessions, a lower bound); `single_endpoint` records unmet (`topology_mismatch`) |
+| A-R4-15 | One session is visible, and an accounting Start or Stop for another device on the port was lost | Topology `unknown`; the count is never upgraded to `single_endpoint` |
+| A-R4-16 | One authenticated device, plus a silent downstream device that never authenticates | Topology `unknown`, unless current configuration evidence shows the port enforces a single host |
+| A-R4-17 | Current, fresh configuration evidence shows the port enforces a single host (one-client limit) | Topology `single_endpoint` (basis: `port_configuration`, with its evidence id and validity), bound in the resolved plan |
+| A-R4-18 | The A-R4-17 evidence expires, or the host mode changes to allow several devices | Topology `unknown`; eligibility lost; unexecuted approvals invalidated |
+| A-R4-19 | No LLDP neighbor and a single FDB entry, with nothing else | Topology `unknown` |
+
+**Eligibility is computed per profile version and target.** A strategy is
+**eligible** for one `(access profile, version)` on one `(switch, port)`
+only when it is `implemented` and every requirement of that profile version
+is covered as above. The server returns the result per requirement, with
+the record that covers it or the reason it is unmet; the console shows that
+reason. The capability inventory shows only **readiness**
+(`research_only`, `implemented_unqualified`, `qualified_for_some_scopes`).
+It never shows a profile-independent "selectable" flag.
 
 Examples of what records must keep apart:
 - **Gateway ACL vs same-subnet containment.** An ingress ACL enforced at the
@@ -134,7 +247,7 @@ As of 2026-11-10:
 | Recipe | Research | Implementation | Qualification (lab, exact build) |
 |---|---|---|---|
 | Arista vEOS-lab 4.29.2F `vlan` (Tunnel-\* in Access-Accept and CoA) | source-backed | implemented (pilot line) | `deny_routed` demonstrated via readdressing; see the matrix |
-| Aruba AOS-CX Virtual 10.07.0004 local role (`Aruba-User-Role` in Access-Accept and CoA) | source-backed | implemented (`pilot-aruba-rc3`/`rc4`, KidCarmi/nac#3) | NAC-integrated evidence on exact `pilot-aruba-rc3` (`148e196`): corp → quarantine → corp with VLAN and IP unchanged; `deny_routed` (IPv4 TCP; UDP from the endpoint); `block_established_flow_data` (one TCP flow); `deny_same_subnet_sessions` (TCP). **`isolate_same_subnet_packets` unsupported** as tested; **`terminate_established_flows` not demonstrated**. `pilot-aruba-rc4` is under qualification |
+| Aruba AOS-CX Virtual 10.07.0004 local role (`Aruba-User-Role` in Access-Accept and CoA) | source-backed | implemented (`pilot-aruba-rc3`/`rc4`, KidCarmi/nac#3) | NAC-integrated evidence on exact `pilot-aruba-rc3` (`148e196`) and again on exact `pilot-aruba-rc4` (`15e89db`, console path): corp → quarantine → corp with VLAN and IP unchanged; `deny_routed` (IPv4 TCP; UDP from the endpoint); `block_established_flow_data` (one TCP flow); `deny_same_subnet_sessions` (TCP). **`isolate_same_subnet_packets` unsupported** as tested; **`terminate_established_flows` not demonstrated**. `pilot-aruba-rc4` is under qualification |
 | Aruba AOS-CX `Filter-Id` in CoA (PacketFence's recipe) | source-backed | absent | unverified: **not executable** |
 
 Execution of the Aruba recipe in the pilot is limited to the frozen
@@ -173,9 +286,9 @@ capabilities cover **every** requirement of the decided profile.
   - There is no fallback from a failed CoA to a port bounce. The pilot
     refuses a Restore that the policy would turn into a deny (`422`) and
     keeps the quarantine.
-- **A strategy is selectable** only under §2's rule: implemented, and
-  demonstrated for every requirement in a current configuration scope.
-  Unknown means not selectable.
+- **A strategy is selectable** only when it is eligible under §2 for the
+  decided profile version on this switch and port. Unknown means not
+  selectable.
 
 ### 4. Same fields everywhere
 
@@ -183,7 +296,9 @@ The following carry `intent` (profile and version), `strategy`,
 `strategy_limitations` and `unmet_requirements`:
 - decisions
 - simulations (ADR-0008 §3)
-- plans and approvals (the approval binds the selected strategy)
+- plans and approvals: each resolved-plan target binds the selected
+  strategy, recipe revision, configuration fingerprint and the
+  qualification record ids that covered each requirement (ADR-0008 §5)
 - execution outcomes
 
 Observed outcomes keep the ADR-0006 split:
@@ -261,11 +376,25 @@ labelled separately from an integrated NAC pass.
   fingerprint are **invalidated** (ADR-0008 §4).
 - A role that keeps its name but changes its rules loses its qualified
   status.
-- Where automatic observation is unavailable (today, AOS-CX: NAC has no
-  observation adapter), an **explicitly approved, versioned operator
-  attestation** can be recorded with its age and limits. It is not a live
-  verification. Each requirement declares whether attestation is
-  acceptable for it.
+- **Configuration evidence has exactly one kind, and each kind requires its
+  own fields (R4 residual):**
+  - **`observed`:** the fingerprint, `observed_at`, the source (the
+    observation adapter) and `valid_until`. It is current only while the
+    current time is before `valid_until`, which defaults to `observed_at`
+    plus a maximum age (N9).
+  - **`operator_attestation`:** the fingerprint and the **attestation
+    record**, which is required. Where automatic observation is
+    unavailable (today, AOS-CX: NAC has no observation adapter), an
+    explicitly approved, versioned operator attestation can be recorded.
+    It is not a live verification. The record carries:
+    - an id and version, and the issuer (the human who attested)
+    - `issued_at` and `expires_at`
+    - the configuration fingerprint it attests
+    - the statement and its limits
+  - **`unavailable`:** never current.
+- Each requirement declares whether attestation is acceptable for it.
+  Evidence that is unavailable, expired, incomplete or of an unaccepted
+  kind never qualifies an action.
 - A firmware or driver change triggers re-evaluation; qualification is not
   inherited.
 

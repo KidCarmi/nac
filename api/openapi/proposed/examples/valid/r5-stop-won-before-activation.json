@@ -1,0 +1,16 @@
+{
+  "finding": "R5",
+  "acceptance": "A-R5-1",
+  "schema": "Execution/properties/stop",
+  "expect": "valid",
+  "why": "An operator stop that won the execution fence; still_in_force is empty.",
+  "instance": {
+    "reason_kind": "operator_stop",
+    "reason": "wrong cohort",
+    "requested_by": {
+      "id": "00000000-0000-4000-8000-000000000022",
+      "kind": "operator"
+    },
+    "at": "2026-11-12T12:00:01Z"
+  }
+}

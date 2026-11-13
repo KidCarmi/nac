@@ -1,0 +1,25 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-9",
+  "schema": "ConfigurationEvidence",
+  "expect": "valid",
+  "why": "Attested evidence carries its attestation record, with expiry.",
+  "instance": {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "kind": "operator_attestation",
+    "configuration_fingerprint": "sha256:ab",
+    "attestation": {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "version": 1,
+      "issuer": {
+        "id": "00000000-0000-4000-8000-000000000008",
+        "kind": "operator"
+      },
+      "issued_at": "2026-11-12T10:00:00Z",
+      "expires_at": "2026-11-19T10:00:00Z",
+      "configuration_fingerprint": "sha256:ab",
+      "statement": "Roles corp and quarantine match the reviewed ACLs",
+      "limits": "switch 10.70.99.1 only"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "finding": "R4",
+  "acceptance": "\u2014",
+  "schema": "TopologyAssessment",
+  "expect": "invalid",
+  "why": "unknown cannot claim a configuration basis; with enforcing evidence the topology would be known.",
+  "instance": {
+    "topology": "unknown",
+    "basis": "port_configuration"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-6",
+  "schema": "QualificationRecord",
+  "expect": "invalid",
+  "why": "Topology is an enum so it can be matched; free text cannot.",
+  "instance": {
+    "topology": "one endpoint per port"
+  }
+}

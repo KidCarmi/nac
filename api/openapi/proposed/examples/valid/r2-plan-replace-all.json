@@ -1,0 +1,26 @@
+{
+  "finding": "R2",
+  "acceptance": "A-R2-1",
+  "schema": "PlanInput",
+  "expect": "valid",
+  "why": "Publishing to all names the current all holder and its revision.",
+  "instance": {
+    "validation_id": "00000000-0000-4000-8000-000000000001",
+    "simulation_id": "00000000-0000-4000-8000-000000000002",
+    "scope": {
+      "kind": "all"
+    },
+    "supersessions": [
+      {
+        "action": "replace",
+        "activation_id": "00000000-0000-4000-8000-000000000010",
+        "expected_revision": 3
+      }
+    ],
+    "stages": [
+      {
+        "type": "activate"
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "finding": "R4",
+  "acceptance": "A-R4-2",
+  "schema": "TrafficRequirement",
+  "expect": "invalid",
+  "why": "There is no omitted-ports form; TCP must state its ranges.",
+  "instance": {
+    "direction": "from_endpoint",
+    "services": [
+      {
+        "protocol": "tcp"
+      }
+    ],
+    "address_families": [
+      "ipv4"
+    ]
+  }
+}
