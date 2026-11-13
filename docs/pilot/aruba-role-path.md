@@ -159,6 +159,45 @@ re-authenticate. The policy page hint names both. The API action
 **Carried from rc4 without a rerun:** every other row. Decisions, CoA,
 RADIUS, the adapter, the reload path and the installer are byte-identical.
 
+**Lab result on exact rc5** (ASTRA, 2026-11-13, [`8164c56`](https://github.com/KidCarmi/nac/blob/8164c56f7e48b38eb317e716f83614fcb4a5f3eb/lab/evidence/aruba-rc5-5ddc157-20261113/README.md), 6/6
+manifest entries verified here; the manifest names `5ddc157` and nacd
+`43efe22a…`). This is a separate evaluation: it is not release clearance,
+and rc4's results are not changed or replaced.
+
+**Install:** nacd only, swapped into a disposable copy-on-write child of the
+stopped rc4 control disk; `/version` and the installed hash matched. A
+readiness check in the install harness raced service start; nacd reached
+ready without repair.
+
+| Row | Result | Evidence and limits |
+|---|---|---|
+| P1 | **PASS** | As above |
+| 1.2 | **PASS** | Disposable switch: Configured `pending` at 08:55:40Z, then `yes` and Loaded `yes` at 08:55:41Z; deleted after |
+| 1.3 | **PASS** | New hint shown; a rule-name-only draft previewed zero changes; v5 published, then v2 restored |
+| 1.6 | **PASS** | "Apply active policy" shown, no "Re-authenticate"; the confirmation says nothing re-authenticates. CoA `0xc5` with `Aruba-User-Role` `corp`, ACK in 23.5 ms; no Tunnel-\* and no EAPOL; VLAN 10 and IP unchanged; shown `acked`, not verification. The API action is still `reauthenticate`, by contract |
+| 3.1 | **PASS for enforcement**; transition timing **NOT RUN** | CoA `0x2c` `quarantine`, ACKed; fresh corp TCP timed out and remediation answered 200 (59 steady-state samples). The transition probe logger exited early, so no timing is claimed |
+| 3.2 | **PASS** | CoA `0xf4` `corp`, ACKed; first corp SYN-ACK +0.116 s after the request (same-clock pcap); fresh HTTP 200; no EAPOL, VLAN or IP change, and no manual endpoint action |
+| 2.1 | **PASS, 20/20** | D1 C1–C6 on real systemd; cleanup left no chaos clients |
+| 5.2 (Arista console) | **BLOCKED** | The control guest had no SSH service; enabling it was rejected as an access expansion. No rc5 Arista action was run; the Arista baseline disk and the rc4 overlay were restored |
+| Cold boot, automatic | **FAIL** (carried) | The virtual AOS-CX again needed the manual port-scoped authenticator reset before testing. That is not automatic recovery |
+| Windows, physical switch, shared port, IPv6, UDP, DHCP renewal | **BLOCKED / NOT RUN** | Not inferred from the ACK or from rc4 |
+
+**Finding U3 (console/config copy, not enforcement).** The generated AOS-CX
+reference configuration still says "the NAC-driven path is not yet
+lab-qualified" (`internal/pilot/switches.go`). That is stale since the
+NAC-integrated rc3/rc4 evidence.
+- **rc5 is not changed:** fixing it changes nacd, so it needs a successor
+  candidate.
+- **Proposed wording:** "NAC-driven role CoA lab-qualified on
+  ArubaOS-CX Virtual 10.07.0004 (isolated lab, `pilot-aruba-rc4`); not
+  verified on physical hardware".
+- **Rows to rerun with it:** 1.2 (the config text) plus the nacd smoke rows
+  1.3 and 2.1.
+
+**Final lab state** (per ASTRA): the Aruba and Arista topologies and the rc5
+child are stopped, and the Arista baseline and the rc4 overlay are
+restored.
+
 ## Qualification matrix: `pilot-aruba-rc4` (consolidated)
 
 One row per acceptance-matrix case (expected outcomes are in
