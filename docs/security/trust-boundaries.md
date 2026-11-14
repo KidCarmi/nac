@@ -172,6 +172,14 @@ graph LR
   - Every request is authorized server-side per operation, against the
     operator record (see [AuthN & AuthZ](authn-authz.md)).
   - The default certificate is self-signed; replace it for production use.
+  - Review-only change requests (`/api/v1/change-requests`) cross this
+    boundary as proposals only.
+    - The service behind them has no write path to policy, sessions, CoA or
+      switches.
+    - Each mutation carries the revision it is based on and its audit
+      record.
+    - Title, intent and rules are untrusted operator text, stored and shown
+      as data.
 
 ### Boundary 12 — Host root → nacd
 

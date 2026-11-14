@@ -60,6 +60,8 @@ type Deps struct {
 	Versions  policyVersionService
 	Radius    radiusService
 	Pilot     pilotService
+	// Changes is the review-only change-request service (nil: routes off).
+	Changes   changeService
 	Operators domain.OperatorRepository
 	AuditRepo domain.AuditRepository
 	Audit     *audit.Recorder
@@ -81,6 +83,7 @@ type Server struct {
 	versions  policyVersionService
 	radius    radiusService
 	pilot     pilotService
+	changes   changeService
 	operators domain.OperatorRepository
 	auditRepo domain.AuditRepository
 	audit     *audit.Recorder
@@ -111,6 +114,7 @@ func New(d Deps) *Server {
 		versions:  d.Versions,
 		radius:    d.Radius,
 		pilot:     d.Pilot,
+		changes:   d.Changes,
 		operators: d.Operators,
 		auditRepo: d.AuditRepo,
 		audit:     d.Audit,

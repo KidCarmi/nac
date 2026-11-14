@@ -6,6 +6,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Change requests, slice A milestone 2: service, validation and API (review-only; draft)
+- `internal/change.Service` is the one service behind the API, and later
+  the console.
+  - It creates change requests from content or from a copy of the policy
+    draft, edits them as new revisions, validates and cancels.
+  - Each revision is based on the active policy version at the time it is
+    written.
+- `/api/v1/change-requests` adds list, create, get, revisions,
+  `PUT …/content`, `POST …/validations` and `POST …/cancel`.
+  - Reads need `policy:read`; mutations need `policy:write`.
+  - Every mutation needs `If-Match: "<revision>"`: `428` if missing, `409`
+    with the current revision if stale.
+  - Responses carry the revision as `ETag`.
+- A validation is checked against a single read of the switch segment
+  mappings and records an environment digest (new read-only `policyver`
+  accessors: `Active`, `Environment`, `ValidateAgainst`).
+- `GET` reports drift, never refreshes:
+  - `base_drift` says whether the active version moved since the revision
+    was written;
+  - each validation says whether it is still current (revision, active
+    version, segment mappings).
+- Proofs:
+  - the change service holds only read methods on policy (reflection test);
+  - it cannot import enforcement, RADIUS, pilot or storage code (import
+    test);
+  - an API test sees no change to policy, versions, draft, sessions, CoAs,
+    switches or decisions, and no CoA packet.
+- Threat model, trust boundaries and attack surface are updated for the
+  new endpoints. OpenAPI is 1.2.0 (additive).
+- No approval, activation, dispatch or MCP. Legacy publish/restore are
+  unchanged.
+
 ### Change requests, slice A milestone 1: schema and repository (review-only; draft; no endpoints yet)
 - Migration `0007_change_requests` adds:
   - `change_requests`: `workflow` is fixed to `review_only`; states are

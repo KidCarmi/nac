@@ -20,6 +20,7 @@ import (
 	"github.com/kidcarmi/nac/internal/audit"
 	"github.com/kidcarmi/nac/internal/auth"
 	"github.com/kidcarmi/nac/internal/cache"
+	"github.com/kidcarmi/nac/internal/change"
 	"github.com/kidcarmi/nac/internal/config"
 	"github.com/kidcarmi/nac/internal/domain"
 	"github.com/kidcarmi/nac/internal/endpoint"
@@ -136,6 +137,7 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		Versions:  versionSvc,
 		Radius:    radiusSvc,
 		Pilot:     pilotSvc,
+		Changes:   change.NewService(postgres.NewChangeRepo(pool), versionSvc),
 		Operators: operatorRepo,
 		AuditRepo: auditRepo,
 		Audit:     recorder,

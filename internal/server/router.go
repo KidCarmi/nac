@@ -96,6 +96,10 @@ func (s *Server) buildHandler() http.Handler {
 	if s.pilot != nil {
 		s.pilotRoutes(mux, authed)
 	}
+	// ---- Review-only change requests (proposals; never change policy) ----
+	if s.changes != nil {
+		s.changeRoutes(mux, authed)
+	}
 
 	// Global middleware stack (outermost first).
 	return chain(mux,
