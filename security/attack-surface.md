@@ -36,6 +36,8 @@ each. Keep this in sync with `internal/server/router.go`.
 | `/api/v1/auth/password` | POST | JWT + operator record | current, new password | Current password required; policy; revokes earlier sessions; audited |
 | `/api/v1/radius/{authorize,reject,accounting}` | POST | service token (Basic) | FreeRADIUS rest attributes | Loopback; switch identified by packet source IP; strict attribute parsing |
 | Pilot operator routes (`/switches`, `/sessions`, `/identity-bindings`, `/policy-*`, `/auth-events`, `/decisions`) | various | JWT + operator record + RBAC | see OpenAPI | `network:*`, `session:act`, `policy:*`; actor from the principal |
+| `/api/v1/change-requests`, `…/{id}`, `…/{id}/revisions[/{n}]` | GET | JWT + operator record + RBAC (`policy:read`) | UUID/int path, `state` filter | Read-only; review-only label; drift reported, never refreshed |
+| `/api/v1/change-requests`, `…/{id}/content`, `…/{id}/validations`, `…/{id}/cancel` | POST/PUT | JWT + operator record + RBAC (`policy:write`) | title (≤200), intent (≤4000), rules (≤500), `If-Match` revision | Strict JSON; `428` without `If-Match`, `409` if stale; compare-and-set under a row lock; audit in the same transaction; no write path to policy, sessions, CoA or switches |
 | `/ui/` | GET | none (static) | — | Same-origin CSP; holds no privileges |
 
 ## Global request controls (middleware)

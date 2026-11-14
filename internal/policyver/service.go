@@ -192,6 +192,45 @@ func (s *Service) Validate(ctx context.Context, rules []domain.Policy, def domai
 	return s.validate(rules, def, maps, err, true)
 }
 
+// Active returns the active (immutable) policy version.
+func (s *Service) Active(ctx context.Context) (*domain.PolicyVersion, error) {
+	return s.store.ActiveVersion(ctx)
+}
+
+// SegmentEnvironment is the switch segment-to-VLAN environment validation
+// checks against. Checked is false when no segment source is configured.
+type SegmentEnvironment struct {
+	Checked bool                      `json:"checked"`
+	Maps    map[string]map[string]int `json:"maps"`
+	Error   string                    `json:"error,omitempty"`
+}
+
+// Environment reads the current segment environment once, so a caller can
+// both validate against it and record exactly what it validated against.
+func (s *Service) Environment(ctx context.Context) SegmentEnvironment {
+	if s.segments == nil {
+		return SegmentEnvironment{Maps: map[string]map[string]int{}}
+	}
+	maps, err := s.segments.SegmentMappings(ctx)
+	env := SegmentEnvironment{Checked: true, Maps: maps}
+	if env.Maps == nil {
+		env.Maps = map[string]map[string]int{}
+	}
+	if err != nil {
+		env.Error = err.Error()
+	}
+	return env
+}
+
+// ValidateAgainst validates rules against a previously read environment.
+func (s *Service) ValidateAgainst(rules []domain.Policy, def domain.PolicyAction, env SegmentEnvironment) Validation {
+	var err error
+	if env.Error != "" {
+		err = errors.New(env.Error)
+	}
+	return s.validate(rules, def, env.Maps, err, env.Checked)
+}
+
 // validateTx validates with VLAN mappings the store read inside the
 // activation transaction (no extra connection).
 func (s *Service) validateTx(rules []domain.Policy, def domain.PolicyAction, view TxView) Validation {

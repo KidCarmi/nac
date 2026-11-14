@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: NAC Platform API
-  version: "1.1.0"
+  version: "1.2.0"
   description: |
     REST API for the enterprise Network Access Control (NAC) platform: endpoint
     inventory, versioned access policy, the FreeRADIUS decision adapter, switch
@@ -130,6 +130,15 @@ tags:
       restoration and activation history. Publishing or restoring applies at
       the next authentication; it sends no CoA and never clears session
       overrides.
+  - name: Change requests
+    description: |
+      **Review-only** change requests: persisted, revisioned proposals for
+      the policy rule set, with recorded validation. A change request never
+      changes the active policy, a session, a CoA or a switch, and policy is
+      still published only through the draft (publish/restore), so a change
+      request is not governance of policy changes. There is no approval,
+      activation or dispatch. Every mutation names the revision it is based
+      on (`If-Match`) and is audited in the same transaction.
   - name: Access
     description: Legacy access-evaluation API for enforcement points (service token).
   - name: Audit
@@ -762,6 +771,214 @@ paths:
               schema: { $ref: "#/components/schemas/PolicyActivationList" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ------------------------------------------------------------------ Change requests (review-only)
+  /api/v1/change-requests:
+    get:
+      tags: [Change requests]
+      operationId: listChangeRequests
+      summary: List review-only change requests
+      description: Most recently updated first, at most 200.
+      x-required-permission: policy:read
+      parameters:
+        - name: state
+          in: query
+          schema: { $ref: "#/components/schemas/ChangeRequestState" }
+      responses:
+        "200":
+          description: Change requests
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Change requests]
+      operationId: createChangeRequest
+      summary: Propose a change (review-only)
+      description: |
+        Creates a change request at revision 1 from explicit `content` or from
+        a copy of the current policy draft (`from_draft: true`), based on the
+        active policy version. Nothing changes the active policy. Audited as
+        `change.create` in the same transaction.
+      x-required-permission: policy:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeRequestCreate" }
+      responses:
+        "201":
+          description: Created
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /api/v1/change-requests/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Change requests]
+      operationId: getChangeRequest
+      summary: A change request with its content, validations and drift
+      description: |
+        `base_drift` says whether the active policy version moved since the
+        current revision was written; each validation says whether it still
+        describes the present (same revision, active version and switch
+        segment mappings). Nothing is invalidated silently. The `ETag` is the
+        current revision; send it as `If-Match` on every mutation.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Change request
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/change-requests/{id}/revisions:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Change requests]
+      operationId: listChangeRequestRevisions
+      summary: All immutable revisions, oldest first
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Revisions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRevisionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/change-requests/{id}/revisions/{revision}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - name: revision
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Change requests]
+      operationId: getChangeRequestRevision
+      summary: One immutable revision
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Revision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRevision" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/change-requests/{id}/content:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/ChangeIfMatch"
+    put:
+      tags: [Change requests]
+      operationId: putChangeRequestContent
+      summary: Replace the content as a new revision
+      description: |
+        Appends revision `If-Match + 1`, based on the active policy version
+        now, and returns the change request to `draft` (earlier validations
+        describe older content). `409` names the current revision when
+        `If-Match` is not current; `409` for a cancelled change request.
+        Audited as `change.edit` in the same transaction.
+      x-required-permission: policy:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeContent" }
+      responses:
+        "200":
+          description: New revision
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
+  /api/v1/change-requests/{id}/validations:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/ChangeIfMatch"
+    post:
+      tags: [Change requests]
+      operationId: validateChangeRequest
+      summary: Validate the current revision and record the result
+      description: |
+        Validates revision `If-Match` (it must be current) against the switch
+        segment mappings as they are now, and records the result with the
+        content digest and an environment digest. A valid result moves a
+        `draft` to `validated`; an invalid one moves it back to `draft`.
+        Requires `policy:write` because it records a result and changes the
+        state. Audited as `change.validate` in the same transaction.
+      x-required-permission: policy:write
+      responses:
+        "201":
+          description: Validation recorded
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeValidationResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
+  /api/v1/change-requests/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/ChangeIfMatch"
+    post:
+      tags: [Change requests]
+      operationId: cancelChangeRequest
+      summary: Cancel (terminal)
+      description: |
+        Cancels the change request if `If-Match` is current. A cancelled
+        change request is immutable. Audited as `change.cancel` in the same
+        transaction.
+      x-required-permission: policy:write
+      responses:
+        "200":
+          description: Cancelled
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeRequestDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
 
   # ------------------------------------------------------------------ Access (service token)
   /api/v1/access/evaluate:
@@ -1418,6 +1635,12 @@ components:
       required: true
       description: Resource UUID. A malformed UUID is `400`.
       schema: { type: string, format: uuid }
+    ChangeIfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The change-request revision this action is based on, as returned in `ETag` (e.g. `"3"`). Missing is `428`; not current is `409`.
+      schema: { type: string, examples: ['"3"'] }
     VersionNumberPath:
       name: number
       in: path
@@ -1490,13 +1713,143 @@ components:
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
+    PreconditionRequired:
+      description: The required `If-Match` revision header is missing
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
     CoAAccepted:
       description: Requested state recorded and CoA started
       content:
         application/json:
           schema: { $ref: "#/components/schemas/CoAResponse" }
 
+  headers:
+    ChangeRevisionETag:
+      description: The change request's current revision, quoted (send it back as `If-Match`).
+      schema: { type: string, examples: ['"3"'] }
+
   schemas:
+    # ---------------------------------------------------------------- change requests
+    ChangeRequestState:
+      type: string
+      description: Review-only states. There is no approval, activation or execution state.
+      enum: [draft, validated, simulated, cancelled]
+    ChangeContent:
+      type: object
+      required: [rules, default_action]
+      properties:
+        rules:
+          type: [array, "null"]
+          description: Same rule shape as the policy draft. A missing rule `id` is derived from the name.
+          items: { $ref: "#/components/schemas/Policy" }
+        default_action: { $ref: "#/components/schemas/PolicyAction" }
+    ChangeRequestCreate:
+      type: object
+      required: [title]
+      description: "Give either `content` or `from_draft: true`."
+      properties:
+        title: { type: string, maxLength: 200 }
+        intent:
+          type: string
+          maxLength: 4000
+          description: Requester's free text. Stored and shown as data; never interpreted.
+        content: { $ref: "#/components/schemas/ChangeContent" }
+        from_draft:
+          type: boolean
+          description: Copy the current policy draft as the content.
+    ChangeRequest:
+      type: object
+      required: [id, title, intent, workflow, state, revision, content_digest, base_version_id, base_version_number, base_version_digest, requested_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        intent: { type: string }
+        workflow: { type: string, const: review_only }
+        state: { $ref: "#/components/schemas/ChangeRequestState" }
+        revision: { type: integer, minimum: 1 }
+        content_digest:
+          type: string
+          description: Canonical digest of the current revision (same function as draft and version digests).
+        base_version_id: { type: string, format: uuid }
+        base_version_number:
+          type: integer
+          description: The immutable active policy version the current revision was written against.
+        base_version_digest: { type: string }
+        requested_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ChangeDrift:
+      type: object
+      required: [state, reasons]
+      properties:
+        state: { type: string, enum: [current, stale] }
+        reasons: { type: array, items: { type: string } }
+    ChangeValidation:
+      type: object
+      required: [id, change_request_id, revision, content_digest, environment_digest, valid, result, created_by, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        change_request_id: { type: string, format: uuid }
+        revision: { type: integer }
+        content_digest: { type: string }
+        environment_digest:
+          type: string
+          description: Digest of the switch segment mappings validated against.
+        valid: { type: boolean }
+        result: { $ref: "#/components/schemas/Validation" }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        drift: { $ref: "#/components/schemas/ChangeDrift" }
+    ChangeRequestDetail:
+      allOf:
+        - $ref: "#/components/schemas/ChangeRequest"
+        - type: object
+          required: [label, content, base_drift, validations]
+          properties:
+            label:
+              type: string
+              description: The review-only statement shown with every change request.
+            content: { $ref: "#/components/schemas/ChangeContent" }
+            base_drift: { $ref: "#/components/schemas/ChangeDrift" }
+            validations:
+              type: array
+              items: { $ref: "#/components/schemas/ChangeValidation" }
+    ChangeRequestList:
+      type: object
+      required: [change_requests, label]
+      properties:
+        change_requests:
+          type: array
+          items: { $ref: "#/components/schemas/ChangeRequest" }
+        label: { type: string }
+    ChangeRevision:
+      type: object
+      required: [change_request_id, revision, content, content_digest, base_version_id, base_version_number, base_version_digest, author, created_at]
+      properties:
+        change_request_id: { type: string, format: uuid }
+        revision: { type: integer }
+        content: { $ref: "#/components/schemas/ChangeContent" }
+        content_digest: { type: string }
+        base_version_id: { type: string, format: uuid }
+        base_version_number: { type: integer }
+        base_version_digest: { type: string }
+        author: { type: string }
+        created_at: { type: string, format: date-time }
+    ChangeRevisionList:
+      type: object
+      required: [revisions]
+      properties:
+        revisions:
+          type: array
+          items: { $ref: "#/components/schemas/ChangeRevision" }
+    ChangeValidationResponse:
+      type: object
+      required: [validation, change_request]
+      properties:
+        validation: { $ref: "#/components/schemas/ChangeValidation" }
+        change_request: { $ref: "#/components/schemas/ChangeRequestDetail" }
+
     # ---------------------------------------------------------------- common
     Problem:
       type: object

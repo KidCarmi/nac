@@ -43,6 +43,7 @@ hardening, and the secrets manager itself.
 | `POST /api/v1/radius/{authorize,reject,accounting}` | service token (Basic) | FreeRADIUS adapter over loopback only (pilot). |
 | Switch, session, binding, CoA, policy-version and event routes | JWT + operator record + RBAC | Pilot operator API (`network:*`, `session:act`, `policy:*`). |
 | `GET /api/v1/auth/me`, `POST /api/v1/auth/password` | JWT + operator record | Self-service; the change needs the current password. |
+| `/api/v1/change-requests…` (review-only) | JWT + operator record + RBAC (`policy:read`, mutations `policy:write`) | Proposals only: no route changes policy, sessions, CoAs or switches. Every mutation needs `If-Match: <revision>` and is audited in the same transaction. |
 | `/ui/` | none (static) | The console is a client of the same API and holds no privileges of its own. |
 | RADIUS UDP 1812/1813 (FreeRADIUS) | per-switch shared secret + EAP-TLS | Only registered switches; requests without EAP are rejected. |
 | Host: `nacd.env`, `nac-reset-password` | root | Fully trusted (see Trust Boundaries §12). |
@@ -121,6 +122,23 @@ Full enumeration: [`security/attack-surface.md`](../../security/attack-surface.m
 | eAPI credentials intercepted | HTTPS; read-only account; sealed at rest | `NAC_EAPI_INSECURE_SKIP_VERIFY=true` (needed for self-signed eAPI) disables certificate checks for all switches |
 | FreeRADIUS service token leaked | Loopback-only HTTP; no operator capability | `freeradius -X` debug output prints it |
 | Brute force of the current password through a stolen session | Argon2id cost; per-client rate limiting; failures audited | No per-account lockout |
+
+### Review-only change requests (slice A)
+
+These are the threats for the change-request endpoints, written together
+with the endpoints, as the implementation plan requires.
+
+| Threat | Mitigation | Residual |
+|--------|------------|----------|
+| A change request is used to change live policy, a session or a switch | `change.Service` holds only a `PolicyReader` with read methods (reflection test). The package cannot import the enforcement, RADIUS, pilot or storage code (import test). The API test compares policy, versions, draft, sessions, CoAs, switches and decisions before and after exercising every route, and sees no CoA packet | — |
+| A reviewed change request is mistaken for authorization, while publish bypasses it | `workflow: review_only` (CHECK-constrained) and a label on every response and page. The API description says policy is published only through the draft | Approval is not mandatory governance yet. Mandatory approvals must later converge publish, restore and activation on one enforced boundary (plan) |
+| Lost update: an edit, validation or cancel based on an old view overwrites a newer revision | `If-Match` revision on every mutation (`428` if missing, `409` with the current revision if stale). Compare-and-set under a row lock; tests show one winner among concurrent mutations | — |
+| A mutation without an audit record (repudiation) | Each mutation and its `audit_events` row share one transaction; a forced audit failure rolls the mutation back (test) | Reads are not audited |
+| History rewritten to hide what was proposed or validated | Revisions and validations are immutable, and change requests are never deleted (database triggers; raw-SQL test) | A database superuser can disable triggers (Trust Boundaries §3) |
+| A stale validation is presented as current | Each validation records the content digest and an environment digest. `GET` reports drift (revision, active version, segment mappings) with reasons; nothing is silently invalidated or refreshed | — |
+| Injection through title, intent or rule text | Stored and returned as data, never interpreted. The console renders with `textContent` only. Size limits: title 200, intent 4000, 500 rules, request body limit | — |
+| Resource exhaustion by many revisions or requests | `policy:write` required; the request body limit; per-client rate limiting | No per-operator quota on change requests |
+| A viewer creates or edits proposals | Mutations require `policy:write` (RBAC test); reads require `policy:read` | Validation needs `policy:write` (the proposed contract had `policy:read`), because it records a result and changes the state |
 
 ## 5. Residual risks & accepted trade-offs
 
