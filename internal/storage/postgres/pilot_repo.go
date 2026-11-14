@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kidcarmi/nac/internal/domain"
@@ -559,12 +560,21 @@ const eventColumns = `id, occurred_at, session_id, switch_id, client_ip, nas_por
 // InsertEvent appends a timeline event. With an ImportKey it is idempotent and
 // reports whether a row was inserted.
 func (r *PilotRepo) InsertEvent(ctx context.Context, e *domain.AuthEvent) (bool, error) {
+	return insertEvent(ctx, r.pool, e)
+}
+
+// execer is a pool or a transaction.
+type execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+func insertEvent(ctx context.Context, q execer, e *domain.AuthEvent) (bool, error) {
 	detail, _ := json.Marshal(orEmptyMap(e.Detail))
 	var key *string
 	if e.ImportKey != "" {
 		key = &e.ImportKey
 	}
-	tag, err := r.pool.Exec(ctx, `INSERT INTO auth_events (`+eventColumns+`, import_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+	tag, err := q.Exec(ctx, `INSERT INTO auth_events (`+eventColumns+`, import_key) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 		ON CONFLICT DO NOTHING`,
 		e.ID, e.OccurredAt, e.SessionID, e.SwitchID, e.ClientIP, e.NASPortID, e.MAC, e.Stage, e.Result, e.Reason, e.Source,
 		e.DecisionID, e.CoAID, detail, key)
@@ -675,35 +685,6 @@ func scanCoA(row rowScanner) (*domain.CoARequest, error) {
 		return nil, err
 	}
 	return &c, json.Unmarshal(target, &c.Target)
-}
-
-// InsertCoA inserts a CoA request. Only one non-final CoA per session is
-// allowed; a second concurrent request returns ErrConflict.
-func (r *PilotRepo) InsertCoA(ctx context.Context, c *domain.CoARequest) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	// Serialise per session so two operators cannot both start a CoA.
-	if _, err := tx.Exec(ctx, `SELECT id FROM radius_sessions WHERE id=$1 FOR UPDATE`, c.SessionID); err != nil {
-		return err
-	}
-	var inFlight int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM coa_requests WHERE session_id=$1 AND state IN ('requested','sent')`, c.SessionID).Scan(&inFlight); err != nil {
-		return err
-	}
-	if inFlight > 0 {
-		return fmt.Errorf("%w: a CoA for this session is already in progress", domain.ErrConflict)
-	}
-	target, _ := json.Marshal(c.Target)
-	if _, err := tx.Exec(ctx, `INSERT INTO coa_requests (`+coaColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
-		c.ID, c.SessionID, c.SwitchID, c.Kind, target, c.RequestedSegment, c.RequestedVLAN, c.State, c.Attempts, c.RadiusID,
-		c.ErrorCause, c.Detail, c.CreatedBy, c.CreatedAt, c.SentAt, c.RespondedAt, c.ObservedAt, c.ObservedDecisionID, c.UpdatedAt,
-		c.RequestedRole); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
 }
 
 // UpdateCoA writes mutable CoA fields.

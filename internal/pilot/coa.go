@@ -13,6 +13,7 @@ import (
 	"github.com/kidcarmi/nac/internal/domain"
 	"github.com/kidcarmi/nac/internal/radius"
 	"github.com/kidcarmi/nac/internal/radiusauth"
+	"github.com/kidcarmi/nac/internal/storage/postgres"
 )
 
 type coaSender func(ctx context.Context, addr string, req *radius.Packet, raw, secret []byte, timeout time.Duration) (*radius.Packet, error)
@@ -39,29 +40,65 @@ type coaStore interface {
 //   - reauthenticate: no override change; applies the active policy version
 //     (e.g. after publishing) to this session now.
 //
-// The override is recorded before the CoA is sent, so even if the CoA fails
-// the requested state applies at the session's next authentication. The
-// session is identified by switch + NAS-Port-Id + Calling-Station-Id, captured
-// now; retries never re-target.
+// The CoA request, the override and the operator's timeline event are
+// committed in ONE transaction (postgres.StartCoA) before anything is sent:
+// either all are recorded or none is, so a failure can never leave a
+// "requested" CoA without its override (which used to block every later CoA
+// on the session until nacd restarted), and the switch is never asked for a
+// state NAC has not recorded. Because the override is committed before the
+// CoA is sent, the requested state applies at the session's next
+// authentication even if the CoA fails. The session is identified by switch +
+// NAS-Port-Id + Calling-Station-Id, captured now; retries never re-target.
 func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, actor string) (*domain.CoARequest, error) {
 	switch kind {
 	case domain.CoAQuarantine, domain.CoARestore, domain.CoAReauthenticate:
 	default:
 		return nil, fmt.Errorf("%w: action must be quarantine, restore or reauthenticate", domain.ErrInvalidInput)
 	}
+	// The action is prepared from an unlocked read (prediction reads the
+	// active policy through other connections, so it cannot run while the
+	// session row is locked). StartCoA re-checks that read under the row
+	// lock; if the session changed in between, prepare again.
+	const prepareAttempts = 3
+	for attempt := 1; ; attempt++ {
+		c, sw, err := s.startCoA(ctx, sessionID, kind, actor)
+		if postgres.IsSessionChanged(err) && attempt < prepareAttempts {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		s.audit(ctx, "session."+kind, "session", sessionID.String(), "success", map[string]string{"coa_id": c.ID.String()})
+
+		// Only now, after COMMIT, is anything sent to the switch.
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			// Detached from the HTTP request: the exchange outlives it.
+			bg, cancel := context.WithTimeout(context.Background(), time.Duration(s.cfg.CoAAttempts+1)*s.cfg.CoATimeout+s.cfg.CoAObserveWindow+5*time.Second)
+			defer cancel()
+			s.runCoA(bg, c.ID, sw)
+		}()
+		return c, nil
+	}
+}
+
+// startCoA prepares one operator CoA from the current session and commits
+// it with StartCoA. It sends nothing.
+func (s *Service) startCoA(ctx context.Context, sessionID uuid.UUID, kind, actor string) (*domain.CoARequest, *domain.Switch, error) {
 	sess, err := s.store.GetSession(ctx, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if sess.State != domain.SessionActive {
-		return nil, fmt.Errorf("%w: session is %s, not active; CoA can only target an authorized session on the switch", domain.ErrInvalidInput, sess.State)
+		return nil, nil, fmt.Errorf("%w: session is %s, not active; CoA can only target an authorized session on the switch", domain.ErrInvalidInput, sess.State)
 	}
 	sw, err := s.store.GetSwitch(ctx, sess.SwitchID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if kind == domain.CoARestore && sess.Override == "" {
-		return nil, fmt.Errorf("%w: session has no quarantine override to restore; use reauthenticate to apply the active policy", domain.ErrInvalidInput)
+		return nil, nil, fmt.Errorf("%w: session has no quarantine override to restore; use reauthenticate to apply the active policy", domain.ErrInvalidInput)
 	}
 	now := s.now().UTC()
 
@@ -75,13 +112,13 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 	}
 	seg, vlan, role, err := s.predict(ctx, sess, sw)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if sw.UsesRoles() && role == "" {
 		// A role CoA can only carry a role. Sending one without it, or a
 		// Disconnect, is outside this candidate, so refuse before anything
 		// is recorded: the session keeps its current override (fail-safe).
-		return nil, fmt.Errorf("%w: the active policy would not grant this session a role on %s (%s); no CoA was sent and the session override is unchanged. "+
+		return nil, nil, fmt.Errorf("%w: the active policy would not grant this session a role on %s (%s); no CoA was sent and the session override is unchanged. "+
 			"Change the policy or the switch role mapping first", domain.ErrInvalidInput, sw.Name, ifEmpty(seg, "deny"))
 	}
 
@@ -98,16 +135,6 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 			NASIPAddress: nasIP, NASPortID: sess.NASPortID, CallingStationID: csid, UserName: sess.UserName,
 			SessionID: sess.ID, SessionStartedAt: sess.StartedAt},
 		RequestedSegment: seg, RequestedVLAN: vlan, RequestedRole: role, CreatedBy: actor, CreatedAt: now, UpdatedAt: now}
-	if err := s.store.InsertCoA(ctx, c); err != nil {
-		return nil, err
-	}
-	if sess.Override != prevOverride {
-		// Only the override columns: a concurrent authentication or
-		// observation cannot be undone by (or undo) this write.
-		if err := s.store.SetSessionOverride(ctx, sess.ID, sess.Override, sess.OverrideBy, sess.OverrideAt); err != nil {
-			return nil, err
-		}
-	}
 	reason := fmt.Sprintf("operator %s requested %s; target %s %s %s", actor, kind, sw.Name, sess.NASPortID, csid)
 	switch {
 	case role != "":
@@ -117,19 +144,16 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 	default:
 		reason += "; the active policy would reject this session at re-authentication"
 	}
-	s.event(ctx, &domain.AuthEvent{SessionID: &sess.ID, SwitchID: &sw.ID, MAC: sess.MAC, NASPortID: sess.NASPortID,
-		Stage: domain.StageOperator, Result: "info", Source: "operator", CoAID: &c.ID, Reason: reason})
-	s.audit(ctx, "session."+kind, "session", sess.ID.String(), "success", map[string]string{"coa_id": c.ID.String()})
-
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		// Detached from the HTTP request: the exchange outlives it.
-		bg, cancel := context.WithTimeout(context.Background(), time.Duration(s.cfg.CoAAttempts+1)*s.cfg.CoATimeout+s.cfg.CoAObserveWindow+5*time.Second)
-		defer cancel()
-		s.runCoA(bg, c.ID, sw)
-	}()
-	return c, nil
+	ev := &domain.AuthEvent{ID: uuid.New(), OccurredAt: now, SessionID: &sess.ID, SwitchID: &sw.ID, MAC: sess.MAC, NASPortID: sess.NASPortID,
+		Stage: domain.StageOperator, Result: "info", Source: "operator", CoAID: &c.ID, Reason: reason}
+	err = s.store.StartCoA(ctx, &postgres.CoAStart{CoA: c,
+		ExpectedState: domain.SessionActive, ExpectedOverride: prevOverride, ExpectedDecisionID: sess.LastDecisionID,
+		SetOverride: sess.Override != prevOverride, Override: sess.Override, OverrideBy: sess.OverrideBy, OverrideAt: sess.OverrideAt,
+		Event: ev})
+	if err != nil {
+		return nil, nil, err
+	}
+	return c, sw, nil
 }
 
 // predict evaluates the session's latest recorded inputs under the active

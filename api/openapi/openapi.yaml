@@ -1171,8 +1171,11 @@ paths:
       operationId: quarantineSession
       summary: Quarantine a session (override + CoA)
       description: |
-        Records an operator `quarantine` override on the session **first**,
-        then sends a CoA-Request asking the switch to apply the quarantine
+        Records an operator `quarantine` override on the session **first**
+        (the override, the CoA request and the operator timeline event are
+        committed in one transaction; nothing is sent before that commit and
+        a failure records none of them), then sends a CoA-Request asking the
+        switch to apply the quarantine
         VLAN (VLAN enforcement: the switch re-authenticates the session) or
         the quarantine role (role enforcement: `Aruba-User-Role` in the CoA,
         applied in place; VLAN and IP unchanged). The override takes precedence over policy at every
@@ -1187,7 +1190,9 @@ paths:
         `coa.state` (`requested`, `sent`, then `acked`/`nak`/`timeout`/`failed`,
         then `observed`) via `GET /api/v1/sessions/{id}`. The session must be
         `active` (`422` otherwise) and only one CoA may be in flight per
-        session (`409`). No request body. Audited as `session.quarantine`;
+        session (`409`). `409` also when the session changed while the
+        action was being prepared and still conflicts after re-preparing;
+        nothing is recorded then. No request body. Audited as `session.quarantine`;
         `override_by` and `created_by` are the operator.
       x-required-permission: session:act
       responses:
