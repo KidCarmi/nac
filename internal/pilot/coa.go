@@ -66,11 +66,18 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 			continue
 		}
 		if err != nil {
-			return nil, err
+			if c == nil || errors.Is(err, domain.ErrConflict) || errors.Is(err, domain.ErrNotFound) {
+				return nil, err // refused before StartCoA, or inside its transaction: nothing committed
+			}
+			// Any other StartCoA error may hide a COMMIT whose acknowledgement
+			// was lost. Resolve it by the command's own ID, in a context that
+			// survives a cancelled request.
+			if err = s.resolveStart(ctx, c, err); err != nil {
+				return nil, err
+			}
 		}
-		s.audit(ctx, "session."+kind, "session", sessionID.String(), "success", map[string]string{"coa_id": c.ID.String()})
-
-		// Only now, after COMMIT, is anything sent to the switch.
+		// The CoA, override, timeline event and audit record are committed.
+		// Only now is anything sent to the switch.
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
@@ -146,14 +153,68 @@ func (s *Service) startCoA(ctx context.Context, sessionID uuid.UUID, kind, actor
 	}
 	ev := &domain.AuthEvent{ID: uuid.New(), OccurredAt: now, SessionID: &sess.ID, SwitchID: &sw.ID, MAC: sess.MAC, NASPortID: sess.NASPortID,
 		Stage: domain.StageOperator, Result: "info", Source: "operator", CoAID: &c.ID, Reason: reason}
+	var audit *domain.AuditEvent
+	if s.auditor != nil {
+		audit = s.auditor.Event(ctx, "session."+kind, "session", sess.ID.String(), "success", map[string]string{"coa_id": c.ID.String()})
+	}
+	// From here on c is returned even on error: the caller may have to find
+	// out by c.ID whether the start committed.
 	err = s.store.StartCoA(ctx, &postgres.CoAStart{CoA: c,
 		ExpectedState: domain.SessionActive, ExpectedOverride: prevOverride, ExpectedDecisionID: sess.LastDecisionID,
 		SetOverride: sess.Override != prevOverride, Override: sess.Override, OverrideBy: sess.OverrideBy, OverrideAt: sess.OverrideAt,
-		Event: ev})
-	if err != nil {
-		return nil, nil, err
+		Event: ev, Audit: audit})
+	return c, sw, err
+}
+
+// resolveStart decides an ambiguous StartCoA error by looking up the
+// command's own ID. The start is atomic, so the CoA row exists if and only
+// if everything committed. It returns nil when the start committed (the
+// caller then dispatches that same command, once), the original error when
+// it did not, and ErrUnavailable when the outcome cannot be determined now:
+// then nothing is sent from this request, and the start sweeper resolves
+// the command later (ReconcileStuckCoAs) without a restart.
+func (s *Service) resolveStart(ctx context.Context, c *domain.CoARequest, startErr error) error {
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), resolveStartTimeout)
+	defer cancel()
+	committed, err := s.store.CoAStartCommitted(rctx, c.ID)
+	switch {
+	case err != nil:
+		s.logger.Error("CoA start outcome unknown", "coa", c.ID, "start_error", startErr, "lookup_error", err)
+		return fmt.Errorf("%w: could not confirm whether the %s was recorded (CoA %s); nothing was sent from this request. "+
+			"If it was recorded, NAC marks it failed within %s (not sent; the recorded override stays) and the session can be acted on again. "+
+			"Check the session timeline before retrying", domain.ErrUnavailable, c.Kind, c.ID, s.cfg.CoAStartGrace)
+	case !committed:
+		return startErr
+	default:
+		s.logger.Warn("CoA start committed although StartCoA reported an error; dispatching it", "coa", c.ID, "start_error", startErr)
+		return nil
 	}
-	return c, sw, nil
+}
+
+// resolveStartTimeout bounds the lookup that resolves an ambiguous start.
+const resolveStartTimeout = 5 * time.Second
+
+// unclaimedDetail is recorded on a CoA the sweeper fails.
+const unclaimedDetail = "the start of this CoA was recorded but nacd could not confirm it at the time, so it was never sent to the switch. " +
+	"The recorded override is unchanged. Check the session and retry the action if it is still needed."
+
+// ReconcileStuckCoAs fails every CoA whose start committed but that no
+// sender claimed within the grace period (created before olderThan): it was
+// never sent, it is not sent now, and the recorded override is left as it
+// is. It runs in the background (every CoAStartGrace/2) so a lost
+// acknowledgement never needs a restart to clear; tests call it directly.
+func (s *Service) ReconcileStuckCoAs(ctx context.Context, olderThan time.Time) (int, error) {
+	stale, err := s.store.FailUnclaimedCoAs(ctx, olderThan, s.now().UTC(), unclaimedDetail)
+	if err != nil {
+		return 0, err
+	}
+	for _, st := range stale {
+		id, sid, sw := st.ID, st.SessionID, st.SwitchID
+		s.event(ctx, &domain.AuthEvent{SessionID: &sid, SwitchID: &sw, NASPortID: st.NASPortID, Stage: domain.StageCoA,
+			Result: "error", Source: "nacd", CoAID: &id, Reason: "CoA failed: " + unclaimedDetail})
+		s.logger.Warn("unclaimed CoA start marked failed (not sent)", "coa", id)
+	}
+	return len(stale), nil
 }
 
 // predict evaluates the session's latest recorded inputs under the active
@@ -274,7 +335,12 @@ func (s *Service) runCoA(ctx context.Context, id uuid.UUID, sw *domain.Switch) {
 		if attempt == 1 {
 			c.SentAt = &now
 			c.State = domain.CoASent
-			s.updateCoA(ctx, c, domain.CoARequested)
+			// Claim the command: requested -> sent, conditionally. If the
+			// start sweeper already failed it, it is not ours to send.
+			if !s.updateCoA(ctx, c, domain.CoARequested) {
+				s.logger.Warn("CoA not claimed (already resolved); not sending", "coa", c.ID)
+				return
+			}
 		} else {
 			s.updateCoA(ctx, c, domain.CoASent)
 		}

@@ -37,7 +37,10 @@ command in separate commits:
 4. Write the operator override, if the action changes it (override
    columns only, as before).
 5. Insert the operator timeline event.
-6. `COMMIT`.
+6. Insert the operator **audit record** (`session.<kind>`, metadata
+   `coa_id`). If it cannot be written, nothing commits and nothing is sent.
+   Delivery to any external audit sink stays outside the transaction.
+7. `COMMIT`.
 
 How `RequestCoA` uses it:
 
@@ -47,10 +50,28 @@ How `RequestCoA` uses it:
   so it cannot run while the row is locked.
 - **Retry.** If `StartCoA` reports `ErrSessionChanged`, it prepares again
   from the new state, up to 3 times, and otherwise returns `409`.
-- **Sending.** Only after `StartCoA` returns nil, that is after `COMMIT`,
-  does it write the audit record and start the goroutine that sends the
-  CoA. A failed start therefore sends nothing, and a CoA is never sent
-  for a state NAC has not committed.
+- **Sending.** The sender starts only after the start is known to have
+  committed, so a CoA is never sent for a state NAC has not committed.
+- **Ambiguous errors.** A `StartCoA` error does not always mean rollback:
+  COMMIT can succeed while its acknowledgement is lost. Errors raised inside
+  the transaction (409 conflict, 404) are definite. For any other error,
+  `RequestCoA` looks the command up **by its own ID**, in a context detached
+  from the request (`context.WithoutCancel`, 5 s). The start is atomic, so
+  the row exists if and only if everything committed.
+  - **Committed:** that same command is dispatched, once.
+  - **Not committed:** the original error is returned.
+  - **Lookup fails:** `503` with a detail saying the outcome is unknown,
+    that nothing was sent from this request, and what will resolve it.
+- **Start sweeper.** It runs every `CoAStartGrace/2` (grace 30 s) and
+  fails every CoA still `requested` after the grace period, meaning
+  committed but never claimed by a sender. It **does not send it** and does
+  not touch the recorded override, and it records a timeline event. The
+  session can be acted on again without a restart.
+- **One claim.** The sender's first transition is a conditional claim
+  (`requested → sent`), and the sweeper's update is conditional on
+  `requested` too. Exactly one of them acts on a command, so reconciliation
+  can never cause a second dispatch. Normal configured RADIUS retries of
+  the claimed command are unchanged.
 
 **Unchanged:**
 - the CoA exchange (`runCoA`, retries, never re-targeting);
@@ -62,10 +83,24 @@ How `RequestCoA` uses it:
 - `FailInterruptedCoAs`, still needed for a crash *after* commit, in the
   middle of the exchange.
 
-**Still best-effort, as before:** the audit record, which comes after the
-commit. Making operator audit transactional, or moving it to an outbox, is
-the same requirement as the change-request audit (slice A). It is not
-widened here.
+**Operator audit is now transactional for these actions** (review R2). The
+other existing `s.audit` call sites, such as binding create and delete,
+remain best-effort; changing them is outside W2.
+
+**Residual, not fixed here: policy or configuration change during
+preparation.** The re-check under the lock binds the session's state,
+override and current decision. It does **not** bind the active policy
+version or the switch's segment/role mapping that the prediction used.
+
+- **What can happen:** if an operator publishes a policy or edits a
+  mapping between preparation and commit, the CoA can carry a segment, VLAN
+  or role computed from the previous policy or mapping. This applies to the
+  Aruba direct-role path too, where the role in the CoA is applied without
+  re-authentication.
+- **Why it is narrow on the VLAN path:** the next re-authentication
+  evaluates the active policy.
+- **Status:** an existing race, tracked here explicitly. It is not claimed
+  closed by this change.
 
 ## Tests (PostgreSQL, deterministic)
 
@@ -85,6 +120,10 @@ set the hook; nothing in nacd does, and no request can.
 | `TestCoAStart_NothingSentOrVisibleBeforeCommit` | A pause immediately before `COMMIT` | No packet has reached the fake switch, and another connection sees neither the CoA nor the override. The packet is sent after commit. |
 | `TestCoAStart_StalePreparationIsRedone` | Between preparation and the lock, a competing Quarantine commits and the switch completes it | The re-check catches it (the lock is taken twice). The Reauthenticate is recorded with segment `quarantine` VLAN 20, not the stale corp VLAN 10. Both actions are committed whole. |
 | `TestCoAStart_ConcurrentActionsOneWinner` | 8 concurrent Quarantine/Reauthenticate requests | Exactly 1 winner and 7 `ErrConflict`. Exactly one CoA, one operator event, and the override matches the winner's kind. |
+| `TestCoAStart_CommittedButAckLostIsDispatchedOnce` (R1) | COMMIT succeeds, then `StartCoA` returns an error (`committed` hook) | `RequestCoA` succeeds after the lookup by ID. One CoA, one packet, one audit record correlated by `coa_id`; the CoA is not left `requested` |
+| `TestCoAStart_UnknownOutcomeIsReconciledWithoutRestart` (R1) | Lost acknowledgement **and** a failed lookup | `503` (`ErrUnavailable`), and no packet. The in-flight check holds until the sweeper runs; the sweeper then fails the command ("never sent"). Still no packet, the override stays `quarantine`, and the next action (Restore) starts and is sent |
+| `TestCoAStart_SweeperAndSenderClaimOnce` (R1) | The sweeper runs between COMMIT and the sender's claim | The sender does not send; the command is `failed`, claimed once |
+| `TestCoAStart_AuditFailureLeavesNothing` (R2) | A **real** database failure on the audit insert (a trigger) | No CoA, override, timeline event or packet. After the trigger is removed: exactly one audit record for the CoA |
 
 **Mutation checks.**
 - Restoring rc5's two-commit order makes the failure test fail with
