@@ -17,7 +17,7 @@ import (
 )
 
 // Label is shown with every change request (API and console).
-const Label = "Review-only change request: a proposal. Approving or reviewing it does not change the active policy; " +
+const Label = "Review-only change request: a proposal. Creating, validating or simulating it does not change the active policy; " +
 	"policy is still published only through the policy draft (publish/restore)."
 
 // PolicyReader is everything the change service may read about policy. It
