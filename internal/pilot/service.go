@@ -32,6 +32,10 @@ type Store interface {
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
+	// SessionSnapshot and SessionListSnapshot read everything a session
+	// view is built from in one read-only REPEATABLE READ transaction.
+	SessionSnapshot(ctx context.Context, id uuid.UUID) (*postgres.SessionSnapshot, error)
+	SessionListSnapshot(ctx context.Context, f postgres.SessionFilter) ([]postgres.SessionListItem, error)
 	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
 	UpdateSessionObservation(ctx context.Context, id uuid.UUID, status, vlan string, at time.Time, source, detail string) error
 	ListSessions(ctx context.Context, f postgres.SessionFilter) ([]domain.Session, error)

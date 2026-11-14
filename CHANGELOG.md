@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Session read consistency (proposed on top of pilot-aruba-rc5; NOT a candidate)
+- `GET /api/v1/sessions/{id}` and `GET /api/v1/sessions` now read each
+  session, its switch, device, binding, decisions, CoA requests and events
+  from one read-only REPEATABLE READ snapshot, and build `last_coa`,
+  `coa_requests`, liveness, the timeline and the explanation from those
+  records only.
+  - A response can no longer mix the session before an operator action or
+    re-authentication with the CoA after it (CI, PR #5).
+  - `last_decision` is the decision the session applies, not a newer
+    decision row the session does not name yet.
+  - No enforcement, RADIUS, CoA, writer, schema or isolation-default
+    change. See `docs/architecture/session-read-consistency.md` for the
+    contract, the deterministic PostgreSQL tests and the writer-ordering
+    report.
+
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
   On a role switch the policy action is labelled "Apply active policy"

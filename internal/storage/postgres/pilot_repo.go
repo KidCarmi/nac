@@ -332,7 +332,11 @@ func (r *PilotRepo) PreviousSession(ctx context.Context, exclude, switchID uuid.
 
 // GetSession returns a session by ID.
 func (r *PilotRepo) GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error) {
-	return scanSession(r.pool.QueryRow(ctx, `SELECT `+sessionColumns+sessionFrom+` WHERE s.id=$1`, id))
+	return getSession(ctx, r.pool, id)
+}
+
+func getSession(ctx context.Context, q querier, id uuid.UUID) (*domain.Session, error) {
+	return scanSession(q.QueryRow(ctx, `SELECT `+sessionColumns+sessionFrom+` WHERE s.id=$1`, id))
 }
 
 // CreateSession inserts a session.
@@ -400,6 +404,10 @@ type SessionFilter struct {
 
 // ListSessions lists sessions, newest authentication first.
 func (r *PilotRepo) ListSessions(ctx context.Context, f SessionFilter) ([]domain.Session, error) {
+	return listSessions(ctx, r.pool, f)
+}
+
+func listSessions(ctx context.Context, q querier, f SessionFilter) ([]domain.Session, error) {
 	where, args := []string{"TRUE"}, []any{}
 	add := func(cond string, v any) {
 		args = append(args, v)
@@ -417,7 +425,7 @@ func (r *PilotRepo) ListSessions(ctx context.Context, f SessionFilter) ([]domain
 	if f.Limit <= 0 || f.Limit > 500 {
 		f.Limit = 200
 	}
-	rows, err := r.pool.Query(ctx, `SELECT `+sessionColumns+sessionFrom+` WHERE `+strings.Join(where, " AND ")+
+	rows, err := q.Query(ctx, `SELECT `+sessionColumns+sessionFrom+` WHERE `+strings.Join(where, " AND ")+
 		fmt.Sprintf(` ORDER BY s.last_auth_at DESC LIMIT %d`, f.Limit), args...)
 	if err != nil {
 		return nil, err
@@ -506,7 +514,11 @@ func (r *PilotRepo) GetDecision(ctx context.Context, id uuid.UUID) (*domain.Deci
 
 // SessionDecisions lists a session's decisions, oldest first.
 func (r *PilotRepo) SessionDecisions(ctx context.Context, sessionID uuid.UUID) ([]domain.DecisionRecord, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+decisionColumns+` FROM auth_decisions WHERE session_id=$1 ORDER BY occurred_at`, sessionID)
+	return sessionDecisions(ctx, r.pool, sessionID)
+}
+
+func sessionDecisions(ctx context.Context, q querier, sessionID uuid.UUID) ([]domain.DecisionRecord, error) {
+	rows, err := q.Query(ctx, `SELECT `+decisionColumns+` FROM auth_decisions WHERE session_id=$1 ORDER BY occurred_at`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -600,7 +612,11 @@ func scanEvents(rows pgx.Rows) ([]domain.AuthEvent, error) {
 const SessionEventLimit = 1000
 
 func (r *PilotRepo) SessionEvents(ctx context.Context, s *domain.Session) ([]domain.AuthEvent, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+eventColumns+` FROM (
+	return sessionEvents(ctx, r.pool, s)
+}
+
+func sessionEvents(ctx context.Context, q querier, s *domain.Session) ([]domain.AuthEvent, error) {
+	rows, err := q.Query(ctx, `SELECT `+eventColumns+` FROM (
 		SELECT * FROM auth_events
 		WHERE session_id=$1 OR (session_id IS NULL AND switch_id=$2 AND nas_port_id=$3 AND mac=$4)
 		ORDER BY occurred_at DESC, id DESC LIMIT $5) newest
@@ -734,9 +750,13 @@ func (r *PilotRepo) GetCoA(ctx context.Context, id uuid.UUID) (*domain.CoAReques
 
 // SessionCoAs lists a session's CoA requests, oldest first.
 func (r *PilotRepo) SessionCoAs(ctx context.Context, sessionID uuid.UUID) ([]domain.CoARequest, error) {
+	return sessionCoAs(ctx, r.pool, sessionID)
+}
+
+func sessionCoAs(ctx context.Context, q querier, sessionID uuid.UUID) ([]domain.CoARequest, error) {
 	// A CoA belongs to the session it targeted, and also to the session whose
 	// re-authentication observed it (the switch may replace the session).
-	rows, err := r.pool.Query(ctx, `SELECT `+coaColumns+` FROM coa_requests WHERE session_id=$1
+	rows, err := q.Query(ctx, `SELECT `+coaColumns+` FROM coa_requests WHERE session_id=$1
 		OR observed_decision_id IN (SELECT id FROM auth_decisions WHERE session_id=$1) ORDER BY created_at`, sessionID)
 	if err != nil {
 		return nil, err
