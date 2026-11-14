@@ -101,6 +101,34 @@ array deserialized into the domain `Condition` slice.
 Append-only security log. Indexed on `occurred_at DESC` (recent-first listing),
 `actor_id`, and `(resource_type, resource_id)` for investigations.
 
+### `change_requests`, `change_request_revisions`, `change_request_validations` (0007)
+Review-only change requests (ADR-0008 slice A; see
+[the implementation plan](../architecture/implementation-plan-change-request-core.md)
+on PR #2). A change request is a proposal for the policy rule set. Nothing in
+these tables changes the active policy, a session, a CoA or a switch.
+
+- **`change_requests`**
+  - Holds the header (title, intent, `requested_by`), plus `workflow`, which
+    is CHECKed to `review_only`.
+  - `state` is CHECKed to `draft | validated | simulated | cancelled`; there
+    is no approval or execution state.
+  - `revision` points at the current revision.
+  - Rows are updated by compare-and-set on `(state, revision)` under
+    `SELECT … FOR UPDATE`. They are never deleted (trigger).
+- **`change_request_revisions`**
+  - One immutable row per revision, holding `rules` (JSONB),
+    `default_action` and `content_digest` (the canonical `policyver.Digest`).
+  - Also holds the immutable `policy_versions` row (`base_version_id`,
+    `base_version_digest`) the revision was written against. There are no
+    activation records yet, and none are invented.
+- **`change_request_validations`**
+  - One immutable row per validation of one revision, with the content
+    digest, the environment digest and the result.
+- **Immutability:** UPDATE and DELETE on revisions and validations are
+  rejected by `nac_forbid_history_change()`.
+- **Audit:** every mutation writes its `audit_events` row in the same
+  transaction; if that insert fails, nothing commits.
+
 ### `schema_migrations`
 Bookkeeping table created by the migration runner: `(version TEXT PK,
 applied_at TIMESTAMPTZ)`.

@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Change requests, slice A milestone 1: schema and repository (review-only; draft; no endpoints yet)
+- Migration `0007_change_requests` adds:
+  - `change_requests`: `workflow` is fixed to `review_only`; states are
+    `draft`, `validated`, `simulated` and `cancelled` only.
+  - Immutable `change_request_revisions`: content, canonical digest, and the
+    active policy version each revision was based on.
+  - Immutable `change_request_validations`.
+- `postgres.ChangeRepo`:
+  - create, read, list, edit (`expected` revision), cancel, and record
+    validation;
+  - compare-and-set under a row lock, so concurrent mutations have exactly
+    one winner;
+  - a stale revision returns `RevisionConflict` (409) with the current
+    revision, and a cancelled change request is terminal.
+- Every mutation and its audit record commit in ONE transaction:
+  - `audit.Recorder.Event` / `audit.NewEvent` build the event without
+    persisting it;
+  - a failed audit write rolls back the mutation.
+- No API, console, approval, activation or dispatch. The legacy
+  publish/restore paths are unchanged.
+
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
   On a role switch the policy action is labelled "Apply active policy"
