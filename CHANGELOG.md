@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Operator CoA start is atomic (W2; proposed on top of pilot-aruba-rc5; NOT a candidate)
+- Quarantine, Restore and Reauthenticate commit the CoA request, the
+  session override and the operator timeline event in ONE transaction,
+  re-checked under the session row lock. The CoA is sent only after that
+  commit.
+  - A failure between the CoA insert and the override write can no longer
+    leave a never-sent `requested` CoA that blocked every later action on
+    the session until nacd restarted.
+  - An action prepared from a session that changed before the lock is
+    prepared again. It is never recorded or sent from the stale read.
+  - Failure-injection (including a real connection kill) and concurrency
+    tests are in `test/integration/coa_start_test.go`; see
+    `docs/architecture/coa-start-atomicity.md`.
+  - No change to the CoA exchange, the attributes sent, the RADIUS path or
+    the schema.
+
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
   On a role switch the policy action is labelled "Apply active policy"

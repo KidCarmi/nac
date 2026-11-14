@@ -32,7 +32,6 @@ type Store interface {
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
-	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
 	UpdateSessionObservation(ctx context.Context, id uuid.UUID, status, vlan string, at time.Time, source, detail string) error
 	ListSessions(ctx context.Context, f postgres.SessionFilter) ([]domain.Session, error)
 	ActiveSessionsOnSwitch(ctx context.Context, switchID uuid.UUID) ([]domain.Session, error)
@@ -43,7 +42,9 @@ type Store interface {
 	LastEvent(ctx context.Context, stage string) (*domain.AuthEvent, error)
 	InsertEvent(ctx context.Context, e *domain.AuthEvent) (bool, error)
 
-	InsertCoA(ctx context.Context, c *domain.CoARequest) error
+	// StartCoA commits an operator CoA, its override and its timeline
+	// event in one transaction (see postgres.StartCoA).
+	StartCoA(ctx context.Context, st *postgres.CoAStart) error
 	UpdateCoA(ctx context.Context, c *domain.CoARequest) error
 	GetCoA(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error)
 	SessionCoAs(ctx context.Context, sessionID uuid.UUID) ([]domain.CoARequest, error)
