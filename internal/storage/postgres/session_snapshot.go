@@ -23,8 +23,10 @@ import (
 //
 // The transactions here are read-only, contain database reads only (no
 // network or file I/O, no waiting on other work), and end before the caller
-// builds its response. They take no row locks, so they never block writers
-// and writers never block them.
+// builds its response. They take no row locks, so ordinary concurrent row
+// updates and these reads never wait on each other's row locks (table-level
+// locks such as migration DDL, and resource waits such as pool slots, still
+// apply).
 //
 // A snapshot is coherent, not fresh: it is what NAC had recorded at that
 // instant. It says nothing new about the switch or the endpoint; freshness
