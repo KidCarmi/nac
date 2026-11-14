@@ -25,6 +25,9 @@ const Label = "Review-only change request: a proposal. Creating, validating or s
 // cannot change the active policy (tested by reflection).
 type PolicyReader interface {
 	Active(ctx context.Context) (*domain.PolicyVersion, error)
+	Version(ctx context.Context, number int) (*domain.PolicyVersion, error)
+	RecordedCases(ctx context.Context, since time.Time, limit int) ([]policyver.RecordedCase, error)
+	PreviewWindow() time.Duration
 	Draft(ctx context.Context) (*policyver.Draft, error)
 	Environment(ctx context.Context) policyver.SegmentEnvironment
 	ValidateAgainst(rules []domain.Policy, def domain.PolicyAction, env policyver.SegmentEnvironment) policyver.Validation
@@ -227,14 +230,21 @@ type ValidationView struct {
 	Drift Drift `json:"drift"`
 }
 
-// Detail is a change request with its current content, staleness and
-// validations, as the API and console show it.
+// SimulationView is a simulation (without rows) with its staleness now.
+type SimulationView struct {
+	Simulation
+	Drift Drift `json:"drift"`
+}
+
+// Detail is a change request with its current content, staleness,
+// validations and simulations, as the API and console show it.
 type Detail struct {
 	ChangeRequest
 	Label       string           `json:"label"`
 	Content     Content          `json:"content"`
 	BaseDrift   Drift            `json:"base_drift"`
 	Validations []ValidationView `json:"validations"`
+	Simulations []SimulationView `json:"simulations"`
 }
 
 // Get returns the change request with its current content and, for each
@@ -258,8 +268,13 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Detail, error) {
 	if err != nil {
 		return nil, err
 	}
+	sims, err := s.repo.Simulations(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	envDigest := EnvironmentDigest(s.policy.Environment(ctx))
-	d := &Detail{ChangeRequest: *cr, Label: Label, Content: rev.Content, Validations: make([]ValidationView, 0, len(vals))}
+	d := &Detail{ChangeRequest: *cr, Label: Label, Content: rev.Content, Validations: make([]ValidationView, 0, len(vals)),
+		Simulations: make([]SimulationView, 0, len(sims))}
 	d.BaseDrift = Drift{State: "current", Reasons: []string{}}
 	if active.ID != cr.BaseVersionID {
 		d.BaseDrift = Drift{State: "stale", Reasons: []string{fmt.Sprintf(
@@ -282,5 +297,136 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Detail, error) {
 		}
 		d.Validations = append(d.Validations, ValidationView{Validation: v, Drift: dr})
 	}
+	for _, sim := range sims {
+		set, err := s.repo.InputSet(ctx, id, sim.InputSetID)
+		if err != nil {
+			return nil, err
+		}
+		dr := Drift{State: "current", Reasons: []string{}}
+		if sim.Revision != cr.Revision {
+			dr.Reasons = append(dr.Reasons, fmt.Sprintf("simulated revision %d; the change request is at revision %d", sim.Revision, cr.Revision))
+		}
+		if set.ActiveVersionID != active.ID {
+			dr.Reasons = append(dr.Reasons, fmt.Sprintf("replayed against active version %d; the active version is now %d",
+				set.ActiveVersionNumber, active.Number))
+		}
+		if set.EnvironmentDigest != envDigest {
+			dr.Reasons = append(dr.Reasons, "switch segment mappings changed since the inputs were captured")
+		}
+		if set.CatalogDigest != catalogDigest() {
+			dr.Reasons = append(dr.Reasons, "the input catalog changed since the inputs were captured")
+		}
+		if len(dr.Reasons) > 0 {
+			dr.State = "stale"
+		}
+		d.Simulations = append(d.Simulations, SimulationView{Simulation: sim, Drift: dr})
+	}
 	return d, nil
+}
+
+// CaseLimit bounds the recorded cases one input set captures.
+const CaseLimit = 1000
+
+func catalogDigest() string { return mustDigest(domain.InputCatalog) }
+
+// Simulate captures a NEW frozen input set (recorded decision inputs and
+// session overrides copied, active version and environment fixed) and
+// replays the given revision over it. The revision must be current and
+// validated. A refresh is another call: it never updates an earlier input
+// set or simulation.
+func (s *Service) Simulate(ctx context.Context, id uuid.UUID, revision int, actor string) (*ChangeRequest, *Simulation, error) {
+	rev, err := s.repo.Revision(ctx, id, revision)
+	if err != nil {
+		return nil, nil, err
+	}
+	active, err := s.policy.Active(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	// PostgreSQL keeps microseconds: truncate, so the stored input set
+	// digests (and reproduces) exactly as it was computed here.
+	now := s.now().UTC().Truncate(time.Microsecond)
+	since := now.Add(-s.policy.PreviewWindow())
+	recorded, err := s.policy.RecordedCases(ctx, since, CaseLimit)
+	if err != nil {
+		return nil, nil, err
+	}
+	env := s.policy.Environment(ctx)
+	set := &InputSet{ID: uuid.New(), ChangeRequestID: id, Revision: revision, ContentDigest: rev.ContentDigest,
+		ActiveVersionID: active.ID, ActiveVersionNumber: active.Number, ActiveVersionDigest: active.Digest,
+		Environment: env, EnvironmentDigest: EnvironmentDigest(env), Catalog: domain.InputCatalog, CatalogDigest: catalogDigest(),
+		WindowSince: since, CaseLimit: CaseLimit, Cases: freeze(recorded), CreatedBy: actor, CreatedAt: now}
+	set.Digest = inputSetDigestOf(set)
+	rows, sum, cov, out, err := Replay(set, active, rev.Content)
+	if err != nil {
+		return nil, nil, err
+	}
+	sim := &Simulation{ID: uuid.New(), ChangeRequestID: id, Revision: revision, ContentDigest: rev.ContentDigest, InputSetID: set.ID,
+		InputSetDigest: set.Digest, Rows: rows, Summary: sum, Coverage: cov, OutputDigest: out, Label: SimulationLabel,
+		CreatedBy: actor, CreatedAt: now}
+	a := s.event(ctx, "change.simulate", id, map[string]string{"revision": fmt.Sprint(revision), "content_digest": rev.ContentDigest,
+		"input_set_digest": set.Digest, "output_digest": out, "active_version": fmt.Sprint(active.Number),
+		"cases": fmt.Sprint(len(set.Cases))})
+	cr, err := s.repo.RecordSimulation(ctx, set, sim, a)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cr, sim, nil
+}
+
+// Simulation returns one simulation with its rows.
+func (s *Service) Simulation(ctx context.Context, id, simID uuid.UUID) (*Simulation, error) {
+	return s.repo.Simulation(ctx, id, simID)
+}
+
+// InputSet returns a simulation's frozen input set.
+func (s *Service) InputSet(ctx context.Context, id, setID uuid.UUID) (*InputSet, error) {
+	return s.repo.InputSet(ctx, id, setID)
+}
+
+// Reproduction is the result of re-running a stored simulation from its own
+// frozen input set.
+type Reproduction struct {
+	SimulationID         uuid.UUID `json:"simulation_id"`
+	InputSetDigest       string    `json:"input_set_digest"`
+	InputSetDigestMatch  bool      `json:"input_set_digest_matches"`
+	StoredOutputDigest   string    `json:"stored_output_digest"`
+	ReproducedOutputHash string    `json:"reproduced_output_digest"`
+	Matches              bool      `json:"matches"`
+	Note                 string    `json:"note"`
+}
+
+// Reproduce re-runs a stored simulation from its frozen input set, its
+// immutable revision and the immutable active version it names, without
+// reading any live state, and compares the canonical output digests. It
+// records nothing.
+func (s *Service) Reproduce(ctx context.Context, id, simID uuid.UUID) (*Reproduction, error) {
+	sim, err := s.repo.Simulation(ctx, id, simID)
+	if err != nil {
+		return nil, err
+	}
+	set, err := s.repo.InputSet(ctx, id, sim.InputSetID)
+	if err != nil {
+		return nil, err
+	}
+	rev, err := s.repo.Revision(ctx, id, sim.Revision)
+	if err != nil {
+		return nil, err
+	}
+	active, err := s.policy.Version(ctx, set.ActiveVersionNumber)
+	if err != nil {
+		return nil, err
+	}
+	_, _, _, out, err := Replay(set, active, rev.Content)
+	if err != nil {
+		return nil, err
+	}
+	r := &Reproduction{SimulationID: sim.ID, InputSetDigest: set.Digest, InputSetDigestMatch: inputSetDigestOf(set) == set.Digest,
+		StoredOutputDigest: sim.OutputDigest, ReproducedOutputHash: out}
+	r.Matches = r.InputSetDigestMatch && out == sim.OutputDigest
+	r.Note = "Re-run from the stored input set only (no live state read)."
+	if !r.Matches {
+		r.Note = "MISMATCH: the stored input set or output no longer reproduces; treat this simulation as untrustworthy."
+	}
+	return r, nil
 }

@@ -237,7 +237,7 @@ func TestChangeAPI_NoSideEffects(t *testing.T) {
 	before := snapshot()
 
 	quarantineAll := map[string]any{"rules": []any{map[string]any{"name": "everyone", "priority": 1, "enabled": true, "action": "quarantine",
-		"segment": "quarantine", "conditions": []any{}}}, "default_action": "quarantine"}
+		"segment": "quarantine", "conditions": []any{}}}, "default_action": "deny"}
 	r := h.call("POST", "/api/v1/change-requests", "", map[string]any{"title": "quarantine everyone", "content": quarantineAll})
 	id := r.body["id"].(string)
 	base := "/api/v1/change-requests/" + id
@@ -250,6 +250,14 @@ func TestChangeAPI_NoSideEffects(t *testing.T) {
 	h.call("PUT", base+"/content", `"1"`, quarantineAll)
 	h.call("PUT", base+"/content", `"1"`, quarantineAll) // refused (stale)
 	h.call("POST", base+"/validations", `"2"`, nil)
+	r = h.call("POST", base+"/simulations", `"2"`, nil)
+	if r.code != 201 {
+		t.Fatalf("simulate: %d %s", r.code, r.raw)
+	}
+	simID := r.body["simulation"].(map[string]any)["id"].(string)
+	h.call("GET", base+"/simulations/"+simID, "", nil)
+	h.call("GET", base+"/simulations/"+simID+"/input-set", "", nil)
+	h.call("GET", base+"/simulations/"+simID+"/reproduction", "", nil)
 	h.call("POST", base+"/cancel", `"2"`, nil)
 
 	if after := snapshot(); after != before {
@@ -264,5 +272,116 @@ func TestChangeAPI_NoSideEffects(t *testing.T) {
 	// The next authentication still gets the ACTIVE policy (corp VLAN 10).
 	if v := frVal(h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", a, 200), "reply:Tunnel-Private-Group-Id"); v != "10" {
 		t.Fatalf("authorization after change-request activity: VLAN %q", v)
+	}
+}
+
+// Frozen-input historical replay (milestone 3): a simulation runs on a
+// persisted input set; changing live state afterwards (an operator override,
+// segment mappings, a legacy publish) neither changes the stored simulation
+// nor its reproduction, the simulation is reported stale with reasons, and a
+// refresh creates a NEW input set and simulation.
+func TestChangeAPI_SimulationFrozenReproducibleAndStale(t *testing.T) {
+	resetDB(t, dsn(t))
+	h := start(t, t.TempDir())
+	defer h.stop()
+	pool := testPool(t)
+	veos := newFakeVEOS(t)
+	veos.mu.Lock()
+	veos.silent = true
+	veos.mu.Unlock()
+	var sw map[string]any
+	h.do("POST", "/api/v1/switches", map[string]any{"name": "veos", "radius_source_ip": "127.0.0.1", "radius_secret": swSecret,
+		"coa_port": veos.port(), "segment_vlans": map[string]int{"corp": 10, "quarantine": 20, "guest": 30},
+		"access_ports": []string{"Ethernet1"}}, 201, &sw, true)
+	var ep map[string]any
+	h.do("POST", "/api/v1/endpoints", map[string]any{"mac": endpointMAC, "hostname": "h1"}, 201, &ep, true)
+	h.do("POST", "/api/v1/identity-bindings", map[string]any{"endpoint_id": ep["id"], "issuer": caIssuer, "serial": certSerial}, 201, nil, true)
+	h.do("POST", "/api/v1/policies", corpRule, 201, nil, true)
+	var pv map[string]any
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", authAttrs(), 200) // one recorded decision: corp
+
+	guestRule := map[string]any{"name": "bound-guest", "priority": 10, "enabled": true, "action": "allow", "segment": "guest",
+		"conditions": []map[string]any{{"field": "identity.bound", "operator": "eq", "values": []string{"true"}}}}
+	r := h.call("POST", "/api/v1/change-requests", "", map[string]any{"title": "bound devices to guest",
+		"content": map[string]any{"rules": []any{guestRule}, "default_action": "deny"}})
+	id := r.body["id"].(string)
+	base := "/api/v1/change-requests/" + id
+	if r = h.call("POST", base+"/simulations", `"1"`, nil); r.code != 409 {
+		t.Fatalf("simulating an unvalidated draft: %d %s", r.code, r.raw)
+	}
+	h.call("POST", base+"/validations", `"1"`, nil)
+	r = h.call("POST", base+"/simulations", `"1"`, nil)
+	if r.code != 201 {
+		t.Fatalf("simulate: %d %s", r.code, r.raw)
+	}
+	sim := r.body["simulation"].(map[string]any)
+	sum := sim["summary"].(map[string]any)
+	if sum["cases_replayed"] != float64(1) || sum["changed"] != float64(1) || !strings.Contains(sim["label"].(string), "not live-network verification") ||
+		r.body["change_request"].(map[string]any)["state"] != "simulated" {
+		t.Fatalf("simulation: %s", r.raw)
+	}
+	simID, digest1 := sim["id"].(string), sim["output_digest"].(string)
+	rows := sim["rows"].([]any)
+	if row := rows[0].(map[string]any); row["active_segment"] != "corp" || row["proposed_segment"] != "guest" {
+		t.Fatalf("row: %v", row)
+	}
+	reproduce := func() map[string]any {
+		t.Helper()
+		rr := h.call("GET", base+"/simulations/"+simID+"/reproduction", "", nil)
+		if rr.code != 200 {
+			t.Fatalf("reproduction: %d %s", rr.code, rr.raw)
+		}
+		return rr.body
+	}
+	if rep := reproduce(); rep["matches"] != true || rep["reproduced_output_digest"] != digest1 {
+		t.Fatalf("immediate reproduction: %v", rep)
+	}
+
+	// Live state changes underneath.
+	var list struct{ Sessions []map[string]any }
+	h.do("GET", "/api/v1/sessions?state=active", nil, 200, &list, true)
+	h.do("POST", "/api/v1/sessions/"+list.Sessions[0]["id"].(string)+"/quarantine", nil, 202, nil, true)
+	h.app.Pilot().Wait()
+	h.do("PUT", "/api/v1/switches/"+sw["id"].(string), map[string]any{"name": "veos", "radius_source_ip": "127.0.0.1",
+		"coa_port": veos.port(), "segment_vlans": map[string]int{"corp": 11, "quarantine": 20, "guest": 30}, "access_ports": []string{"Ethernet1"}}, 200, nil, true)
+	h.do("PUT", "/api/v1/policy-draft/settings", map[string]any{"default_action": "deny"}, 200, nil, true)
+	h.do("POST", "/api/v1/policies", map[string]any{"name": "extra", "priority": 50, "enabled": false, "action": "deny", "conditions": []any{}}, 201, nil, true)
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+
+	if rep := reproduce(); rep["matches"] != true || rep["reproduced_output_digest"] != digest1 {
+		t.Fatalf("reproduction after live changes (the input set must be frozen): %v", rep)
+	}
+	if got := h.call("GET", base+"/simulations/"+simID, "", nil); got.body["output_digest"] != digest1 {
+		t.Fatalf("stored simulation changed: %s", got.raw)
+	}
+	d := h.call("GET", base, "", nil)
+	sv := d.body["simulations"].([]any)[0].(map[string]any)["drift"].(map[string]any)
+	reasons := strings.Join(toStrings(sv["reasons"]), ";")
+	if sv["state"] != "stale" || !strings.Contains(reasons, "active version") || !strings.Contains(reasons, "segment mappings") {
+		t.Fatalf("simulation drift after live changes: %v", sv)
+	}
+
+	// Refresh: a NEW input set (the override is now copied as quarantine).
+	r = h.call("POST", base+"/simulations", `"1"`, nil)
+	if r.code != 201 {
+		t.Fatalf("refresh: %d %s", r.code, r.raw)
+	}
+	sim2 := r.body["simulation"].(map[string]any)
+	if sim2["id"] == simID || sim2["input_set_digest"] == sim["input_set_digest"] ||
+		sim2["summary"].(map[string]any)["override_applies"] != float64(1) {
+		t.Fatalf("refresh did not create a new input set: %s", r.raw)
+	}
+	set1 := h.call("GET", base+"/simulations/"+simID+"/input-set", "", nil)
+	set2 := h.call("GET", base+"/simulations/"+sim2["id"].(string)+"/input-set", "", nil)
+	c1 := set1.body["cases"].([]any)[0].(map[string]any)
+	c2 := set2.body["cases"].([]any)[0].(map[string]any)
+	if c1["override"] != nil || c2["override"] != "quarantine" {
+		t.Fatalf("overrides are not copied per input set: first %v, refreshed %v", c1["override"], c2["override"])
+	}
+	if got := strings.Join(auditActions(t, pool, id), ","); got != "change.create,change.validate,change.simulate,change.simulate" {
+		t.Fatalf("audit records: %s", got)
 	}
 }

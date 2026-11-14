@@ -6,6 +6,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Change requests, slice A milestone 3: frozen-input replay, API and console (review-only; draft)
+- `POST /api/v1/change-requests/{id}/simulations` (`If-Match`) captures a
+  NEW immutable input set, replays the revision over it, and moves the
+  change request to `simulated`. The input set holds:
+  - recorded decision inputs and session overrides, copied;
+  - the active version, as an immutable reference plus its digest;
+  - the segment environment and the input catalog, copied with their
+    digests.
+- The output is canonical and digested; rows are in session order.
+- Missing and stale inputs are recorded per row, coverage notes say what was
+  not seen, and every simulation is labelled "historical replay … not
+  live-network verification".
+- `GET …/simulations/{sim}` returns the rows; `…/input-set` the frozen
+  inputs (needs `network:read`).
+- `…/reproduction` re-runs the simulation from the stored input set only and
+  compares the digests.
+- The change-request detail reports simulation drift: revision, active
+  version, segment mappings and catalog.
+- `policyver.CompareCase` is now shared by the draft preview and the replay
+  (pure). `RecordedCases` and `PreviewWindow` are read-only accessors.
+- Console: a Changes page (list, propose from draft, validate, simulate,
+  rows, reproduce, replace content with the draft, cancel, drift) and
+  "Propose as change request" on the Policy page.
+  `scripts/ui-change-requests.js`.
+- Migration `0008_change_request_simulations` (immutable). OpenAPI 1.3.0
+  (additive). Threat model and attack surface are updated.
+- No approval, activation, dispatch or MCP.
+
 ### Change requests, slice A milestone 2: service, validation and API (review-only; draft)
 - `internal/change.Service` is the one service behind the API, and later
   the console.

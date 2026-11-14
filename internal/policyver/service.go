@@ -363,33 +363,8 @@ func (s *Service) Preview(ctx context.Context) (*Preview, error) {
 	if err != nil {
 		return nil, err
 	}
-	activeEngine, draftEngine := access.NewEngine(), access.NewEngine()
-	activeEngine.DefaultAction, draftEngine.DefaultAction = active.DefaultAction, def
 	for _, c := range cases {
-		in := withCurrentOverride(c.Inputs, c.Override)
-		a := activeEngine.EvaluateInputs(c.Subject, in, active.Rules)
-		d := draftEngine.EvaluateInputs(c.Subject, in, ws)
-		policyChanged := a.Action != d.Action || a.Segment != d.Segment
-		row := PreviewRow{Case: c,
-			ActiveAction: a.Action, ActiveSegment: a.Segment, ActiveRule: a.MatchedRule,
-			DraftAction: d.Action, DraftSegment: d.Segment, DraftRule: d.MatchedRule,
-			Changed: policyChanged, PolicyChanged: policyChanged,
-			InsufficientEvidence: d.InsufficientEvidence,
-		}
-		if c.Override == domain.CoAQuarantine {
-			// Same precedence as radiusauth.Authorize: the override decides the
-			// effective authorization under both versions.
-			row.OverrideApplies = true
-			row.ActiveAction, row.ActiveSegment = domain.ActionQuarantine, "quarantine"
-			row.DraftAction, row.DraftSegment = domain.ActionQuarantine, "quarantine"
-			row.Changed = false
-		}
-		for f, ev := range c.Inputs {
-			if ev.Status == domain.EvidenceStale {
-				row.StaleInputs = append(row.StaleInputs, f)
-			}
-		}
-		sort.Strings(row.StaleInputs)
+		row := CompareCase(c, active.Rules, active.DefaultAction, ws, def)
 		p.CasesExamined++
 		if row.Changed {
 			p.Changed++
@@ -403,6 +378,56 @@ func (s *Service) Preview(ctx context.Context) (*Preview, error) {
 	}
 	return p, nil
 }
+
+// CompareCase evaluates one recorded case under the active rules and a
+// proposed rule set, with the operator override taking precedence exactly as
+// at authentication (radiusauth.Authorize). It is a pure function of its
+// arguments (the engine's EvaluatedAt timestamp is not part of the row), so
+// the same case and rule sets always give the same row: the policy-draft
+// preview and the change-request replay share it.
+func CompareCase(c RecordedCase, activeRules []domain.Policy, activeDefault domain.PolicyAction,
+	rules []domain.Policy, def domain.PolicyAction) PreviewRow {
+	activeEngine, draftEngine := access.NewEngine(), access.NewEngine()
+	activeEngine.DefaultAction, draftEngine.DefaultAction = activeDefault, def
+	in := withCurrentOverride(c.Inputs, c.Override)
+	a := activeEngine.EvaluateInputs(c.Subject, in, activeRules)
+	d := draftEngine.EvaluateInputs(c.Subject, in, rules)
+	policyChanged := a.Action != d.Action || a.Segment != d.Segment
+	row := PreviewRow{Case: c,
+		ActiveAction: a.Action, ActiveSegment: a.Segment, ActiveRule: a.MatchedRule,
+		DraftAction: d.Action, DraftSegment: d.Segment, DraftRule: d.MatchedRule,
+		Changed: policyChanged, PolicyChanged: policyChanged,
+		InsufficientEvidence: d.InsufficientEvidence,
+	}
+	if c.Override == domain.CoAQuarantine {
+		// Same precedence as radiusauth.Authorize: the override decides the
+		// effective authorization under both versions.
+		row.OverrideApplies = true
+		row.ActiveAction, row.ActiveSegment = domain.ActionQuarantine, "quarantine"
+		row.DraftAction, row.DraftSegment = domain.ActionQuarantine, "quarantine"
+		row.Changed = false
+	}
+	for f, ev := range c.Inputs {
+		if ev.Status == domain.EvidenceStale {
+			row.StaleInputs = append(row.StaleInputs, f)
+		}
+	}
+	sort.Strings(row.StaleInputs)
+	return row
+}
+
+// RecordedCases returns the newest recorded decision per session since
+// `since` (the preview's case source), read-only. Nil source: no cases.
+func (s *Service) RecordedCases(ctx context.Context, since time.Time, limit int) ([]RecordedCase, error) {
+	if s.cases == nil {
+		return []RecordedCase{}, nil
+	}
+	return s.cases.RecentCases(ctx, since, limit)
+}
+
+// PreviewWindow is how far back the preview (and the change-request replay)
+// looks for recorded decisions.
+func (s *Service) PreviewWindow() time.Duration { return s.previewWindow }
 
 // PublishInput carries the operator's publish request.
 type PublishInput struct {

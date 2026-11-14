@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: NAC Platform API
-  version: "1.2.0"
+  version: "1.3.0"
   description: |
     REST API for the enterprise Network Access Control (NAC) platform: endpoint
     inventory, versioned access policy, the FreeRADIUS decision adapter, switch
@@ -952,6 +952,113 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "428": { $ref: "#/components/responses/PreconditionRequired" }
+  /api/v1/change-requests/{id}/simulations:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/ChangeIfMatch"
+    post:
+      tags: [Change requests]
+      operationId: simulateChangeRequest
+      summary: Historical replay over a NEW frozen input set
+      description: |
+        Captures a new input set and replays revision `If-Match` over it. The
+        revision must be current and `validated` or `simulated` (`409`
+        otherwise). The input set holds:
+        - the newest recorded decision per session in the preview window, at
+          most 1000, with its inputs and the session override **copied**;
+        - the active policy version (an immutable reference plus its digest);
+        - the switch segment mappings and the input catalog, copied with their
+          digests.
+
+        The rows are ordered by session, and the output digest is canonical.
+        Missing and stale inputs are recorded per row, and coverage states
+        what the replay could not see. A historical replay is a prediction,
+        **not live-network verification**. A refresh is another call that
+        creates a new input set and simulation; nothing is updated in place.
+        Moves the change request to `simulated`. Audited as `change.simulate`
+        in the same transaction.
+      x-required-permission: policy:write
+      responses:
+        "201":
+          description: Simulation recorded
+          headers:
+            ETag: { $ref: "#/components/headers/ChangeRevisionETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeSimulationResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
+  /api/v1/change-requests/{id}/simulations/{sim}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/SimulationPath"
+    get:
+      tags: [Change requests]
+      operationId: getChangeRequestSimulation
+      summary: One simulation with its rows
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Simulation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeSimulation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/change-requests/{id}/simulations/{sim}/input-set:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/SimulationPath"
+    get:
+      tags: [Change requests]
+      operationId: getChangeRequestInputSet
+      summary: The frozen input set a simulation ran on
+      description: |
+        Contains copied session evidence (MAC, certificate fields, override),
+        so it needs `network:read`, like decision records.
+      x-required-permission: network:read
+      responses:
+        "200":
+          description: Input set
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeInputSet" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/change-requests/{id}/simulations/{sim}/reproduction:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+      - $ref: "#/components/parameters/SimulationPath"
+    get:
+      tags: [Change requests]
+      operationId: reproduceChangeRequestSimulation
+      summary: Re-run a simulation from its stored input set and compare
+      description: |
+        Re-runs the simulation from its stored input set, its immutable
+        revision and the immutable active version it names. It reads no live
+        state and records nothing. `matches` is true only when the stored
+        input-set digest still verifies and the canonical output digest is
+        identical.
+      x-required-permission: policy:read
+      responses:
+        "200":
+          description: Reproduction result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChangeReproduction" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/change-requests/{id}/cancel:
     parameters:
       - $ref: "#/components/parameters/IdPath"
@@ -1641,6 +1748,12 @@ components:
       required: true
       description: The change-request revision this action is based on, as returned in `ETag` (e.g. `"3"`). Missing is `428`; not current is `409`.
       schema: { type: string, examples: ['"3"'] }
+    SimulationPath:
+      name: sim
+      in: path
+      required: true
+      description: Simulation UUID. A malformed UUID is `400`.
+      schema: { type: string, format: uuid }
     VersionNumberPath:
       name: number
       in: path
@@ -1801,11 +1914,119 @@ components:
         created_by: { type: string }
         created_at: { type: string, format: date-time }
         drift: { $ref: "#/components/schemas/ChangeDrift" }
+    ChangeSimRow:
+      type: object
+      required: [decision_id, session_id, subject, active_action, proposed_action, changed, policy_changed, missing_inputs, stale_inputs]
+      properties:
+        decision_id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        subject: { type: string }
+        active_action: { $ref: "#/components/schemas/PolicyAction" }
+        active_segment: { type: string }
+        active_rule: { type: string }
+        proposed_action: { $ref: "#/components/schemas/PolicyAction" }
+        proposed_segment: { type: string }
+        proposed_rule: { type: string }
+        changed: { type: boolean, description: Effective authorization differs (operator override applied). }
+        policy_changed: { type: boolean, description: Policy results alone differ. }
+        override_applies: { type: boolean }
+        missing_inputs: { type: array, items: { type: string } }
+        stale_inputs: { type: array, items: { type: string } }
+    ChangeSimulation:
+      type: object
+      required: [id, change_request_id, revision, content_digest, input_set_id, input_set_digest, rows, summary, coverage, output_digest, label, created_by, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        change_request_id: { type: string, format: uuid }
+        revision: { type: integer }
+        content_digest: { type: string }
+        input_set_id: { type: string, format: uuid }
+        input_set_digest: { type: string }
+        rows:
+          type: array
+          description: Empty in the change-request detail; full in GET .../simulations/{sim}.
+          items: { $ref: "#/components/schemas/ChangeSimRow" }
+        summary:
+          type: object
+          properties:
+            cases_replayed: { type: integer }
+            changed: { type: integer }
+            policy_changed: { type: integer }
+            missing_evidence: { type: integer }
+            stale_evidence: { type: integer }
+            override_applies: { type: integer }
+        coverage:
+          type: object
+          properties:
+            window_since: { type: string, format: date-time }
+            case_limit: { type: integer }
+            cases_in_set: { type: integer }
+            limit_reached: { type: boolean }
+            notes: { type: array, items: { type: string } }
+        output_digest: { type: string, description: Canonical digest of rows, summary and coverage. }
+        label: { type: string, description: Historical replay, not live-network verification. }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+        drift: { $ref: "#/components/schemas/ChangeDrift" }
+    ChangeInputSet:
+      type: object
+      description: Everything a simulation read, persisted before it ran (inputs and overrides copied).
+      required: [id, change_request_id, revision, content_digest, input_set_digest, active_version_id, active_version_number, active_version_digest, environment, environment_digest, catalog, catalog_digest, window_since, case_limit, cases]
+      properties:
+        id: { type: string, format: uuid }
+        change_request_id: { type: string, format: uuid }
+        revision: { type: integer }
+        content_digest: { type: string }
+        input_set_digest: { type: string }
+        active_version_id: { type: string, format: uuid }
+        active_version_number: { type: integer }
+        active_version_digest: { type: string }
+        environment: { type: object }
+        environment_digest: { type: string }
+        catalog: { type: array, items: { type: object } }
+        catalog_digest: { type: string }
+        window_since: { type: string, format: date-time }
+        case_limit: { type: integer }
+        cases:
+          type: array
+          items:
+            type: object
+            required: [decision_id, session_id, subject, occurred_at, inputs, inputs_digest, recorded_action]
+            properties:
+              decision_id: { type: string, format: uuid }
+              session_id: { type: string, format: uuid }
+              subject: { type: string }
+              occurred_at: { type: string, format: date-time }
+              inputs: { type: object }
+              inputs_digest: { type: string }
+              recorded_action: { $ref: "#/components/schemas/PolicyAction" }
+              recorded_segment: { type: string }
+              recorded_version: { type: integer }
+              override: { type: string, description: The session override at capture time (copied). }
+        created_by: { type: string }
+        created_at: { type: string, format: date-time }
+    ChangeReproduction:
+      type: object
+      required: [simulation_id, input_set_digest, input_set_digest_matches, stored_output_digest, reproduced_output_digest, matches, note]
+      properties:
+        simulation_id: { type: string, format: uuid }
+        input_set_digest: { type: string }
+        input_set_digest_matches: { type: boolean }
+        stored_output_digest: { type: string }
+        reproduced_output_digest: { type: string }
+        matches: { type: boolean }
+        note: { type: string }
+    ChangeSimulationResponse:
+      type: object
+      required: [simulation, change_request]
+      properties:
+        simulation: { $ref: "#/components/schemas/ChangeSimulation" }
+        change_request: { $ref: "#/components/schemas/ChangeRequestDetail" }
     ChangeRequestDetail:
       allOf:
         - $ref: "#/components/schemas/ChangeRequest"
         - type: object
-          required: [label, content, base_drift, validations]
+          required: [label, content, base_drift, validations, simulations]
           properties:
             label:
               type: string
@@ -1815,6 +2036,9 @@ components:
             validations:
               type: array
               items: { $ref: "#/components/schemas/ChangeValidation" }
+            simulations:
+              type: array
+              items: { $ref: "#/components/schemas/ChangeSimulation" }
     ChangeRequestList:
       type: object
       required: [change_requests, label]
