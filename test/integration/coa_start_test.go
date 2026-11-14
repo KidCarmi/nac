@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -302,6 +303,187 @@ func TestCoAStart_ConcurrentActionsOneWinner(t *testing.T) {
 	}
 	if want := map[string]string{domain.CoAQuarantine: "quarantine", domain.CoAReauthenticate: ""}[kind]; got.override != want {
 		t.Fatalf("winner %s but override %q", kind, got.override)
+	}
+	r.h.app.Pilot().Wait()
+}
+
+// ---- Review of #7 (comment 6884896343) ----
+
+func (r *coaRig) auditRows(t *testing.T, coaID uuid.UUID) int {
+	t.Helper()
+	var n int
+	if err := r.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_events WHERE metadata->>'coa_id' = $1`,
+		coaID.String()).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// R1: COMMIT succeeded but its acknowledgement was lost (StartCoA returns an
+// error after the data committed). RequestCoA resolves it by the command's
+// own ID and dispatches that same command exactly once: one CoA row, one
+// packet, one audit record, and the session is not left blocked.
+func TestCoAStart_CommittedButAckLostIsDispatchedOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	lost := errors.New("connection reset after COMMIT")
+	hook := func(stage string) error {
+		if stage == "committed" {
+			return lost
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatalf("a committed start was reported as failed: %v", err)
+	}
+	waitFor(t, "the committed CoA is sent", func() bool { return r.packets() >= 1 })
+	r.h.app.Pilot().Wait()
+	if got := r.committed(t, s1); got != (committed{override: "quarantine", coas: 1, opEvents: 1}) {
+		t.Fatalf("after a lost acknowledgement: %+v", got)
+	}
+	if n := r.packets(); n != 1 {
+		t.Fatalf("%d packets: reconciliation caused a second dispatch", n)
+	}
+	if n := r.auditRows(t, c.ID); n != 1 {
+		t.Fatalf("%d audit records correlated to CoA %s, want 1", n, c.ID)
+	}
+	if cur, _ := r.repo.GetCoA(ctx, c.ID); cur.State == domain.CoARequested {
+		t.Fatal("CoA left requested")
+	}
+}
+
+// R1, outcome unknown: the acknowledgement is lost AND the lookup by ID
+// fails. RequestCoA says so (503: ErrUnavailable) and sends nothing; the
+// start sweeper later fails the committed command without a restart, without
+// sending it and without loosening the recorded override; a later action is
+// not blocked.
+func TestCoAStart_UnknownOutcomeIsReconciledWithoutRestart(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	hook := func(stage string) error {
+		switch stage {
+		case "committed":
+			return errors.New("connection reset after COMMIT")
+		case "reconcile_lookup":
+			return errors.New("database unavailable")
+		}
+		return nil
+	}
+	_, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatalf("unknown outcome must be reported as such, got %v", err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packets sent for a start whose outcome was unknown", n)
+	}
+	var coaID uuid.UUID
+	if err := r.pool.QueryRow(ctx, `SELECT id FROM coa_requests WHERE session_id=$1 AND state='requested'`, s1).Scan(&coaID); err != nil {
+		t.Fatalf("the start committed, so a requested CoA exists: %v", err)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAReauthenticate, adminEmail); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("before reconciliation the in-flight check holds: %v", err)
+	}
+
+	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second))
+	if err != nil || n != 1 {
+		t.Fatalf("reconcile: %d, %v", n, err)
+	}
+	cur, _ := r.repo.GetCoA(ctx, coaID)
+	if cur.State != domain.CoAFailed || !strings.Contains(cur.Detail, "never sent") {
+		t.Fatalf("reconciled CoA: %s %q", cur.State, cur.Detail)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("reconciliation loosened the recorded override: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("reconciliation sent the unconfirmed command (%d packets)", n)
+	}
+	// Not blocked: the next permitted action starts and is sent.
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); err != nil {
+		t.Fatalf("after reconciliation the session is still blocked: %v", err)
+	}
+	waitFor(t, "the next action is sent", func() bool { return r.packets() == 1 })
+	r.h.app.Pilot().Wait()
+}
+
+// The sweeper and a sender can never both act on one command: the sender's
+// first transition is a conditional claim, so once the sweeper has failed
+// it, a late sender does not send.
+func TestCoAStart_SweeperAndSenderClaimOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	// Commit a start but hold the sender back: the hook blocks the request
+	// after COMMIT until the sweeper has run.
+	swept := make(chan struct{})
+	hook := func(stage string) error {
+		if stage == "committed" {
+			n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second))
+			if err != nil || n != 1 {
+				t.Errorf("sweep: %d %v", n, err)
+			}
+			close(swept)
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	<-swept
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	if n := r.packets(); n != 0 {
+		t.Fatalf("the sender sent a command the sweeper had already failed (%d packets)", n)
+	}
+	if cur, _ := r.repo.GetCoA(ctx, c.ID); cur.State != domain.CoAFailed {
+		t.Fatalf("state %s, want failed (claimed once, by the sweeper)", cur.State)
+	}
+}
+
+// R2: the operator audit record is part of the start transaction. A real
+// database failure on the audit insert (a trigger) leaves no CoA, override,
+// timeline event or packet; once the audit store works, the success case has
+// exactly one audit record correlated by CoA ID.
+func TestCoAStart_AuditFailureLeavesNothing(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	if _, err := r.pool.Exec(ctx, `CREATE FUNCTION test_fail_audit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'audit store down'; END $$ LANGUAGE plpgsql;
+		CREATE TRIGGER test_fail_audit BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION test_fail_audit();`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, adminEmail); err == nil {
+		t.Fatal("the action committed although its audit record could not be written")
+	}
+	r.h.app.Pilot().Wait()
+	if got := r.committed(t, s1); got != (committed{}) {
+		t.Fatalf("an action escaped without its audit record: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packets sent without an audit record", n)
+	}
+	if _, err := r.pool.Exec(ctx, `DROP TRIGGER test_fail_audit ON audit_events; DROP FUNCTION test_fail_audit();`); err != nil {
+		t.Fatal(err)
+	}
+	c, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := r.auditRows(t, c.ID); n != 1 {
+		t.Fatalf("%d audit records for CoA %s, want 1", n, c.ID)
 	}
 	r.h.app.Pilot().Wait()
 }

@@ -132,12 +132,22 @@ command path, so it needs its own tests and rerun list. It is not part of
 this read-model change.
 
 **Integration with W2 (KidCarmi/nac#7).** On a branch that contains both
-changes, W2 is fixed. `StartCoA` commits the CoA, the override and the
-operator event in one transaction under the session row lock, and sends only
-after commit. So the "CoA `requested` while the override is unchanged" state
-in the W2 row above can no longer be committed, and the stuck-`requested`
-failure path is gone. The audit record is still best-effort after commit. The
-rest of this report is unchanged.
+changes, `StartCoA` commits the CoA, override, operator event and audit
+record in one transaction under the session row lock, and sends only after
+the start is known to have committed. As a result:
+
+- **The partial state is gone.** The "CoA `requested` while the override is
+  unchanged" state in the W2 row above can no longer be committed.
+- **A lost acknowledgement no longer strands the session.** Database
+  atomicity alone did not cover a COMMIT whose acknowledgement was lost
+  (review of #7). That case is resolved by looking the command up by its ID.
+- **An unknown outcome is resolved without a restart.** The start sweeper
+  fails a committed but unclaimed CoA, without sending it and with the
+  override kept.
+
+Deterministic tests cover each path. The policy and role-mapping
+preparation race remains a documented residual. The rest of this report is
+unchanged.
 
 ## Candidate and qualification impact
 

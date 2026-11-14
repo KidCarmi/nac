@@ -1193,8 +1193,13 @@ paths:
       description: |
         Records an operator `quarantine` override on the session **first**
         (the override, the CoA request and the operator timeline event are
-        committed in one transaction; nothing is sent before that commit and
-        a failure records none of them), then sends a CoA-Request asking the
+        committed in one transaction, together with the operator audit record;
+        nothing is sent before that commit. A failure inside the transaction
+        records none of them. If the outcome cannot be determined (the
+        commit's acknowledgement was lost and the lookup by CoA ID also
+        failed), the response is `503`, nothing is sent from that request,
+        and NAC marks a CoA that did commit as `failed` (not sent, override
+        kept) within the start grace period), then sends a CoA-Request asking the
         switch to apply the quarantine
         VLAN (VLAN enforcement: the switch re-authenticates the session) or
         the quarantine role (role enforcement: `Aruba-User-Role` in the CoA,
@@ -1223,6 +1228,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /api/v1/sessions/{id}/restore:
     parameters:
       - $ref: "#/components/parameters/IdPath"
@@ -1247,6 +1253,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /api/v1/sessions/{id}/reauthenticate:
     parameters:
       - $ref: "#/components/parameters/IdPath"
@@ -1269,6 +1276,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/Unavailable" }
 
   # ------------------------------------------------------------------ Events
   /api/v1/decisions/{id}:
@@ -1512,6 +1520,11 @@ components:
           schema: { $ref: "#/components/schemas/Problem" }
     InternalError:
       description: Unexpected error (no internal detail)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Unavailable:
+      description: A dependency could not be reached, so the outcome could not be determined; `detail` says what will resolve it
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }

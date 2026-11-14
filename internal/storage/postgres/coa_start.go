@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/kidcarmi/nac/internal/domain"
 )
@@ -37,15 +38,24 @@ type CoAStart struct {
 	OverrideAt  *time.Time
 
 	Event *domain.AuthEvent // operator timeline event (optional)
+
+	// Audit is the operator's security audit record. It is written in the
+	// same transaction: if it cannot be persisted, nothing commits and
+	// nothing is sent. (Delivery to any external sink stays outside.)
+	Audit *domain.AuditEvent
 }
 
 type coaStartHookKey struct{}
 
 // WithCoAStartHook returns a context whose StartCoA calls fn(stage) in this
 // order: "prepared" (before the transaction begins), then inside it
-// "locked", "coa_inserted", "override_set" and "event_inserted" (the last is
-// immediately before COMMIT). A non-nil error from fn aborts StartCoA (and
-// rolls back the transaction) exactly like a database error at that point.
+// "locked", "coa_inserted", "override_set", "event_inserted" and
+// "audit_inserted" (the last is immediately before COMMIT), then
+// "committed" (after a successful COMMIT). A non-nil error from fn aborts
+// StartCoA exactly like a database error at that point; at "committed" it
+// simulates a commit whose acknowledgement was lost (the data is committed
+// but StartCoA returns an error). CoAStartCommitted calls it at
+// "reconcile_lookup".
 //
 // It exists for failure-injection and concurrency tests. Nothing in nacd sets
 // it; a request cannot, because only Go code holding this function can put
@@ -139,7 +149,81 @@ func (r *PilotRepo) StartCoA(ctx context.Context, st *CoAStart) error {
 	if err := coaStartHook(ctx, "event_inserted"); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if st.Audit != nil {
+		if err := insertAudit(ctx, tx, st.Audit); err != nil {
+			return fmt.Errorf("operator audit record not written (nothing committed): %w", err)
+		}
+	}
+	if err := coaStartHook(ctx, "audit_inserted"); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return coaStartHook(ctx, "committed")
+}
+
+// insertAudit writes an audit event through the start transaction.
+func insertAudit(ctx context.Context, tx pgx.Tx, e *domain.AuditEvent) error {
+	meta, err := json.Marshal(orEmptyMap(e.Metadata))
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO audit_events (`+auditColumns+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+		e.ID, e.OccurredAt, e.ActorID, e.ActorEmail, e.Action, e.ResourceType, e.ResourceID, e.Outcome, e.RequestID, e.RemoteAddr, meta)
+	return err
+}
+
+// CoAStartCommitted reports whether the start of CoA id committed. It is
+// how a caller resolves an ambiguous StartCoA error (a commit whose
+// acknowledgement was lost): the start is atomic, so the CoA row exists if
+// and only if the CoA, override, event and audit record all committed.
+func (r *PilotRepo) CoAStartCommitted(ctx context.Context, id uuid.UUID) (bool, error) {
+	if err := coaStartHook(ctx, "reconcile_lookup"); err != nil {
+		return false, err
+	}
+	var n int
+	if err := r.pool.QueryRow(ctx, `SELECT count(*) FROM coa_requests WHERE id = $1`, id).Scan(&n); err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}
+
+// StaleStart is a CoA whose start committed but that no sender claimed.
+type StaleStart struct {
+	ID        uuid.UUID
+	SessionID uuid.UUID
+	SwitchID  uuid.UUID
+	NASPortID string
+}
+
+// FailUnclaimedCoAs marks as failed every CoA still "requested" (committed
+// but never claimed by a sender) that was created before olderThan, and
+// returns them. The update is conditional on the state, so it cannot race a
+// sender: the sender's first transition is a conditional claim requested ->
+// sent, and exactly one of the two wins. Nothing is sent and the session
+// override is not touched.
+func (r *PilotRepo) FailUnclaimedCoAs(ctx context.Context, olderThan, at time.Time, detail string) ([]StaleStart, error) {
+	rows, err := r.pool.Query(ctx, `UPDATE coa_requests SET state = 'failed', updated_at = $2, detail = $3
+		WHERE state = 'requested' AND created_at < $1
+		RETURNING id, session_id, switch_id, target->>'nas_port_id'`, olderThan, at, detail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []StaleStart
+	for rows.Next() {
+		var s StaleStart
+		var port *string
+		if err := rows.Scan(&s.ID, &s.SessionID, &s.SwitchID, &port); err != nil {
+			return nil, err
+		}
+		if port != nil {
+			s.NASPortID = *port
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
 }
 
 func sameID(a, b *uuid.UUID) bool {

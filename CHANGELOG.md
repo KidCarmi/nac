@@ -21,6 +21,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     `docs/architecture/coa-start-atomicity.md`.
   - No change to the CoA exchange, the attributes sent, the RADIUS path or
     the schema.
+  - Review fixes (#7):
+    - **Lost acknowledgement.** A COMMIT whose acknowledgement was lost is
+      resolved by the CoA's own ID and dispatched once.
+    - **Unknown outcome.** It is reported as `503` and nothing is sent. A
+      background start sweeper later fails a committed but unclaimed CoA:
+      not sent, override kept, no restart needed.
+    - **One claim.** The sender's first step is a conditional claim, so a
+      command is acted on once.
+    - **Audit.** The operator audit record is written in the start
+      transaction.
+    - **Residual.** The re-check does not bind the policy version or the
+      role mapping used by prediction; this is documented as an existing
+      residual.
+
 ### Session read consistency (proposed on top of pilot-aruba-rc5; NOT a candidate)
 - `GET /api/v1/sessions/{id}` and `GET /api/v1/sessions` now read each
   session, its switch, device, binding, decisions, CoA requests and events
