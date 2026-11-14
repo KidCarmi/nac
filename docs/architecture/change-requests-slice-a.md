@@ -82,6 +82,58 @@ Every mutation:
   publish, restore and activation must converge on one enforced service
   boundary (plan, correction 3).
 
+## Reproduce it
+
+**One command, no switch or EVE.** Point it at a disposable PostgreSQL
+database: the script drops that database's public schema.
+
+```
+DEMO_RESET=1 NAC_DB_DSN=postgres://nac:nac@localhost:5432/nac_demo?sslmode=disable \
+  scripts/demo-change-requests.sh /tmp/cr-shots
+```
+
+**What it does:**
+1. builds nacd;
+2. resets the database;
+3. starts nacd;
+4. runs the console walkthrough (12 checks);
+5. prints the resulting change request as `GET /api/v1/change-requests/{id}`
+   returns it.
+
+The screenshots go to the directory you pass.
+
+**The automated proof**, in PostgreSQL tests:
+
+```
+NAC_TEST_DB_DSN=postgres://nac:nac@localhost:5432/nac_test?sslmode=disable \
+  go test -tags=integration -race -count=1 -p 1 -run 'TestChange' ./test/integration/
+go test -race ./internal/change ./internal/server
+```
+
+## Requirement-to-test map
+
+Acceptance criteria from the owner's sequencing (PR #2) and the plan's
+corrections. Each row names the test that fails if the requirement breaks.
+
+| # | Requirement | Test(s) | What would make it fail |
+|---|---|---|---|
+| A1 | Revision conflicts are explicit | `TestChangeRepo_RevisionConflict`; `TestChangeRoutes_IfMatchIsRequiredAndPassedThrough`; `TestChangeAPI_Lifecycle` | A stale `If-Match` returns anything but a `409` naming the current revision; a missing `If-Match` returns anything but `428`; a refused edit writes a revision or an audit record |
+| A2 | Concurrent mutations have one winner | `TestChangeRepo_ConcurrentMutationsOneWinner` | Two edits or cancels on the same revision both commit, or the audit count differs from the committed mutations |
+| A3 | Terminal state is immutable | `TestChangeRepo_CancelledIsTerminal`; `TestChangeAPI_Lifecycle` | An edit, validation or cancel after a cancel succeeds |
+| A4 | History cannot be rewritten | `TestChangeRepo_HistoryIsImmutable` | Raw-SQL UPDATE or DELETE of revisions, validations, input sets or simulations, DELETE of a change request, or `state='approved'` / `workflow='mandatory'` succeeds |
+| A5 | Audit durability: mutation and audit commit together | `TestChangeRepo_AuditFailureRollsBackMutation` (mutation-checked: moving the audit after COMMIT fails it); `TestChangeAPI_Lifecycle`; `TestChangeAPI_SimulationFrozenReproducibleAndStale` (audit trail) | A mutation commits although its audit insert failed, or the audit trail misses or duplicates an action |
+| A6 | Replay inputs are immutable (frozen input set) | `TestChangeAPI_SimulationFrozenReproducibleAndStale` (mutation-checked: reading live cases fails it); `TestReplay_ReproducibleAndOrdered` (copy) | A live override, mapping change or publish changes a stored simulation or its reproduction; mutating source cases changes the set digest |
+| A7 | Canonical output is reproducible | `TestReplay_ReproducibleAndOrdered`; `TestCanonicalDigest_KeyOrderIndependent`; `…/reproduction` in the API test and the walkthrough | Repeated replays differ; key order changes the digest; a stored set fails to reproduce after the PostgreSQL round trip (this caught a real microsecond-truncation bug) |
+| A8 | A refresh creates a new simulation, never an update | `TestChangeAPI_SimulationFrozenReproducibleAndStale` | The refresh reuses the simulation ID or input-set digest; the first set's copied override changes |
+| A9 | Drift and staleness are reported, not hidden | `TestChangeAPI_FromDraftAndDrift`; `TestChangeAPI_SimulationFrozenReproducibleAndStale`; walkthrough (rebase marks the old simulation stale) | A mapping change, legacy publish or new revision leaves a validation or simulation shown as `current`, or the reasons are missing |
+| A10 | Missing and stale inputs and coverage are recorded | `TestReplay_ReproducibleAndOrdered` (stale count); coverage notes in every simulation | Stale or missing evidence is not counted per row and in the summary |
+| A11 | Historical replay is never labelled live verification | API test and walkthrough assert the label | A simulation without "not live-network verification" |
+| A12 | One shared service behind API and UI | `TestChangeRoutes_*` (handlers only pass through; forbidden requests never reach the service); the console uses only `/api/v1` (walkthrough) | A handler holds workflow logic, or the console needs a private path |
+| A13 | Change-request endpoints cannot mutate policy, sessions or switches | `TestChangeAPI_NoSideEffects` (8 tables byte-identical, no CoA packet; checked by injecting a Quarantine); `TestPolicyReaderCannotChangePolicy`; `TestNoImportOfEnforcementPaths`; schema CHECKs | Any route changes policy activations, versions, draft rules or settings, sessions, CoAs, switches or decisions, or sends a CoA |
+| A14 | Review-only labelling | Schema CHECK on `workflow`; label assertions in the API test and the walkthrough | A record or page without `review_only` and the label |
+| A15 | Bound to the active-policy version; no manufactured `all` holder | Schema (`base_version_id` FK to `policy_versions`, no activation tables); `TestChangeAPI_FromDraftAndDrift` (base drift and rebase) | A revision without its base version, or an activation or `replace` record written |
+| A16 | Threat model ships with the endpoints | Review item: `docs/security/threat-model.md` (review-only table), `trust-boundaries.md`, `security/attack-surface.md` in the M2 and M3 diffs | Endpoints added without matching entries |
+
 ## Console
 
 The Changes page (`#/changes`, `#/change/<id>`) and Policy's "Propose as
