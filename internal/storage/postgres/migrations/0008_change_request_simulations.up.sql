@@ -24,6 +24,10 @@ CREATE TABLE change_request_input_sets (
     catalog_digest        TEXT NOT NULL,
     window_since          TIMESTAMPTZ NOT NULL,
     case_limit            INTEGER NOT NULL CHECK (case_limit > 0),
+    -- truncated: at least one more eligible session than case_limit was seen
+    -- at capture (capture reads case_limit + 1); never inferred from the count.
+    truncated             BOOLEAN NOT NULL,
+    skipped_no_session    INTEGER NOT NULL CHECK (skipped_no_session >= 0),
     cases                 JSONB NOT NULL,
     created_by            TEXT NOT NULL,
     created_at            TIMESTAMPTZ NOT NULL,

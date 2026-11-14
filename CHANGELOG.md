@@ -20,6 +20,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   live-network verification".
 - `GET …/simulations/{sim}` returns the rows; `…/input-set` the frozen
   inputs (needs `network:read`).
+- Coverage claims truncation only when capture saw one more eligible
+  session than the limit, and it lists skip reasons (`no_session` with a
+  count, `beyond_case_limit` with an unknown count). Fixed after ASTRA's
+  review.
 - `…/reproduction` re-runs the simulation from the stored input set only and
   compares the digests.
 - The change-request detail reports simulation drift: revision, active

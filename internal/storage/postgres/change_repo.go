@@ -371,10 +371,11 @@ func (r *ChangeRepo) RecordSimulation(ctx context.Context, set *change.InputSet,
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO change_request_input_sets (id, change_request_id, revision, content_digest, input_set_digest,
 		active_version_id, active_version_number, active_version_digest, environment, environment_digest, catalog, catalog_digest,
-		window_since, case_limit, cases, created_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+		window_since, case_limit, truncated, skipped_no_session, cases, created_by, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
 		set.ID, set.ChangeRequestID, set.Revision, set.ContentDigest, set.Digest, set.ActiveVersionID, set.ActiveVersionNumber,
-		set.ActiveVersionDigest, env, set.EnvironmentDigest, catalog, set.CatalogDigest, set.WindowSince, set.CaseLimit, cases,
-		set.CreatedBy, set.CreatedAt); err != nil {
+		set.ActiveVersionDigest, env, set.EnvironmentDigest, catalog, set.CatalogDigest, set.WindowSince, set.CaseLimit,
+		set.Truncated, set.SkippedNoSession, cases, set.CreatedBy, set.CreatedAt); err != nil {
 		return nil, err
 	}
 	rows, err := json.Marshal(sim.Rows)
@@ -470,10 +471,11 @@ func (r *ChangeRepo) InputSet(ctx context.Context, id, setID uuid.UUID) (*change
 	)
 	err := r.pool.QueryRow(ctx, `SELECT id, change_request_id, revision, content_digest, input_set_digest, active_version_id,
 		active_version_number, active_version_digest, environment, environment_digest, catalog, catalog_digest, window_since,
-		case_limit, cases, created_by, created_at FROM change_request_input_sets WHERE change_request_id = $1 AND id = $2`, id, setID).
+		case_limit, truncated, skipped_no_session, cases, created_by, created_at FROM change_request_input_sets
+		WHERE change_request_id = $1 AND id = $2`, id, setID).
 		Scan(&s.ID, &s.ChangeRequestID, &s.Revision, &s.ContentDigest, &s.Digest, &s.ActiveVersionID, &s.ActiveVersionNumber,
-			&s.ActiveVersionDigest, &env, &s.EnvironmentDigest, &catalog, &s.CatalogDigest, &s.WindowSince, &s.CaseLimit, &cases,
-			&s.CreatedBy, &s.CreatedAt)
+			&s.ActiveVersionDigest, &env, &s.EnvironmentDigest, &catalog, &s.CatalogDigest, &s.WindowSince, &s.CaseLimit,
+			&s.Truncated, &s.SkippedNoSession, &cases, &s.CreatedBy, &s.CreatedAt)
 	if noRows(err) {
 		return nil, domain.ErrNotFound
 	}

@@ -1961,7 +1961,21 @@ components:
             window_since: { type: string, format: date-time }
             case_limit: { type: integer }
             cases_in_set: { type: integer }
-            limit_reached: { type: boolean }
+            limit_reached:
+              type: boolean
+              description: The set holds exactly `case_limit` cases. This alone does not mean anything was omitted.
+            truncated:
+              type: boolean
+              description: At least one more eligible session than `case_limit` was seen at capture (capture reads `case_limit + 1`). The number omitted is not counted. Sessions are selected in session-ID order, not by age.
+            skipped:
+              type: array
+              items:
+                type: object
+                required: [reason, count, note]
+                properties:
+                  reason: { type: string, enum: [no_session, beyond_case_limit] }
+                  count: { type: [integer, "null"], description: "null: unknown (at least one)." }
+                  note: { type: string }
             notes: { type: array, items: { type: string } }
         output_digest: { type: string, description: Canonical digest of rows, summary and coverage. }
         label: { type: string, description: Historical replay, not live-network verification. }
@@ -1987,6 +2001,8 @@ components:
         catalog_digest: { type: string }
         window_since: { type: string, format: date-time }
         case_limit: { type: integer }
+        truncated: { type: boolean }
+        skipped_no_session: { type: integer }
         cases:
           type: array
           items:

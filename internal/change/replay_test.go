@@ -2,6 +2,7 @@ package change
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +38,8 @@ func replayFixture(t *testing.T) (*InputSet, *domain.PolicyVersion, Content) {
 	content := Content{Rules: []domain.Policy{guest}, DefaultAction: domain.ActionDeny}
 	set := &InputSet{Revision: 2, ContentDigest: content.Digest(), ActiveVersionID: active.ID, ActiveVersionNumber: 3,
 		ActiveVersionDigest: active.Digest, Environment: policyver.SegmentEnvironment{Checked: true, Maps: map[string]map[string]int{}},
-		CatalogDigest: catalogDigest(), WindowSince: at.Add(-time.Hour), CaseLimit: 10, Cases: freeze(recorded)}
+		CatalogDigest: catalogDigest(), WindowSince: at.Add(-time.Hour), CaseLimit: 10}
+	set.Cases, set.Truncated, set.SkippedNoSession = capture(recorded, set.CaseLimit)
 	set.Digest = inputSetDigestOf(set)
 	// The recorded cases are copied: changing them now cannot change the set.
 	recorded[1].Inputs["identity.bound"] = unbound
@@ -96,5 +98,52 @@ func TestCanonicalDigest_KeyOrderIndependent(t *testing.T) {
 	j, _ := canonicalJSON(map[string]any{"b": 1, "a": "<x>"})
 	if string(j) != `{"a":"<x>","b":1}` {
 		t.Fatalf("canonical JSON: %s", j)
+	}
+}
+
+// ASTRA review of e866bb1: at exactly the case limit the coverage claimed
+// that older sessions were omitted. Truncation may only be claimed when an
+// extra eligible case was actually seen (capture reads limit+1).
+func TestCapture_ExactLimitBoundary(t *testing.T) {
+	_, active, content := replayFixture(t)
+	mk := func(n int, withoutSession int) []policyver.RecordedCase {
+		var out []policyver.RecordedCase
+		for i := 0; i < n; i++ {
+			sid := uuid.New()
+			out = append(out, policyver.RecordedCase{DecisionID: uuid.New(), SessionID: &sid, Subject: "s",
+				Inputs: domain.Inputs{}, RecordedAction: domain.ActionDeny})
+		}
+		for i := 0; i < withoutSession; i++ {
+			out = append(out, policyver.RecordedCase{DecisionID: uuid.New(), Subject: "no session"})
+		}
+		return out
+	}
+	coverage := func(recorded []policyver.RecordedCase, limit int) Coverage {
+		t.Helper()
+		set := &InputSet{ContentDigest: content.Digest(), ActiveVersionID: active.ID, ActiveVersionNumber: active.Number,
+			ActiveVersionDigest: active.Digest, CaseLimit: limit}
+		set.Cases, set.Truncated, set.SkippedNoSession = capture(recorded, limit)
+		_, _, cov, _, err := Replay(set, active, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cov
+	}
+	notes := func(c Coverage) string { return strings.Join(c.Notes, " ") }
+
+	exact := coverage(mk(3, 0), 3) // read with limit+1 = 4, only 3 exist
+	if !exact.LimitReached || exact.Truncated || len(exact.Skipped) != 0 ||
+		strings.Contains(notes(exact), "Truncated") || strings.Contains(notes(exact), "older") ||
+		!strings.Contains(notes(exact), "no eligible session was omitted") {
+		t.Fatalf("exactly at the limit: %+v", exact)
+	}
+	over := coverage(mk(4, 0), 3) // the 4th case proves truncation
+	if over.CasesInSet != 3 || !over.Truncated || len(over.Skipped) != 1 || over.Skipped[0].Reason != "beyond_case_limit" ||
+		over.Skipped[0].Count != nil || !strings.Contains(notes(over), "session-ID order, not by age") || strings.Contains(notes(over), "older sessions") {
+		t.Fatalf("beyond the limit: %+v", over)
+	}
+	under := coverage(mk(2, 2), 3)
+	if under.LimitReached || under.Truncated || len(under.Skipped) != 1 || under.Skipped[0].Reason != "no_session" || *under.Skipped[0].Count != 2 {
+		t.Fatalf("under the limit with sessionless decisions: %+v", under)
 	}
 }

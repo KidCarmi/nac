@@ -588,7 +588,9 @@ async function changeDetail(id, openSim) {
       h("p", { class: "note" }, sim.label),
       kv([["Cases replayed", sim.summary.cases_replayed], ["Changed (effective)", sim.summary.changed], ["Policy result changed", sim.summary.policy_changed],
         ["Missing evidence", sim.summary.missing_evidence], ["Stale evidence", sim.summary.stale_evidence], ["Operator override applies", sim.summary.override_applies],
-        ["Window", "since " + when(sim.coverage.window_since) + ", at most " + sim.coverage.case_limit + " sessions" + (sim.coverage.limit_reached ? " (limit reached)" : "")],
+        ["Window", "since " + when(sim.coverage.window_since) + ", at most " + sim.coverage.case_limit + " sessions" +
+          (sim.coverage.truncated ? " (truncated: more eligible sessions exist; number not counted)" : "")],
+        ["Not replayed", sim.coverage.skipped.length ? sim.coverage.skipped.map((s) => s.reason + ": " + (s.count === null ? "unknown (at least 1)" : s.count)).join("; ") : "none"],
         ["Input set digest", h("code", {}, short(sim.input_set_digest))], ["Output digest", h("code", {}, short(sim.output_digest))]]),
       h("div", {}, sim.coverage.notes.map((n) => h("div", { class: "muted" }, n))),
       table(["Session subject", "Active", "Proposed", "Missing inputs", "Stale inputs"], sim.rows.map((r) => ({ cells: [r.subject,

@@ -269,7 +269,8 @@ func TestChangeAPI_NoSideEffects(t *testing.T) {
 	if sent != 0 {
 		t.Fatalf("%d CoA packet(s) sent by change-request routes", sent)
 	}
-	// The next authentication still gets the ACTIVE policy (corp VLAN 10).
+	// NAC's authorization reply (adapter API, simulated request) still follows
+	// the ACTIVE policy (corp VLAN 10). Not endpoint evidence.
 	if v := frVal(h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", a, 200), "reply:Tunnel-Private-Group-Id"); v != "10" {
 		t.Fatalf("authorization after change-request activity: VLAN %q", v)
 	}

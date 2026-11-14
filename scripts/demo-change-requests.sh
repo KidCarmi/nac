@@ -6,8 +6,10 @@
 #   3. starts nacd on 127.0.0.1:${DEMO_PORT:-18080};
 #   4. runs the console walkthrough (scripts/ui-change-requests.js), which
 #      proposes the draft, validates, simulates, reproduces, rebases and
-#      cancels, and checks that the active policy and the endpoint's VLAN
-#      did not change;
+#      cancels, and checks that the active policy and NAC's simulated RADIUS
+#      authorization reply (VLAN 10) did not change. The RADIUS request is
+#      simulated through the adapter API: no EAP-TLS, switch, DHCP or
+#      endpoint traffic, so this is not endpoint evidence;
 #   5. prints the resulting change request as the API returns it.
 #
 #   DEMO_RESET=1 NAC_DB_DSN=postgres://nac:nac@localhost:5432/nac_demo?sslmode=disable \

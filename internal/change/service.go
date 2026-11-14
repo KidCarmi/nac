@@ -347,15 +347,19 @@ func (s *Service) Simulate(ctx context.Context, id uuid.UUID, revision int, acto
 	// digests (and reproduces) exactly as it was computed here.
 	now := s.now().UTC().Truncate(time.Microsecond)
 	since := now.Add(-s.policy.PreviewWindow())
-	recorded, err := s.policy.RecordedCases(ctx, since, CaseLimit)
+	// One more than the limit: seeing the extra case is the only evidence
+	// that eligible sessions were left out.
+	recorded, err := s.policy.RecordedCases(ctx, since, CaseLimit+1)
 	if err != nil {
 		return nil, nil, err
 	}
+	cases, truncated, skipped := capture(recorded, CaseLimit)
 	env := s.policy.Environment(ctx)
 	set := &InputSet{ID: uuid.New(), ChangeRequestID: id, Revision: revision, ContentDigest: rev.ContentDigest,
 		ActiveVersionID: active.ID, ActiveVersionNumber: active.Number, ActiveVersionDigest: active.Digest,
 		Environment: env, EnvironmentDigest: EnvironmentDigest(env), Catalog: domain.InputCatalog, CatalogDigest: catalogDigest(),
-		WindowSince: since, CaseLimit: CaseLimit, Cases: freeze(recorded), CreatedBy: actor, CreatedAt: now}
+		WindowSince: since, CaseLimit: CaseLimit, Truncated: truncated, SkippedNoSession: skipped, Cases: cases,
+		CreatedBy: actor, CreatedAt: now}
 	set.Digest = inputSetDigestOf(set)
 	rows, sum, cov, out, err := Replay(set, active, rev.Content)
 	if err != nil {

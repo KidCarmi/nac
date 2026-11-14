@@ -2,8 +2,13 @@
 // nacd (empty database): propose the policy draft as a change request,
 // validate, simulate (historical replay), reproduce, replace content with the
 // draft (new revision, back to draft), cancel. It checks the review-only
-// labels and that nothing changed the active policy. RADIUS traffic is
-// simulated through the FreeRADIUS adapter API with the service token. Not
+// labels and that nothing changed the active policy.
+//
+// What it does NOT prove: RADIUS requests are SIMULATED by posting
+// manufactured TLS attributes to the FreeRADIUS adapter API with the service
+// token. No EAP-TLS, switch port, CoA delivery, DHCP or endpoint traffic is
+// exercised, so the "VLAN 10" checks are NAC's simulated authorization
+// replies, not endpoint evidence; endpoint reachability is NOT RUN here. Not
 // for a production instance: it adds records.
 //
 //   NAC_URL=http://127.0.0.1:8080 NAC_ADMIN_EMAIL=admin@nac.local \
@@ -51,7 +56,7 @@ const results = []; const step = (name, ok, extra = '') => { results.push([ok ? 
       conditions: [{ field: 'identity.bound', operator: 'eq', values: ['true'] }] });
     const pv = await api('GET', '/policy-draft/preview');
     await api('POST', '/policy-draft/publish', { expected_digest: pv.draft_digest });
-    step('Setup: endpoint gets corp VLAN 10 under the active policy', (await radius()) === '10');
+    step('Setup: simulated NAC RADIUS authorization reply (adapter API, no EAP-TLS/switch/endpoint) is corp VLAN 10', (await radius()) === '10');
     // The draft now proposes guest instead of corp (not published).
     await api('PUT', '/policies/' + corp.id, { name: 'bound-corp', priority: 10, enabled: true, action: 'allow', segment: 'guest',
       conditions: [{ field: 'identity.bound', operator: 'eq', values: ['true'] }] });
@@ -90,7 +95,7 @@ const results = []; const step = (name, ok, extra = '') => { results.push([ok ? 
 
     const activeAfter = (await api('GET', '/policy-versions')).versions.find((v) => v.active);
     step('The active policy is unchanged (review-only)', activeAfter.number === activeBefore.number && activeAfter.digest === activeBefore.digest);
-    step('The endpoint still gets corp VLAN 10', (await radius()) === '10');
+    step('Simulated NAC RADIUS authorization reply is still corp VLAN 10 (not endpoint evidence)', (await radius()) === '10');
     step('No native browser dialogs; no page errors', nativeDialogs === 0 && errs.length === 0, errs.join('; '));
   } catch (e) {
     step('walkthrough aborted', false, String(e));

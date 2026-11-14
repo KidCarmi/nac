@@ -51,9 +51,15 @@ type InputSet struct {
 	CatalogDigest       string                       `json:"catalog_digest"`
 	WindowSince         time.Time                    `json:"window_since"`
 	CaseLimit           int                          `json:"case_limit"`
-	Cases               []FrozenCase                 `json:"cases"`
-	CreatedBy           string                       `json:"created_by"`
-	CreatedAt           time.Time                    `json:"created_at"`
+	// Truncated is true only when at least one more eligible session than
+	// CaseLimit was seen at capture (capture asks for CaseLimit+1).
+	Truncated bool `json:"truncated"`
+	// SkippedNoSession counts recorded decisions without a session, which
+	// cannot be replayed.
+	SkippedNoSession int          `json:"skipped_no_session"`
+	Cases            []FrozenCase `json:"cases"`
+	CreatedBy        string       `json:"created_by"`
+	CreatedAt        time.Time    `json:"created_at"`
 }
 
 // SimRow is one replayed case.
@@ -84,13 +90,25 @@ type Summary struct {
 	OverrideApplies int `json:"override_applies"`
 }
 
+// Skip is one reason recorded decisions were not replayed. Count is nil when
+// the number is not known (only that at least one exists).
+type Skip struct {
+	Reason string `json:"reason"` // no_session | beyond_case_limit
+	Count  *int   `json:"count"`
+	Note   string `json:"note"`
+}
+
 // Coverage says what the replay could and could not see.
 type Coverage struct {
-	WindowSince  time.Time `json:"window_since"`
-	CaseLimit    int       `json:"case_limit"`
-	CasesInSet   int       `json:"cases_in_set"`
-	LimitReached bool      `json:"limit_reached"`
-	Notes        []string  `json:"notes"`
+	WindowSince time.Time `json:"window_since"`
+	CaseLimit   int       `json:"case_limit"`
+	CasesInSet  int       `json:"cases_in_set"`
+	// LimitReached: the set holds exactly CaseLimit cases. It does NOT by
+	// itself mean anything was omitted; Truncated does.
+	LimitReached bool     `json:"limit_reached"`
+	Truncated    bool     `json:"truncated"`
+	Skipped      []Skip   `json:"skipped"`
+	Notes        []string `json:"notes"`
 }
 
 // Simulation is an immutable replay of one revision over one input set.
@@ -163,16 +181,34 @@ func inputSetDigestOf(s *InputSet) string {
 		CatalogDigest       string                       `json:"catalog_digest"`
 		WindowSince         time.Time                    `json:"window_since"`
 		CaseLimit           int                          `json:"case_limit"`
+		Truncated           bool                         `json:"truncated"`
+		SkippedNoSession    int                          `json:"skipped_no_session"`
 		Cases               []FrozenCase                 `json:"cases"`
 	}{s.Revision, s.ContentDigest, s.ActiveVersionID, s.ActiveVersionDigest, s.Environment, s.CatalogDigest, s.WindowSince,
-		s.CaseLimit, s.Cases})
+		s.CaseLimit, s.Truncated, s.SkippedNoSession, s.Cases})
 }
 
-// freeze copies recorded cases into an input set, in canonical order.
-func freeze(cases []policyver.RecordedCase) []FrozenCase {
+// capture freezes the recorded cases for an input set of at most limit
+// cases. recorded must have been read with a limit of limit+1 (in session-ID
+// order, as RecentCases returns them): an extra case is the only evidence
+// that eligible sessions were left out, so truncated is never claimed
+// without it.
+func capture(recorded []policyver.RecordedCase, limit int) (cases []FrozenCase, truncated bool, skippedNoSession int) {
+	cases, skippedNoSession = freeze(recorded)
+	if len(cases) > limit {
+		cases, truncated = cases[:limit], true
+	}
+	return cases, truncated, skippedNoSession
+}
+
+// freeze copies recorded cases into canonical (session-ID) order and counts
+// the ones that cannot be replayed because they have no session.
+func freeze(cases []policyver.RecordedCase) ([]FrozenCase, int) {
 	out := make([]FrozenCase, 0, len(cases))
+	skipped := 0
 	for _, c := range cases {
 		if c.SessionID == nil {
+			skipped++
 			continue
 		}
 		in := domain.Inputs{}
@@ -189,7 +225,7 @@ func freeze(cases []policyver.RecordedCase) []FrozenCase {
 		}
 		return out[i].DecisionID.String() < out[j].DecisionID.String()
 	})
-	return out
+	return out, skipped
 }
 
 // Replay evaluates every frozen case under the active version and the
@@ -235,12 +271,24 @@ func Replay(set *InputSet, active *domain.PolicyVersion, content Content) (rows 
 		}
 	}
 	cov = Coverage{WindowSince: set.WindowSince, CaseLimit: set.CaseLimit, CasesInSet: len(set.Cases),
-		LimitReached: len(set.Cases) >= set.CaseLimit, Notes: []string{
+		LimitReached: len(set.Cases) == set.CaseLimit, Truncated: set.Truncated, Skipped: []Skip{}, Notes: []string{
 			"Only the newest recorded decision per session in the window is replayed; sessions with no recorded decision are not covered.",
 			"Inputs are as recorded at decision time (their freshness status included); they are not re-observed.",
 		}}
-	if cov.LimitReached {
-		cov.Notes = append(cov.Notes, fmt.Sprintf("The case limit (%d) was reached: older sessions in the window are not covered.", set.CaseLimit))
+	if set.SkippedNoSession > 0 {
+		n := set.SkippedNoSession
+		cov.Skipped = append(cov.Skipped, Skip{Reason: "no_session", Count: &n,
+			Note: "recorded decisions without a session cannot be replayed"})
+	}
+	switch {
+	case set.Truncated:
+		cov.Skipped = append(cov.Skipped, Skip{Reason: "beyond_case_limit",
+			Note: "at least one more eligible session exists; the number omitted is not counted"})
+		cov.Notes = append(cov.Notes, fmt.Sprintf("Truncated at the case limit (%d): at least one more eligible session exists. "+
+			"Sessions are selected in session-ID order, not by age, so the uncovered sessions are not the oldest ones; "+
+			"how many were omitted is not counted.", set.CaseLimit))
+	case cov.LimitReached:
+		cov.Notes = append(cov.Notes, fmt.Sprintf("Exactly the case limit (%d) was eligible: no eligible session was omitted.", set.CaseLimit))
 	}
 	if len(set.Cases) == 0 {
 		cov.Notes = append(cov.Notes, "No recorded decisions in the window: the replay covers nothing.")

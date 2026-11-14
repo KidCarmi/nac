@@ -62,6 +62,19 @@ Every mutation:
 - **`from_draft` replaces `restore_version`** for now.
 - **The replay window is the preview's (30 days), up to 1000 sessions.** The
   newest decision per session is used.
+  - Capture reads 1001 cases. Coverage reports `truncated` only when that
+    extra eligible session was actually seen; at exactly 1000 it states that
+    nothing was omitted.
+  - Sessions are chosen in session-ID order, not by age.
+  - Coverage lists skipped decisions with reasons:
+    - `no_session`, with its exact count;
+    - `beyond_case_limit`, whose count is **unknown (at least one)**. The plan
+      asked for counts, but counting the full overflow would need an extra
+      query, and the plan's purpose is met by disclosing that the number is
+      unknown, so I don't fake a count.
+  - Both facts are part of the frozen, digested input set.
+  - ASTRA's review of `e866bb1` caught the earlier wording, which claimed
+    "older sessions were not covered" at exactly the limit.
 - **"Canonical JSON":** object keys sorted, no whitespace, no HTML escaping,
   numbers as written. For the ASCII keys and string, integer and boolean
   values stored here, this is the RFC 8785 (JCS) serialization. It is not a
@@ -96,7 +109,8 @@ DEMO_RESET=1 NAC_DB_DSN=postgres://nac:nac@localhost:5432/nac_demo?sslmode=disab
 1. builds nacd;
 2. resets the database;
 3. starts nacd;
-4. runs the console walkthrough (12 checks);
+4. runs the console walkthrough (12 checks; RADIUS is simulated through the
+   adapter API, so its VLAN checks are NAC's replies, not endpoint evidence);
 5. prints the resulting change request as `GET /api/v1/change-requests/{id}`
    returns it.
 
@@ -126,7 +140,7 @@ corrections. Each row names the test that fails if the requirement breaks.
 | A7 | Canonical output is reproducible | `TestReplay_ReproducibleAndOrdered`; `TestCanonicalDigest_KeyOrderIndependent`; `…/reproduction` in the API test and the walkthrough | Repeated replays differ; key order changes the digest; a stored set fails to reproduce after the PostgreSQL round trip (this caught a real microsecond-truncation bug) |
 | A8 | A refresh creates a new simulation, never an update | `TestChangeAPI_SimulationFrozenReproducibleAndStale` | The refresh reuses the simulation ID or input-set digest; the first set's copied override changes |
 | A9 | Drift and staleness are reported, not hidden | `TestChangeAPI_FromDraftAndDrift`; `TestChangeAPI_SimulationFrozenReproducibleAndStale`; walkthrough (rebase marks the old simulation stale) | A mapping change, legacy publish or new revision leaves a validation or simulation shown as `current`, or the reasons are missing |
-| A10 | Missing and stale inputs and coverage are recorded | `TestReplay_ReproducibleAndOrdered` (stale count); coverage notes in every simulation | Stale or missing evidence is not counted per row and in the summary |
+| A10 | Missing and stale inputs and coverage are recorded, with no overstated omission | `TestReplay_ReproducibleAndOrdered` (stale count); `TestCapture_ExactLimitBoundary`, mutation-checked: the old `>=` logic fails it | Stale or missing evidence not counted; truncation claimed at exactly the limit or without an extra case; skip reasons and counts missing |
 | A11 | Historical replay is never labelled live verification | API test and walkthrough assert the label | A simulation without "not live-network verification" |
 | A12 | One shared service behind API and UI | `TestChangeRoutes_*` (handlers only pass through; forbidden requests never reach the service); the console uses only `/api/v1` (walkthrough) | A handler holds workflow logic, or the console needs a private path |
 | A13 | Change-request endpoints cannot mutate policy, sessions or switches | `TestChangeAPI_NoSideEffects` (8 tables byte-identical, no CoA packet; checked by injecting a Quarantine); `TestPolicyReaderCannotChangePolicy`; `TestNoImportOfEnforcementPaths`; schema CHECKs | Any route changes policy activations, versions, draft rules or settings, sessions, CoAs, switches or decisions, or sends a CoA |
@@ -147,5 +161,14 @@ change request" use only the API above.
   reported stale);
 - cancel.
 
-It also checks that the active policy and the endpoint's VLAN are unchanged.
+It also checks that the active policy is unchanged, and that NAC's
+**simulated** RADIUS authorization reply is still corp VLAN 10.
+
+**Scope of the walkthrough evidence.** The RADIUS request is manufactured and
+posted to the adapter API with the service token. No EAP-TLS, switch port,
+CoA delivery, DHCP or endpoint traffic is exercised. The walkthrough proves
+console and API behaviour and that NAC's authorization reply did not change.
+It is **not** endpoint or network-enforcement evidence: endpoint reachability
+is NOT RUN. The PostgreSQL no-side-effect test is the evidence for database
+and CoA state.
 Result: 12/12.
