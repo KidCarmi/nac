@@ -340,3 +340,154 @@ func (r *ChangeRepo) Validations(ctx context.Context, id uuid.UUID) ([]change.Va
 	}
 	return out, rows.Err()
 }
+
+// RecordSimulation stores a frozen input set and the simulation computed
+// from it, moves the change request to simulated and writes the audit record,
+// in one transaction. The revision must be current and validated.
+func (r *ChangeRepo) RecordSimulation(ctx context.Context, set *change.InputSet, sim *change.Simulation, a *domain.AuditEvent) (*change.ChangeRequest, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	state, err := lockCurrent(ctx, tx, sim.ChangeRequestID, sim.Revision)
+	if err != nil {
+		return nil, err
+	}
+	if state != change.StateValidated && state != change.StateSimulated {
+		return nil, change.ErrNotValidated
+	}
+	env, err := json.Marshal(set.Environment)
+	if err != nil {
+		return nil, err
+	}
+	catalog, err := json.Marshal(set.Catalog)
+	if err != nil {
+		return nil, err
+	}
+	cases, err := json.Marshal(set.Cases)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO change_request_input_sets (id, change_request_id, revision, content_digest, input_set_digest,
+		active_version_id, active_version_number, active_version_digest, environment, environment_digest, catalog, catalog_digest,
+		window_since, case_limit, cases, created_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+		set.ID, set.ChangeRequestID, set.Revision, set.ContentDigest, set.Digest, set.ActiveVersionID, set.ActiveVersionNumber,
+		set.ActiveVersionDigest, env, set.EnvironmentDigest, catalog, set.CatalogDigest, set.WindowSince, set.CaseLimit, cases,
+		set.CreatedBy, set.CreatedAt); err != nil {
+		return nil, err
+	}
+	rows, err := json.Marshal(sim.Rows)
+	if err != nil {
+		return nil, err
+	}
+	summary, err := json.Marshal(sim.Summary)
+	if err != nil {
+		return nil, err
+	}
+	coverage, err := json.Marshal(sim.Coverage)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO change_request_simulations (id, change_request_id, revision, content_digest, input_set_id,
+		input_set_digest, rows, summary, coverage, output_digest, label, created_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+		sim.ID, sim.ChangeRequestID, sim.Revision, sim.ContentDigest, sim.InputSetID, sim.InputSetDigest, rows, summary, coverage,
+		sim.OutputDigest, sim.Label, sim.CreatedBy, sim.CreatedAt); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE change_requests SET state = $2, updated_at = $3 WHERE id = $1`,
+		sim.ChangeRequestID, change.StateSimulated, sim.CreatedAt); err != nil {
+		return nil, err
+	}
+	return r.finish(ctx, tx, sim.ChangeRequestID, a)
+}
+
+const simColumns = `id, change_request_id, revision, content_digest, input_set_id, input_set_digest, summary, coverage, output_digest,
+	label, created_by, created_at`
+
+func scanSimulation(row rowScanner, withRows bool) (*change.Simulation, error) {
+	var (
+		s                  change.Simulation
+		summary, cov, rows []byte
+	)
+	dest := []any{&s.ID, &s.ChangeRequestID, &s.Revision, &s.ContentDigest, &s.InputSetID, &s.InputSetDigest, &summary, &cov,
+		&s.OutputDigest, &s.Label, &s.CreatedBy, &s.CreatedAt}
+	if withRows {
+		dest = append(dest, &rows)
+	}
+	if err := row.Scan(dest...); err != nil {
+		if noRows(err) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	if err := json.Unmarshal(summary, &s.Summary); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(cov, &s.Coverage); err != nil {
+		return nil, err
+	}
+	s.Rows = []change.SimRow{}
+	if withRows {
+		if err := json.Unmarshal(rows, &s.Rows); err != nil {
+			return nil, err
+		}
+	}
+	return &s, nil
+}
+
+// Simulations lists a change request's simulations (without rows), oldest
+// first.
+func (r *ChangeRepo) Simulations(ctx context.Context, id uuid.UUID) ([]change.Simulation, error) {
+	rows, err := r.pool.Query(ctx, `SELECT `+simColumns+` FROM change_request_simulations WHERE change_request_id = $1
+		ORDER BY created_at, id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []change.Simulation{}
+	for rows.Next() {
+		s, err := scanSimulation(rows, false)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *s)
+	}
+	return out, rows.Err()
+}
+
+// Simulation returns one simulation with its rows.
+func (r *ChangeRepo) Simulation(ctx context.Context, id, simID uuid.UUID) (*change.Simulation, error) {
+	return scanSimulation(r.pool.QueryRow(ctx, `SELECT `+simColumns+`, rows FROM change_request_simulations
+		WHERE change_request_id = $1 AND id = $2`, id, simID), true)
+}
+
+// InputSet returns a frozen input set.
+func (r *ChangeRepo) InputSet(ctx context.Context, id, setID uuid.UUID) (*change.InputSet, error) {
+	var (
+		s                   change.InputSet
+		env, catalog, cases []byte
+	)
+	err := r.pool.QueryRow(ctx, `SELECT id, change_request_id, revision, content_digest, input_set_digest, active_version_id,
+		active_version_number, active_version_digest, environment, environment_digest, catalog, catalog_digest, window_since,
+		case_limit, cases, created_by, created_at FROM change_request_input_sets WHERE change_request_id = $1 AND id = $2`, id, setID).
+		Scan(&s.ID, &s.ChangeRequestID, &s.Revision, &s.ContentDigest, &s.Digest, &s.ActiveVersionID, &s.ActiveVersionNumber,
+			&s.ActiveVersionDigest, &env, &s.EnvironmentDigest, &catalog, &s.CatalogDigest, &s.WindowSince, &s.CaseLimit, &cases,
+			&s.CreatedBy, &s.CreatedAt)
+	if noRows(err) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(env, &s.Environment); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(catalog, &s.Catalog); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(cases, &s.Cases); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}

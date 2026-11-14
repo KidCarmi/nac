@@ -39,7 +39,8 @@ function stateChip(s) {
     accept: "ok", reject: "bad", info: "", error: "bad", present: "ok", missing: "warn", stale: "warn",
     observed: "ok", acked: "ok", nak: "bad", timeout: "bad", failed: "bad", sent: "warn", requested: "warn",
     fresh: "ok", unavailable: "warn", connected: "ok", absent: "bad", matched: "ok", not_matched: "", insufficient_evidence: "warn",
-    disabled: "", not_reached: "", not_observed: "warn" };
+    disabled: "", not_reached: "", not_observed: "warn",
+    draft: "", validated: "ok", simulated: "ok", cancelled: "", current: "ok" };
   return chip(s, map[s] ?? "");
 }
 // ask shows an in-page confirmation and resolves true/false. It replaces the
@@ -86,8 +87,8 @@ function table(cols, rows, onRow) {
 function field(label, input) { return h("div", {}, h("label", {}, label), input); }
 
 // ---------- API ----------
-async function api(method, path, body) {
-  const opts = { method, headers: { Authorization: "Bearer " + token } };
+async function api(method, path, body, extraHeaders) {
+  const opts = { method, headers: { Authorization: "Bearer " + token, ...(extraHeaders || {}) } };
   if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   const res = await fetch("/api/v1" + path, opts);
   if (res.status === 401) { logout(); throw new Error("Your session expired. Sign in again."); }
@@ -107,7 +108,7 @@ async function act(fn, okMsg) {
 // ---------- routing ----------
 const routes = {
   "": overview, overview, switches, switch: switchDetail, sessions, session: sessionDetail,
-  endpoints, policy, events, account,
+  endpoints, policy, events, account, changes, change: changeDetail,
 };
 function go(hash) { location.hash = hash; }
 async function render() {
@@ -531,7 +532,8 @@ async function policy() {
       h("div", {}, v.errors.map((e) => h("div", { class: "bad" }, "✗ " + e)), v.warnings.map((w) => h("div", { class: "warn" }, "⚠ " + w)),
         v.valid ? h("div", { class: "ok" }, "✓ draft is valid") : null),
       h("p", { class: "row" }, h("button", { onclick: () => editor.replaceChildren(panel("Add rule", ruleEditor(null, inputs, render))) }, "+ rule"),
-        h("button", { class: "primary", onclick: doPreview }, "Preview changes"))),
+        h("button", { class: "primary", onclick: doPreview }, "Preview changes"),
+        h("button", { id: "propose-cr", onclick: () => go("#/changes") }, "Propose as change request (review-only)"))),
     editor, previewBox,
     panel("Versions", table(["Version", "Active", "Rules", "Default", "Created", "By", "Note", ""], versions.versions.map((ver) => ({ cells: [ver.number,
       ver.active ? chip("active", "ok") : "", ver.rules.length, ver.default_action, when(ver.created_at), ver.created_by, txt(ver.note),
@@ -543,6 +545,96 @@ async function policy() {
       a.version_number, txt(a.previous_version_number), a.activated_by, txt(a.note)] })))),
     panel("Decision inputs you can use", table(["Field", "Allowed sources", "Meaning"], inputs.inputs.map((i) => ({ cells: [h("code", {}, i.field),
       i.sources.join(", "), i.description + (i.max_age ? " (fresh for " + i.max_age + ")" : "")] })))));
+}
+
+// ---------- Change requests (review-only) ----------
+// Every action names the revision it is based on (If-Match); the server
+// answers 409 if someone changed the change request in between.
+const ifMatch = (rev) => ({ "If-Match": '"' + rev + '"' });
+const short = (d) => (d ? String(d).slice(0, 12) : "—");
+function driftCell(d) {
+  if (!d) return "—";
+  return h("div", {}, stateChip(d.state), (d.reasons || []).map((r) => h("div", { class: "muted" }, r)));
+}
+
+async function changes() {
+  const list = await api("GET", "/change-requests");
+  const title = h("input", { id: "cr-title", placeholder: "what the change is for", maxlength: "200" });
+  const intent = h("textarea", { id: "cr-intent", rows: "2", maxlength: "4000", placeholder: "why (optional)" });
+  show(h("h1", {}, "Change requests"),
+    h("p", { class: "note", id: "cr-label" }, list.label),
+    panel("Propose the current policy draft",
+      h("p", { class: "muted" }, "Copies the draft (rules and default action) into a new change request based on the active version. The draft and the active policy are not changed."),
+      field("Title", title), field("Intent", intent),
+      h("button", { class: "primary", id: "cr-create", onclick: async () => {
+        const r = await act(() => api("POST", "/change-requests", { title: title.value, intent: intent.value, from_draft: true }), "Change request created (review-only).");
+        if (r) go("#/change/" + r.id);
+      } }, "Create change request")),
+    panel("Change requests", table(["Title", "State", "Revision", "Based on version", "Updated", "Requested by"],
+      list.change_requests.map((c) => ({ id: c.id, cells: [c.title, stateChip(c.state), c.revision, c.base_version_number, when(c.updated_at), c.requested_by] })),
+      (r) => go("#/change/" + r.id))));
+}
+
+async function changeDetail(id, openSim) {
+  const [d, draft] = await Promise.all([api("GET", "/change-requests/" + id), api("GET", "/policy-draft")]);
+  const rowsBox = h("div", { id: "cr-sim-rows" });
+  const terminal = d.state === "cancelled";
+  const canSimulate = d.state === "validated" || d.state === "simulated";
+  const refresh = () => changeDetail(id);
+  const showRows = async (simID) => {
+    const sim = await act(() => api("GET", "/change-requests/" + id + "/simulations/" + simID));
+    if (!sim) return;
+    rowsBox.replaceChildren(panel("Simulation " + short(sim.id) + " (revision " + sim.revision + ")",
+      h("p", { class: "note" }, sim.label),
+      kv([["Cases replayed", sim.summary.cases_replayed], ["Changed (effective)", sim.summary.changed], ["Policy result changed", sim.summary.policy_changed],
+        ["Missing evidence", sim.summary.missing_evidence], ["Stale evidence", sim.summary.stale_evidence], ["Operator override applies", sim.summary.override_applies],
+        ["Window", "since " + when(sim.coverage.window_since) + ", at most " + sim.coverage.case_limit + " sessions" + (sim.coverage.limit_reached ? " (limit reached)" : "")],
+        ["Input set digest", h("code", {}, short(sim.input_set_digest))], ["Output digest", h("code", {}, short(sim.output_digest))]]),
+      h("div", {}, sim.coverage.notes.map((n) => h("div", { class: "muted" }, n))),
+      table(["Session subject", "Active", "Proposed", "Missing inputs", "Stale inputs"], sim.rows.map((r) => ({ cells: [r.subject,
+        r.active_action + " " + (r.active_segment || ""),
+        h("span", { class: r.changed ? "warn" : "" }, r.proposed_action + " " + (r.proposed_segment || ""), r.override_applies ? " (operator quarantine override applies)" : ""),
+        r.missing_inputs.join(", ") || "—", r.stale_inputs.join(", ") || "—"] })))));
+  };
+  show(h("h1", {}, d.title),
+    h("p", { class: "note", id: "cr-detail-label" }, d.label),
+    panel("Change request", kv([["State", stateChip(d.state)], ["Workflow", d.workflow], ["Revision", d.revision],
+      ["Based on active version", d.base_version_number], ["Base", driftCell(d.base_drift)], ["Content digest", h("code", {}, short(d.content_digest))],
+      ["Requested by", d.requested_by], ["Intent", txt(d.intent)], ["Updated", when(d.updated_at)]]),
+      h("div", { class: "row" },
+        h("button", { id: "cr-validate", disabled: terminal, onclick: async () => {
+          if (await act(() => api("POST", "/change-requests/" + id + "/validations", undefined, ifMatch(d.revision)), "Validation recorded.")) refresh();
+        } }, "Validate revision " + d.revision),
+        h("button", { id: "cr-simulate", class: "primary", disabled: terminal || !canSimulate, title: canSimulate ? "" : "validate the current revision first", onclick: async () => {
+          const r = await act(() => api("POST", "/change-requests/" + id + "/simulations", undefined, ifMatch(d.revision)), "Simulation recorded (historical replay).");
+          if (r) changeDetail(id, r.simulation.id); // re-render, then open its rows
+        } }, "Simulate (historical replay)"),
+        h("button", { id: "cr-rebase", disabled: terminal, onclick: async () => {
+          if (!await ask("Replace this change request's content with the current policy draft as revision " + (d.revision + 1) + "? It returns to draft; earlier validations and simulations stay as history.")) return;
+          if (await act(() => api("PUT", "/change-requests/" + id + "/content", { rules: draft.rules, default_action: draft.default_action }, ifMatch(d.revision)), "New revision recorded.")) refresh();
+        } }, "Replace content with the current draft"),
+        h("button", { id: "cr-cancel", disabled: terminal, onclick: async () => {
+          if (!await ask("Cancel this change request? It becomes read-only.")) return;
+          if (await act(() => api("POST", "/change-requests/" + id + "/cancel", undefined, ifMatch(d.revision)), "Cancelled.")) refresh();
+        } }, "Cancel"))),
+    panel("Proposed content (revision " + d.revision + ")",
+      table(["Priority", "Rule", "Enabled", "Conditions", "Action", "Segment"], d.content.rules.map((r) => ({ cells: [r.priority, r.name, r.enabled ? "yes" : "no",
+        h("div", {}, r.conditions.map((c) => h("div", { class: "mono" }, c.field + " " + c.operator + " " + (c.values || []).join("|")))), r.action, txt(r.segment)] }))),
+      h("p", {}, "Default action: ", h("strong", {}, d.content.default_action))),
+    panel("Validations", table(["When", "Revision", "Result", "Still current?", "Errors and warnings", "By"], d.validations.map((v) => ({ cells: [when(v.created_at), v.revision,
+      v.valid ? chip("valid", "ok") : chip("invalid", "bad"), driftCell(v.drift),
+      h("div", {}, v.result.errors.map((e) => h("div", { class: "bad" }, "✗ " + e)), v.result.warnings.map((w) => h("div", { class: "warn" }, "⚠ " + w))), v.created_by] })))),
+    panel("Simulations (historical replay)", h("p", { class: "muted" }, "Each simulation ran on its own frozen input set. Reproduce re-runs it from that set only; it never reads live state."),
+      table(["When", "Revision", "Cases", "Changed", "Missing / stale evidence", "Still current?", "Output digest", ""], d.simulations.map((sim) => ({ cells: [when(sim.created_at), sim.revision,
+        sim.summary.cases_replayed, sim.summary.changed, sim.summary.missing_evidence + " / " + sim.summary.stale_evidence, driftCell(sim.drift), h("code", {}, short(sim.output_digest)),
+        h("span", {}, h("button", { onclick: (e) => { e.stopPropagation(); showRows(sim.id); } }, "Rows"), " ",
+          h("button", { class: "cr-reproduce", onclick: async (e) => {
+            e.stopPropagation();
+            const r = await act(() => api("GET", "/change-requests/" + id + "/simulations/" + sim.id + "/reproduction"));
+            if (r) flash(r.matches ? "Reproduced: identical output (" + short(r.reproduced_output_digest) + ")." : r.note, r.matches ? "info" : "err");
+          } }, "Reproduce"))] })))),
+    rowsBox);
+  if (openSim) await showRows(openSim);
 }
 
 // ---------- Events ----------

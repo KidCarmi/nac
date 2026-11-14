@@ -136,4 +136,16 @@ type Repository interface {
 	// moves a draft to validated, an invalid one moves it back to draft.
 	RecordValidation(ctx context.Context, v *Validation, a *domain.AuditEvent) (*ChangeRequest, error)
 	Validations(ctx context.Context, id uuid.UUID) ([]Validation, error)
+	// RecordSimulation stores the input set and the simulation of the
+	// current revision (state validated or simulated) and moves the change
+	// request to simulated, with its audit record, in one transaction.
+	RecordSimulation(ctx context.Context, set *InputSet, sim *Simulation, a *domain.AuditEvent) (*ChangeRequest, error)
+	// Simulations lists simulations without their rows.
+	Simulations(ctx context.Context, id uuid.UUID) ([]Simulation, error)
+	Simulation(ctx context.Context, id, simID uuid.UUID) (*Simulation, error)
+	InputSet(ctx context.Context, id, setID uuid.UUID) (*InputSet, error)
 }
+
+// ErrNotValidated is returned when simulating a revision that has no valid
+// validation since its last edit.
+var ErrNotValidated = fmt.Errorf("%w: validate the current revision first (state must be validated or simulated)", domain.ErrConflict)
