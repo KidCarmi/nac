@@ -53,9 +53,12 @@ never a CoA from another session on the port.
     statement sees that same snapshot.
   - A plain READ COMMITTED transaction would not help, because each of its
     statements takes a new snapshot. The tests below show this.
-  - The transaction holds only database reads. It does no network or file
-    I/O, takes no row locks, never blocks writers and is never blocked by
-    them. It ends before the response is built.
+  - The transaction holds only database reads and does no network or file
+    I/O. It takes no row locks, so ordinary concurrent row updates and
+    these snapshot reads never wait on each other's row locks. Table-level
+    locks (for example DDL during a migration) and ordinary resource waits,
+    such as connection-pool slots and I/O, still apply. It ends before the
+    response is built.
   - It is read-only, so it cannot hit a serialization failure.
 - `pilot.Service.buildView` is a pure function of the loaded records and
   replaces `view`, which used to issue its own queries.
@@ -133,8 +136,13 @@ this read-model change.
 
 ## Candidate and qualification impact
 
-- **Candidate:** none yet. A candidate is staged only after review. It
-  would be rc5 plus this change, built from a tagged commit with new pins.
+- **Candidate:** none yet. A candidate is staged only after review.
+  - It would be rc5 plus this change, identified by its exact commit SHA and
+    the SHA-256 of the exact `nacd` artifact, with the adapter hash or its
+    documented unchanged pin. No tag is required.
+  - Unreviewed artifacts may carry hashes, labelled UNREVIEWED / NOT
+    AUTHORIZED FOR DEPLOYMENT. A hash identifies an artifact; it does not
+    authorize a run.
   U3, the AOS-CX config wording on `claude/nac-u3-aruba-config-copy`,
   stays separate unless the owner batches it explicitly.
 - **Affected-test rerun list for that candidate:**
