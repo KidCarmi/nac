@@ -81,8 +81,10 @@ func (s *Service) RequestCoA(ctx context.Context, sessionID uuid.UUID, kind, act
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			// Detached from the HTTP request: the exchange outlives it.
-			bg, cancel := context.WithTimeout(context.Background(), time.Duration(s.cfg.CoAAttempts+1)*s.cfg.CoATimeout+s.cfg.CoAObserveWindow+5*time.Second)
+			// Detached from the HTTP request's cancellation (the exchange
+			// outlives it) but bounded by coaBudget, which the sweeper
+			// relies on: after it, this sender can no longer transmit.
+			bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.coaBudget())
 			defer cancel()
 			s.runCoA(bg, c.ID, sw)
 		}()
@@ -181,7 +183,8 @@ func (s *Service) resolveStart(ctx context.Context, c *domain.CoARequest, startE
 	case err != nil:
 		s.logger.Error("CoA start outcome unknown", "coa", c.ID, "start_error", startErr, "lookup_error", err)
 		return fmt.Errorf("%w: could not confirm whether the %s was recorded (CoA %s); nothing was sent from this request. "+
-			"If it was recorded, NAC marks it failed within %s (not sent; the recorded override stays) and the session can be acted on again. "+
+			"If it was recorded, it becomes eligible to be marked failed (not sent; the recorded override stays) %s after it was "+
+			"created, and is marked on the next successful background sweep; the session can then be acted on again. "+
 			"Check the session timeline before retrying", domain.ErrUnavailable, c.Kind, c.ID, s.cfg.CoAStartGrace)
 	case !committed:
 		return startErr
@@ -198,24 +201,128 @@ const resolveStartTimeout = 5 * time.Second
 const unclaimedDetail = "the start of this CoA was recorded but nacd could not confirm it at the time, so it was never sent to the switch. " +
 	"The recorded override is unchanged. Check the session and retry the action if it is still needed."
 
-// ReconcileStuckCoAs fails every CoA whose start committed but that no
-// sender claimed within the grace period (created before olderThan): it was
-// never sent, it is not sent now, and the recorded override is left as it
-// is. It runs in the background (every CoAStartGrace/2) so a lost
-// acknowledgement never needs a restart to clear; tests call it directly.
-func (s *Service) ReconcileStuckCoAs(ctx context.Context, olderThan time.Time) (int, error) {
-	stale, err := s.store.FailUnclaimedCoAs(ctx, olderThan, s.now().UTC(), unclaimedDetail)
+// abandonedDetail is recorded on a claimed CoA the sweeper fails.
+const abandonedDetail = "outcome unknown: nacd claimed this CoA for sending but lost track of it (a database response was lost or " +
+	"nacd could not record the result), so the switch may or may not have received it. It was not resent. The recorded override is " +
+	"unchanged. Check the session on the switch and retry the action if it is still needed."
+
+// coaBudget bounds one CoA sender (its context deadline). radius.Exchange
+// checks the context before every transmission, so after coaBudget the
+// sender that claimed a CoA can no longer send it.
+func (s *Service) coaBudget() time.Duration {
+	return time.Duration(s.cfg.CoAAttempts+1)*s.cfg.CoATimeout + s.cfg.CoAObserveWindow + 5*time.Second
+}
+
+// ReconcileStuckCoAs resolves operator CoAs that would otherwise block their
+// session until a restart:
+//
+//   - requested (committed, never claimed by a sender) and created before
+//     requestedBefore: failed, never sent, not sent now;
+//   - sent (claimed) whose last update is before sentBefore: failed with
+//     "outcome unknown". The background caller sets sentBefore beyond the
+//     sender's whole budget, so the claiming sender can no longer transmit
+//     and the sweeper never races a live sender.
+//
+// Nothing is resent and the recorded override is never changed. It runs in
+// the background (every CoAStartGrace/2); tests call it with explicit
+// cutoffs.
+func (s *Service) ReconcileStuckCoAs(ctx context.Context, requestedBefore, sentBefore time.Time) (int, error) {
+	now := s.now().UTC()
+	unclaimed, err := s.store.FailUnclaimedCoAs(ctx, requestedBefore, now, unclaimedDetail)
 	if err != nil {
 		return 0, err
 	}
-	for _, st := range stale {
-		id, sid, sw := st.ID, st.SessionID, st.SwitchID
-		s.event(ctx, &domain.AuthEvent{SessionID: &sid, SwitchID: &sw, NASPortID: st.NASPortID, Stage: domain.StageCoA,
-			Result: "error", Source: "nacd", CoAID: &id, Reason: "CoA failed: " + unclaimedDetail})
-		s.logger.Warn("unclaimed CoA start marked failed (not sent)", "coa", id)
+	abandoned, err := s.store.FailAbandonedSentCoAs(ctx, sentBefore, now, abandonedDetail)
+	if err != nil {
+		return len(unclaimed), err
 	}
-	return len(stale), nil
+	note := func(list []postgres.StaleStart, detail, msg string) {
+		for _, st := range list {
+			id, sid, sw := st.ID, st.SessionID, st.SwitchID
+			s.event(ctx, &domain.AuthEvent{SessionID: &sid, SwitchID: &sw, NASPortID: st.NASPortID, Stage: domain.StageCoA,
+				Result: "error", Source: "nacd", CoAID: &id, Reason: "CoA failed: " + detail})
+			s.logger.Warn(msg, "coa", id)
+		}
+	}
+	note(unclaimed, unclaimedDetail, "unclaimed CoA start marked failed (not sent)")
+	note(abandoned, abandonedDetail, "abandoned claimed CoA marked failed (outcome unknown, not resent)")
+	return len(unclaimed) + len(abandoned), nil
 }
+
+// SweepCutoffs are the background sweep's cutoffs at time now: requested
+// CoAs created before requestedBefore and sent CoAs last updated before
+// sentBefore (beyond the sender's whole budget) are eligible.
+func (s *Service) SweepCutoffs(now time.Time) (requestedBefore, sentBefore time.Time) {
+	return now.Add(-s.cfg.CoAStartGrace), now.Add(-s.coaBudget() - s.cfg.CoAStartGrace)
+}
+
+// claimOutcome is the result of a sender's attempt to claim its CoA.
+type claimOutcome int
+
+const (
+	claimed   claimOutcome = iota // this sender owns the CoA: send it
+	notOurs                       // definitely not claimed (resolved elsewhere): do not send
+	claimLost                     // unknown (database unreachable): do not send; the sweeper resolves it
+)
+
+// claim moves the CoA requested -> sent conditionally. A database error is
+// NOT a rejection: the UPDATE may have applied with its response lost. Then
+// ownership is reconciled by re-reading the CoA by ID: it is ours only if it
+// is `sent` with this sender's own radius_id and microsecond sent_at, which
+// no other writer sets for this CoA (the start sweeper and restart recovery
+// only ever set `failed`). A still-`requested` row is claimed again
+// (conditionally). Bounded retries; if the outcome stays unknown the sender
+// does not send, and the sweeper resolves the row later.
+func (s *Service) claim(ctx context.Context, c *domain.CoARequest) claimOutcome {
+	c.UpdatedAt = s.now().UTC()
+	ok, err := s.store.UpdateCoAFrom(ctx, c, []string{domain.CoARequested})
+	for try := 1; err != nil && try <= claimReconcileTries; try++ {
+		s.logger.Warn("CoA claim outcome unknown; reconciling by CoA ID", "coa", c.ID, "error", err, "try", try)
+		var cur *domain.CoARequest
+		if cur, err = s.store.ReadCoAForClaim(ctx, c.ID); err != nil {
+			if !sleepCtx(ctx, claimReconcileWait) {
+				break
+			}
+			continue
+		}
+		switch {
+		case cur.State == domain.CoASent && sameInt(cur.RadiusID, c.RadiusID) && sameTime(cur.SentAt, c.SentAt):
+			return claimed // our UPDATE applied; its response was lost
+		case cur.State == domain.CoARequested:
+			ok, err = s.store.UpdateCoAFrom(ctx, c, []string{domain.CoARequested})
+		default:
+			return notOurs // resolved by someone else (e.g. the start sweeper)
+		}
+	}
+	switch {
+	case err != nil:
+		return claimLost
+	case ok:
+		return claimed
+	default:
+		return notOurs
+	}
+}
+
+const (
+	claimReconcileTries = 3
+	claimReconcileWait  = time.Second
+)
+
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
+	}
+}
+
+func sameInt(a, b *int) bool { return a != nil && b != nil && *a == *b }
+
+func sameTime(a, b *time.Time) bool { return a != nil && b != nil && a.Equal(*b) }
 
 // predict evaluates the session's latest recorded inputs under the active
 // version (honouring the override) to state the requested authorization: a
@@ -330,15 +437,18 @@ func (s *Service) runCoA(ctx context.Context, id uuid.UUID, sw *domain.Switch) {
 			s.finish(ctx, c, domain.CoAFailed, "target session ended or changed before the CoA completed; it was not re-sent to another session", nil)
 			return
 		}
-		now := s.now().UTC()
+		// Microseconds: PostgreSQL's precision, so a re-read compares equal.
+		now := s.now().UTC().Truncate(time.Microsecond)
 		c.Attempts = attempt
 		if attempt == 1 {
 			c.SentAt = &now
 			c.State = domain.CoASent
-			// Claim the command: requested -> sent, conditionally. If the
-			// start sweeper already failed it, it is not ours to send.
-			if !s.updateCoA(ctx, c, domain.CoARequested) {
-				s.logger.Warn("CoA not claimed (already resolved); not sending", "coa", c.ID)
+			switch s.claim(ctx, c) {
+			case notOurs:
+				s.logger.Warn("CoA not claimed: already resolved elsewhere; not sending", "coa", c.ID)
+				return
+			case claimLost:
+				s.logger.Error("CoA claim outcome unknown (database unreachable); not sending. The background sweep resolves it.", "coa", c.ID)
 				return
 			}
 		} else {

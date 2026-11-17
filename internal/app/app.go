@@ -116,6 +116,7 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, er
 		SkipProcessCheck:  cfg.Pilot.SkipProcessCheck,
 		ObservationMaxAge: cfg.Pilot.ObservationMaxAge,
 		CoATimeout:        cfg.Pilot.CoATimeout,
+		CoAStartGrace:     cfg.Pilot.CoAStartGrace,
 		CoAAttempts:       cfg.Pilot.CoARetries + 1,
 		EAPIInsecureTLS:   cfg.Pilot.EAPIInsecureSkipVerify,
 		EAPIAllowRSAKex:   cfg.Pilot.EAPIAllowRSAKeyExchange,

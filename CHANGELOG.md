@@ -34,6 +34,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     - **Residual.** The re-check does not bind the policy version or the
       role mapping used by prediction; this is documented as an existing
       residual.
+  - Re-review fix (#7, R3):
+    - **Claim errors.** A claim (`requested → sent`) whose response is lost
+      is no longer treated as a rejection. Ownership is reconciled by CoA
+      ID: the row must show the sender's own `radius_id` and `sent_at`.
+    - **Abandoned `sent` rows.** A claimed CoA abandoned in `sent` is
+      failed as "outcome unknown". This happens only after the sender's
+      whole budget plus the grace, and it is not resent.
+    - **Configuration.** The grace is now set by `NAC_COA_START_GRACE`.
+    - **Wording.** The 503 and OpenAPI text now say "eligible after the
+      grace; resolved on a subsequent sweep".
 
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.

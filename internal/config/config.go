@@ -92,6 +92,10 @@ type PilotConfig struct {
 	// CoATimeout and CoARetries bound each CoA exchange.
 	CoATimeout time.Duration
 	CoARetries int
+	// CoAStartGrace: a committed CoA that no sender claimed within this is
+	// eligible to be failed (not sent) by the start sweeper; a claimed CoA
+	// abandoned in `sent` is eligible after the sender's budget plus this.
+	CoAStartGrace time.Duration
 	// ClientsFile is where nacd renders FreeRADIUS client definitions.
 	ClientsFile string
 	// OutageLog is the FreeRADIUS outage log nacd imports into the timeline.
@@ -171,6 +175,7 @@ func Load() (*Config, error) {
 			SecretsKey:              os.Getenv("NAC_SECRETS_KEY"),
 			CoATimeout:              getDuration("NAC_COA_TIMEOUT", 3*time.Second),
 			CoARetries:              getInt("NAC_COA_RETRIES", 2),
+			CoAStartGrace:           getDuration("NAC_COA_START_GRACE", 30*time.Second),
 			ClientsFile:             os.Getenv("NAC_FREERADIUS_CLIENTS_FILE"),
 			OutageLog:               os.Getenv("NAC_FREERADIUS_OUTAGE_LOG"),
 			ReloadStatusFile:        os.Getenv("NAC_FREERADIUS_RELOAD_STATUS"),

@@ -1177,9 +1177,11 @@ paths:
         nothing is sent before that commit. A failure inside the transaction
         records none of them. If the outcome cannot be determined (the
         commit's acknowledgement was lost and the lookup by CoA ID also
-        failed), the response is `503`, nothing is sent from that request,
-        and NAC marks a CoA that did commit as `failed` (not sent, override
-        kept) within the start grace period), then sends a CoA-Request asking the
+        failed), the response is `503` and nothing is sent from that request.
+        A CoA that did commit becomes eligible to be marked `failed` (not
+        sent, override kept) once the start grace period (`NAC_COA_START_GRACE`,
+        default 30 s) has passed, and is marked on a subsequent successful
+        background sweep), then sends a CoA-Request asking the
         switch to apply the quarantine
         VLAN (VLAN enforcement: the switch re-authenticates the session) or
         the quarantine role (role enforcement: `Aruba-User-Role` in the CoA,
