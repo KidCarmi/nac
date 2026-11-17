@@ -212,6 +212,7 @@ ConfigMap and the secrets through the `nacd-secrets` Secret. See
 | `NAC_OBSERVATION_MAX_AGE` | duration | `5m` | No | Switch observations older than this are shown as stale. |
 | `NAC_COA_TIMEOUT` | duration | `3s` | No | Wait per CoA transmission. |
 | `NAC_COA_RETRIES` | int 0–10 | `2` | No | Retransmissions after the first CoA attempt (byte-identical). |
+| `NAC_COA_START_GRACE` | duration | `30s` | No | Background sweep of operator CoAs, run every grace/2. Two kinds of row become eligible: a CoA committed but never claimed by a sender, once it is older than this; and a CoA claimed but abandoned in `sent`, once its last update is older than the sender's whole budget plus this. Eligible rows are marked `failed` on a subsequent successful sweep. They are never resent, and the recorded override is unchanged. See `docs/architecture/coa-start-atomicity.md`. |
 | `NAC_FREERADIUS_CLIENTS_FILE` | path | — | No | Where nacd renders FreeRADIUS client definitions (installer: `/var/lib/nac/freeradius-clients.conf`). |
 | `NAC_FREERADIUS_OUTAGE_LOG` | path | — | No | FreeRADIUS outage log imported into the timeline (installer: `/var/log/freeradius/nac-outage.log`). |
 | `NAC_EAPI_INSECURE_SKIP_VERIFY` | bool | `false` | No | Accept any switch eAPI certificate without verification (lab or isolated management network only). Keep `false` for verified TLS. |

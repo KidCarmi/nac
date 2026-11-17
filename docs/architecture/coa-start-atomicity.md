@@ -62,16 +62,47 @@ How `RequestCoA` uses it:
   - **Not committed:** the original error is returned.
   - **Lookup fails:** `503` with a detail saying the outcome is unknown,
     that nothing was sent from this request, and what will resolve it.
-- **Start sweeper.** It runs every `CoAStartGrace/2` (grace 30 s) and
-  fails every CoA still `requested` after the grace period, meaning
-  committed but never claimed by a sender. It **does not send it** and does
-  not touch the recorded override, and it records a timeline event. The
-  session can be acted on again without a restart.
-- **One claim.** The sender's first transition is a conditional claim
-  (`requested → sent`), and the sweeper's update is conditional on
-  `requested` too. Exactly one of them acts on a command, so reconciliation
-  can never cause a second dispatch. Normal configured RADIUS retries of
-  the claimed command are unchanged.
+- **Background sweep.** It runs every `CoAStartGrace/2`.
+  `NAC_COA_START_GRACE` defaults to 30 s.
+  - **When rows are resolved.** A row becomes **eligible** once its cutoff
+    has passed, and it is resolved on a **subsequent successful sweep**.
+    Under healthy conditions that is roughly grace to 1.5 × grace after
+    creation. It takes longer if the scheduler is delayed or the database
+    is unavailable. This is a reporting contract, not a latency target.
+  - **`requested`**, created more than the grace ago: committed but never
+    claimed by a sender. It is failed and **not sent**.
+  - **`sent`**, last updated more than the sender's whole budget plus the
+    grace ago. The budget is `(attempts+1)×CoATimeout + CoAObserveWindow +
+    5 s`. Such a row was claimed, then abandoned, for example because the
+    claim's response was lost and could not be reconciled, or nacd could
+    not record the result. It is failed with **"outcome unknown: the switch
+    may or may not have received it"** and is **not resent**.
+  - **Why the sweep cannot race a live sender:** the sender's context
+    deadline is that same budget, and `radius.Exchange` checks the context
+    before every transmission. A sender can therefore no longer transmit
+    when its `sent` row becomes eligible.
+  - **What it never does:** change the recorded override. Each resolved row
+    gets a timeline event, and the session can be acted on again without a
+    restart.
+- **Claim, with its own reconciliation (re-review R3).**
+  - **The claim itself.** The sender's first transition is a conditional
+    claim (`requested → sent`) that writes the sender's own `radius_id` and
+    microsecond `sent_at`.
+  - **Three outcomes.** A definite rejection (0 rows: resolved elsewhere)
+    is kept apart from an **unknown** outcome (a database error: the UPDATE
+    may have applied with its response lost).
+  - **Reconciling an unknown outcome.** The sender re-reads the CoA by ID,
+    up to 3 tries 1 s apart. It is the sender's own claim only if the row
+    is `sent` with **its** `radius_id` and `sent_at`; no other writer sets
+    `sent` for that CoA, because the sweep and restart recovery only set
+    `failed`. A row still `requested` is claimed again, conditionally. Any
+    other state is not its claim.
+  - **If the outcome stays unknown,** the sender does not send, and the
+    background sweep resolves the row as above.
+  - **One dispatch.** Every update in this path is conditional on the
+    state, so exactly one actor acts on a command, and reconciliation never
+    causes a second logical dispatch. Normal configured RADIUS retries of a
+    claimed command are unchanged.
 
 **Unchanged:**
 - the CoA exchange (`runCoA`, retries, never re-targeting);
@@ -123,13 +154,31 @@ set the hook; nothing in nacd does, and no request can.
 | `TestCoAStart_CommittedButAckLostIsDispatchedOnce` (R1) | COMMIT succeeds, then `StartCoA` returns an error (`committed` hook) | `RequestCoA` succeeds after the lookup by ID. One CoA, one packet, one audit record correlated by `coa_id`; the CoA is not left `requested` |
 | `TestCoAStart_UnknownOutcomeIsReconciledWithoutRestart` (R1) | Lost acknowledgement **and** a failed lookup | `503` (`ErrUnavailable`), and no packet. The in-flight check holds until the sweeper runs; the sweeper then fails the command ("never sent"). Still no packet, the override stays `quarantine`, and the next action (Restore) starts and is sent |
 | `TestCoAStart_SweeperAndSenderClaimOnce` (R1) | The sweeper runs between COMMIT and the sender's claim | The sender does not send; the command is `failed`, claimed once |
+| `TestCoAClaim_AckLostIsReconciledAndSentOnce` (R3) | The claim UPDATE applies but returns an error (`coa_update_applied:sent` hook) | Ownership reconciled by ID (own `radius_id` and `sent_at`): 1 packet, `observed`, override `quarantine`, 1 CoA |
+| `TestCoAClaim_AckLostAndUnreachableIsSweptNotResent` (R3) | As above, and the reconciling re-read fails (`claim_reconcile` hook) | No packet, and the row is left `sent`. The in-flight check holds until the sweep; the sweep (sent cutoff past the row) fails it with "outcome unknown … not resent". Still no packet, the override is kept, and the next action (Restore) starts and is sent |
+| `TestCoAClaim_LegitimateClaimIsNotSwept` (R3, reverse order) | A sweep with the **real** cutoffs (`SweepCutoffs`) runs right after a legitimate claim applied | 0 rows resolved; the sender sends once; `observed` |
+| `TestCoASweep_BackgroundSchedulerResolvesUnknownStart` | The real background scheduler with `NAC_COA_START_GRACE=1s`, with no direct call | An unknown-outcome start becomes `failed`, with no packet and the override kept |
 | `TestCoAStart_AuditFailureLeavesNothing` (R2) | A **real** database failure on the audit insert (a trigger) | No CoA, override, timeline event or packet. After the trigger is removed: exactly one audit record for the CoA |
 
-**Mutation checks.**
-- Restoring rc5's two-commit order makes the failure test fail with
-  `partial start committed: {override: coas:1 opEvents:0}`, which is exactly
-  the stuck state.
-- Removing the re-check under the lock makes the stale test fail.
+**Mutation checks.** Each of these restores an unsafe behaviour and makes the
+named test fail.
+
+- **Original fix:**
+  - **Two commits:** restoring rc5's two-commit order fails the failure test
+    with `partial start committed: {override: coas:1 opEvents:0}`, which is
+    exactly the stuck state.
+  - **No re-check under the lock:** fails the stale test.
+- **Review R1 and R2:**
+  - **No lookup by ID:** fails `CommittedButAckLostIsDispatchedOnce`.
+  - **No conditional claim:** fails `SweeperAndSenderClaimOnce`.
+  - **Audit after COMMIT:** fails `AuditFailureLeavesNothing`.
+- **Re-review R3:**
+  - **A claim error treated as a rejection** (the old conflation): fails
+    `AckLostIsReconciledAndSentOnce`.
+  - **No abandoned-`sent` sweep:** fails
+    `AckLostAndUnreachableIsSweptNotResent`.
+  - **No budget margin on the sent cutoff:** fails
+    `LegitimateClaimIsNotSwept`.
 
 ## Candidate and qualification impact
 

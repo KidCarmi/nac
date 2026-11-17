@@ -53,6 +53,12 @@ type Store interface {
 	CoAStartCommitted(ctx context.Context, id uuid.UUID) (bool, error)
 	// FailUnclaimedCoAs fails committed CoAs no sender claimed in time.
 	FailUnclaimedCoAs(ctx context.Context, olderThan, at time.Time, detail string) ([]postgres.StaleStart, error)
+	// FailAbandonedSentCoAs fails claimed CoAs whose sender's budget is over.
+	FailAbandonedSentCoAs(ctx context.Context, before, at time.Time, detail string) ([]postgres.StaleStart, error)
+	// UpdateCoAFrom is the conditional CoA update; ReadCoAForClaim re-reads
+	// a CoA to reconcile an ambiguous claim.
+	UpdateCoAFrom(ctx context.Context, c *domain.CoARequest, from []string) (bool, error)
+	ReadCoAForClaim(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error)
 	UpdateCoA(ctx context.Context, c *domain.CoARequest) error
 	GetCoA(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error)
 	SessionCoAs(ctx context.Context, sessionID uuid.UUID) ([]domain.CoARequest, error)
@@ -183,7 +189,8 @@ func (s *Service) Start(ctx context.Context) {
 	go s.loop(ctx, s.cfg.ObservationEvery, func(ctx context.Context) { s.ObserveAll(ctx) })
 	go s.loop(ctx, s.cfg.OutageImportPeriod, func(ctx context.Context) { s.ImportOutageLog(ctx) })
 	go s.loop(ctx, s.cfg.CoAStartGrace/2, func(ctx context.Context) {
-		if _, err := s.ReconcileStuckCoAs(ctx, s.now().UTC().Add(-s.cfg.CoAStartGrace)); err != nil {
+		requestedBefore, sentBefore := s.SweepCutoffs(s.now().UTC())
+		if _, err := s.ReconcileStuckCoAs(ctx, requestedBefore, sentBefore); err != nil {
 			s.logger.Error("could not reconcile unclaimed CoA starts", "error", err)
 		}
 	})

@@ -394,7 +394,7 @@ func TestCoAStart_UnknownOutcomeIsReconciledWithoutRestart(t *testing.T) {
 		t.Fatalf("before reconciliation the in-flight check holds: %v", err)
 	}
 
-	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second))
+	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second), time.Now().Add(-time.Hour))
 	if err != nil || n != 1 {
 		t.Fatalf("reconcile: %d, %v", n, err)
 	}
@@ -428,7 +428,7 @@ func TestCoAStart_SweeperAndSenderClaimOnce(t *testing.T) {
 	swept := make(chan struct{})
 	hook := func(stage string) error {
 		if stage == "committed" {
-			n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second))
+			n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second), time.Now().Add(-time.Hour))
 			if err != nil || n != 1 {
 				t.Errorf("sweep: %d %v", n, err)
 			}
@@ -486,4 +486,170 @@ func TestCoAStart_AuditFailureLeavesNothing(t *testing.T) {
 		t.Fatalf("%d audit records for CoA %s, want 1", n, c.ID)
 	}
 	r.h.app.Pilot().Wait()
+}
+
+// ---- Re-review of #7 at 5814a9b (comment 6954711430): R3 ----
+
+// once returns a hook that fails stage the first time it is reached.
+func failOnce(stage string, err error) func(string) error {
+	var o sync.Once
+	return func(s string) error {
+		var out error
+		if s == stage {
+			o.Do(func() { out = err })
+		}
+		return out
+	}
+}
+
+// R3: the sender's claim (requested -> sent) applied, but its response was
+// lost. The sender reconciles ownership by CoA ID (its own radius_id and
+// sent_at), finds the claim is its own and sends exactly once.
+func TestCoAClaim_AckLostIsReconciledAndSentOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	hook := failOnce("coa_update_applied:sent", errors.New("connection reset after the claim UPDATE"))
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if n := r.packets(); n != 1 || cur.State != domain.CoAObserved {
+		t.Fatalf("after a lost claim acknowledgement: %d packet(s), state %s; want 1 packet, observed", n, cur.State)
+	}
+	if got := r.committed(t, s1); got != (committed{override: "quarantine", coas: 1, opEvents: 1}) {
+		t.Fatalf("committed: %+v", got)
+	}
+}
+
+// R3, reconciliation unavailable: the claim applied, its response was lost
+// and the re-read fails too. The sender does not send; the row is left in
+// `sent`; the sweep (past the sender's budget) fails it as "outcome unknown"
+// without resending or touching the override; a later action is not
+// blocked.
+func TestCoAClaim_AckLostAndUnreachableIsSweptNotResent(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	lostClaim := failOnce("coa_update_applied:sent", errors.New("connection reset after the claim UPDATE"))
+	hook := func(stage string) error {
+		if stage == "claim_reconcile" {
+			return errors.New("database unavailable")
+		}
+		return lostClaim(stage)
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if n := r.packets(); n != 0 || cur.State != domain.CoASent {
+		t.Fatalf("unknown claim outcome: %d packet(s), state %s; want no packet, row left sent", n, cur.State)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("before the sweep the in-flight check holds: %v", err)
+	}
+	// The sweep, with the sent cutoff past this row (in production: past
+	// the sender's whole budget plus the grace).
+	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(-time.Hour), time.Now().Add(time.Second))
+	if err != nil || n != 1 {
+		t.Fatalf("sweep: %d %v", n, err)
+	}
+	cur, _ = r.repo.GetCoA(ctx, c.ID)
+	if cur.State != domain.CoAFailed || !strings.Contains(cur.Detail, "outcome unknown") || !strings.Contains(cur.Detail, "not resent") {
+		t.Fatalf("swept: %s %q", cur.State, cur.Detail)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("the sweep changed the override: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("the sweep resent the command (%d packets)", n)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); err != nil {
+		t.Fatalf("after the sweep the session is still blocked: %v", err)
+	}
+	waitFor(t, "the next action is sent", func() bool { return r.packets() == 1 })
+	r.h.app.Pilot().Wait()
+}
+
+// Reverse ordering: a legitimate sender wins the claim; a sweep with the
+// REAL background cutoffs (SweepCutoffs) runs right after the claim applied
+// and must leave it alone; the sender sends once.
+func TestCoAClaim_LegitimateClaimIsNotSwept(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	var swept = -1
+	var o sync.Once
+	hook := func(stage string) error {
+		if stage == "coa_update_applied:sent" {
+			o.Do(func() {
+				req, sent := r.h.app.Pilot().SweepCutoffs(time.Now().UTC())
+				n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, req, sent)
+				if err != nil {
+					t.Errorf("sweep: %v", err)
+				}
+				swept = n
+			})
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if swept != 0 || r.packets() != 1 || cur.State != domain.CoAObserved {
+		t.Fatalf("sweep resolved %d, %d packet(s), state %s; want 0, 1, observed", swept, r.packets(), cur.State)
+	}
+}
+
+// The real background scheduler, with a short configured grace
+// (NAC_COA_START_GRACE=1s): an unknown-outcome start is marked failed by
+// the background sweep without any direct call, without a packet and
+// without loosening the override.
+func TestCoASweep_BackgroundSchedulerResolvesUnknownStart(t *testing.T) {
+	t.Setenv("NAC_COA_START_GRACE", "1s")
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	hook := func(stage string) error {
+		switch stage {
+		case "committed":
+			return errors.New("connection reset after COMMIT")
+		case "reconcile_lookup":
+			return errors.New("database unavailable")
+		}
+		return nil
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatalf("want ErrUnavailable, got %v", err)
+	}
+	var id uuid.UUID
+	if err := r.pool.QueryRow(ctx, `SELECT id FROM coa_requests WHERE session_id=$1`, s1).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the background sweep resolves the unclaimed start", func() bool {
+		cur, err := r.repo.GetCoA(ctx, id)
+		return err == nil && cur.State == domain.CoAFailed
+	})
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packet(s) for an unconfirmed start", n)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("override loosened: %+v", got)
+	}
 }

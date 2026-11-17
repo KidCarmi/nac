@@ -721,7 +721,23 @@ func (r *PilotRepo) UpdateCoAFrom(ctx context.Context, c *domain.CoARequest, fro
 	if err != nil {
 		return false, err
 	}
+	if tag.RowsAffected() == 1 {
+		// Test-only: simulate an UPDATE that applied but whose response
+		// was lost (see WithCoAStartHook).
+		if herr := coaStartHook(ctx, "coa_update_applied:"+c.State); herr != nil {
+			return false, herr
+		}
+	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// ReadCoAForClaim re-reads a CoA to resolve an ambiguous claim (see
+// pilot.runCoA). It is GetCoA with a test hook ("claim_reconcile").
+func (r *PilotRepo) ReadCoAForClaim(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error) {
+	if err := coaStartHook(ctx, "claim_reconcile"); err != nil {
+		return nil, err
+	}
+	return r.GetCoA(ctx, id)
 }
 
 // GetCoA returns a CoA request.

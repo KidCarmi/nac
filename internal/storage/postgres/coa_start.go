@@ -197,6 +197,35 @@ type StaleStart struct {
 	NASPortID string
 }
 
+// FailAbandonedSentCoAs marks as failed every CoA still "sent" whose last
+// update is older than before. The caller sets before beyond the sender's
+// whole context budget, so the sender that claimed it can no longer transmit
+// (radius.Exchange checks its context before every attempt): sweeping cannot
+// race a live sender. Whether the switch received anything is unknown, and
+// the detail says so; nothing is resent and the override is not touched.
+func (r *PilotRepo) FailAbandonedSentCoAs(ctx context.Context, before, at time.Time, detail string) ([]StaleStart, error) {
+	rows, err := r.pool.Query(ctx, `UPDATE coa_requests SET state = 'failed', updated_at = $2, detail = $3
+		WHERE state = 'sent' AND updated_at < $1
+		RETURNING id, session_id, switch_id, target->>'nas_port_id'`, before, at, detail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []StaleStart
+	for rows.Next() {
+		var s StaleStart
+		var port *string
+		if err := rows.Scan(&s.ID, &s.SessionID, &s.SwitchID, &port); err != nil {
+			return nil, err
+		}
+		if port != nil {
+			s.NASPortID = *port
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 // FailUnclaimedCoAs marks as failed every CoA still "requested" (committed
 // but never claimed by a sender) that was created before olderThan, and
 // returns them. The update is conditional on the state, so it cannot race a
