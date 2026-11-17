@@ -62,6 +62,20 @@ func (f *fakeChanges) Validate(_ context.Context, id uuid.UUID, revision int, _ 
 	return &f.detail(id).ChangeRequest, &change.Validation{}, f.err
 }
 
+func (f *fakeChanges) Simulate(_ context.Context, id uuid.UUID, revision int, _ string) (*change.ChangeRequest, *change.Simulation, error) {
+	f.calls, f.expected = append(f.calls, "simulate"), revision
+	return &f.detail(id).ChangeRequest, &change.Simulation{}, f.err
+}
+func (f *fakeChanges) Simulation(context.Context, uuid.UUID, uuid.UUID) (*change.Simulation, error) {
+	return &change.Simulation{}, nil
+}
+func (f *fakeChanges) InputSet(context.Context, uuid.UUID, uuid.UUID) (*change.InputSet, error) {
+	return &change.InputSet{}, nil
+}
+func (f *fakeChanges) Reproduce(context.Context, uuid.UUID, uuid.UUID) (*change.Reproduction, error) {
+	return &change.Reproduction{}, nil
+}
+
 func newChangeServer(t *testing.T, fc *fakeChanges) (*Server, func(domain.Role) string) {
 	t.Helper()
 	tokens, err := auth.NewTokenIssuer([]byte("0123456789abcdef0123456789abcdef"), "nac", "nac-api", time.Hour)
@@ -117,6 +131,7 @@ func TestChangeRoutes_RBAC(t *testing.T) {
 		{"PUT", "/api/v1/change-requests/" + id + "/content", `{"rules":[],"default_action":"deny"}`},
 		{"POST", "/api/v1/change-requests/" + id + "/validations", ""},
 		{"POST", "/api/v1/change-requests/" + id + "/cancel", ""},
+		{"POST", "/api/v1/change-requests/" + id + "/simulations", ""},
 	} {
 		if rec := changeReq(srv, c.method, c.path, viewer, `"3"`, c.body); rec.Code != http.StatusForbidden {
 			t.Fatalf("viewer %s %s: %d", c.method, c.path, rec.Code)
@@ -124,6 +139,12 @@ func TestChangeRoutes_RBAC(t *testing.T) {
 	}
 	if len(fc.calls) != 0 {
 		t.Fatalf("a forbidden request reached the service: %v", fc.calls)
+	}
+	sim := uuid.New().String()
+	for _, p := range []string{"/simulations/" + sim, "/simulations/" + sim + "/input-set", "/simulations/" + sim + "/reproduction"} { // viewer has policy:read and network:read
+		if rec := changeReq(srv, "GET", "/api/v1/change-requests/"+id+p, viewer, "", ""); rec.Code != http.StatusOK {
+			t.Fatalf("viewer GET %s: %d", p, rec.Code)
+		}
 	}
 	if rec := changeReq(srv, "GET", "/api/v1/change-requests", "", "", ""); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("anonymous list: %d", rec.Code)
@@ -139,6 +160,7 @@ func TestChangeRoutes_IfMatchIsRequiredAndPassedThrough(t *testing.T) {
 		{"PUT", "/api/v1/change-requests/" + id + "/content", `{"rules":[],"default_action":"deny"}`},
 		{"POST", "/api/v1/change-requests/" + id + "/validations", ""},
 		{"POST", "/api/v1/change-requests/" + id + "/cancel", ""},
+		{"POST", "/api/v1/change-requests/" + id + "/simulations", ""},
 	} {
 		if rec := changeReq(srv, p.method, p.path, op, "", p.body); rec.Code != http.StatusPreconditionRequired {
 			t.Fatalf("%s %s without If-Match: %d", p.method, p.path, rec.Code)
@@ -151,7 +173,7 @@ func TestChangeRoutes_IfMatchIsRequiredAndPassedThrough(t *testing.T) {
 			t.Fatalf("%s %s: %d, service saw revision %d", p.method, p.path, rec.Code, fc.expected)
 		}
 	}
-	if strings.Join(fc.calls, ",") != "edit,validate,cancel" {
+	if strings.Join(fc.calls, ",") != "edit,validate,cancel,simulate" {
 		t.Fatalf("only valid requests reach the service: %v", fc.calls)
 	}
 	fc.err = &change.RevisionConflict{Current: 9, State: change.StateDraft}

@@ -522,6 +522,14 @@ func (r *PilotRepo) SessionDecisions(ctx context.Context, sessionID uuid.UUID) (
 	return out, rows.Err()
 }
 
+// SessionlessDecisionsSince counts recorded decisions since `since` that
+// have no session: RecentCases excludes exactly these rows.
+func (r *PilotRepo) SessionlessDecisionsSince(ctx context.Context, since time.Time) (int, error) {
+	var n int
+	err := r.pool.QueryRow(ctx, `SELECT count(*) FROM auth_decisions WHERE occurred_at >= $1 AND session_id IS NULL`, since).Scan(&n)
+	return n, err
+}
+
 // RecentCases satisfies policyver.CaseSource: the newest decision per session
 // since `since`, with its recorded inputs.
 func (r *PilotRepo) RecentCases(ctx context.Context, since time.Time, limit int) ([]policyver.RecordedCase, error) {

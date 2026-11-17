@@ -25,6 +25,10 @@ type changeService interface {
 	Edit(ctx context.Context, id uuid.UUID, expected int, c change.Content, actor string) (*change.ChangeRequest, error)
 	Cancel(ctx context.Context, id uuid.UUID, expected int, actor string) (*change.ChangeRequest, error)
 	Validate(ctx context.Context, id uuid.UUID, revision int, actor string) (*change.ChangeRequest, *change.Validation, error)
+	Simulate(ctx context.Context, id uuid.UUID, revision int, actor string) (*change.ChangeRequest, *change.Simulation, error)
+	Simulation(ctx context.Context, id, simID uuid.UUID) (*change.Simulation, error)
+	InputSet(ctx context.Context, id, setID uuid.UUID) (*change.InputSet, error)
+	Reproduce(ctx context.Context, id, simID uuid.UUID) (*change.Reproduction, error)
 }
 
 func (s *Server) changeRoutes(mux *http.ServeMux, authed func(auth.Permission, http.HandlerFunc) http.Handler) {
@@ -36,6 +40,12 @@ func (s *Server) changeRoutes(mux *http.ServeMux, authed func(auth.Permission, h
 	mux.Handle("PUT /api/v1/change-requests/{id}/content", authed(auth.PermPolicyWrite, s.handlePutChangeContent))
 	mux.Handle("POST /api/v1/change-requests/{id}/validations", authed(auth.PermPolicyWrite, s.handleValidateChange))
 	mux.Handle("POST /api/v1/change-requests/{id}/cancel", authed(auth.PermPolicyWrite, s.handleCancelChange))
+	mux.Handle("POST /api/v1/change-requests/{id}/simulations", authed(auth.PermPolicyWrite, s.handleSimulateChange))
+	mux.Handle("GET /api/v1/change-requests/{id}/simulations/{sim}", authed(auth.PermPolicyRead, s.handleGetSimulation))
+	// The input set holds copied session evidence (MAC, certificate CN...):
+	// the same permission as decision records.
+	mux.Handle("GET /api/v1/change-requests/{id}/simulations/{sim}/input-set", authed(auth.PermNetworkRead, s.handleGetInputSet))
+	mux.Handle("GET /api/v1/change-requests/{id}/simulations/{sim}/reproduction", authed(auth.PermPolicyRead, s.handleReproduceSimulation))
 }
 
 func changeID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
@@ -210,4 +220,86 @@ func (s *Server) handleCancelChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeChange(w, r, http.StatusOK, id)
+}
+
+func (s *Server) handleSimulateChange(w http.ResponseWriter, r *http.Request) {
+	defer drainAndClose(r.Body)
+	id, ok := changeID(w, r)
+	if !ok {
+		return
+	}
+	revision, ok := ifMatchRevision(w, r)
+	if !ok {
+		return
+	}
+	_, sim, err := s.changes.Simulate(r.Context(), id, revision, actor(r))
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	d, err := s.changes.Get(r.Context(), id)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	w.Header().Set("ETag", strconv.Quote(strconv.Itoa(d.Revision)))
+	writeJSON(w, r, http.StatusCreated, map[string]any{"simulation": sim, "change_request": d})
+}
+
+// simulationIDs parses the change-request and simulation IDs.
+func simulationIDs(w http.ResponseWriter, r *http.Request) (uuid.UUID, uuid.UUID, bool) {
+	id, ok := changeID(w, r)
+	if !ok {
+		return uuid.Nil, uuid.Nil, false
+	}
+	sim, err := uuid.Parse(r.PathValue("sim"))
+	if err != nil {
+		badRequest(w, r, "simulation id must be a UUID")
+		return uuid.Nil, uuid.Nil, false
+	}
+	return id, sim, true
+}
+
+func (s *Server) handleGetSimulation(w http.ResponseWriter, r *http.Request) {
+	id, sim, ok := simulationIDs(w, r)
+	if !ok {
+		return
+	}
+	out, err := s.changes.Simulation(r.Context(), id, sim)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusOK, out)
+}
+
+func (s *Server) handleGetInputSet(w http.ResponseWriter, r *http.Request) {
+	id, sim, ok := simulationIDs(w, r)
+	if !ok {
+		return
+	}
+	got, err := s.changes.Simulation(r.Context(), id, sim)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	set, err := s.changes.InputSet(r.Context(), id, got.InputSetID)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusOK, set)
+}
+
+func (s *Server) handleReproduceSimulation(w http.ResponseWriter, r *http.Request) {
+	id, sim, ok := simulationIDs(w, r)
+	if !ok {
+		return
+	}
+	out, err := s.changes.Reproduce(r.Context(), id, sim)
+	if err != nil {
+		writeProblem(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusOK, out)
 }
