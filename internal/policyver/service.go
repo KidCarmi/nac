@@ -425,6 +425,27 @@ func (s *Service) RecordedCases(ctx context.Context, since time.Time, limit int)
 	return s.cases.RecentCases(ctx, since, limit)
 }
 
+// sessionlessCounter is the optional capability of a CaseSource to count the
+// recorded decisions it excludes because they have no session.
+type sessionlessCounter interface {
+	SessionlessDecisionsSince(ctx context.Context, since time.Time) (int, error)
+}
+
+// SessionlessDecisions counts recorded decisions since `since` that have no
+// session. RecordedCases excludes them (they cannot be replayed), so this is
+// how a replay reports how many it could not cover. Read-only. With no case
+// source there are no cases and no exclusions (0).
+func (s *Service) SessionlessDecisions(ctx context.Context, since time.Time) (int, error) {
+	if s.cases == nil {
+		return 0, nil
+	}
+	c, ok := s.cases.(sessionlessCounter)
+	if !ok {
+		return 0, fmt.Errorf("the recorded-case source cannot count sessionless decisions")
+	}
+	return c.SessionlessDecisionsSince(ctx, since)
+}
+
 // PreviewWindow is how far back the preview (and the change-request replay)
 // looks for recorded decisions.
 func (s *Service) PreviewWindow() time.Duration { return s.previewWindow }

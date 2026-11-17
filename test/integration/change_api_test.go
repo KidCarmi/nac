@@ -386,3 +386,60 @@ func TestChangeAPI_SimulationFrozenReproducibleAndStale(t *testing.T) {
 		t.Fatalf("audit records: %s", got)
 	}
 }
+
+// ASTRA re-review of aec0051 (finding 2 residual): RecentCases excludes
+// decisions without a session before capture, so the no_session count must
+// be counted separately for the same window, frozen with the input set and
+// reported exactly. Real sessionless decision rows, one outside the window.
+func TestChangeAPI_SimulationCountsSessionlessDecisions(t *testing.T) {
+	resetDB(t, dsn(t))
+	h := start(t, t.TempDir())
+	defer h.stop()
+	pool := testPool(t)
+	h.do("POST", "/api/v1/switches", map[string]any{"name": "veos", "radius_source_ip": "127.0.0.1", "radius_secret": swSecret,
+		"segment_vlans": map[string]int{"corp": 10, "quarantine": 20, "guest": 30}, "access_ports": []string{"Ethernet1"}}, 201, nil, true)
+	var ep map[string]any
+	h.do("POST", "/api/v1/endpoints", map[string]any{"mac": endpointMAC, "hostname": "h1"}, 201, &ep, true)
+	h.do("POST", "/api/v1/identity-bindings", map[string]any{"endpoint_id": ep["id"], "issuer": caIssuer, "serial": certSerial}, 201, nil, true)
+	h.do("POST", "/api/v1/policies", corpRule, 201, nil, true)
+	var pv map[string]any
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+	h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", authAttrs(), 200) // one replayable case
+
+	ctx := context.Background()
+	for _, age := range []string{"1 hour", "2 days", "400 days"} { // the last is outside the 30-day window
+		if _, err := pool.Exec(ctx, `INSERT INTO auth_decisions (id, occurred_at, inputs, action, result)
+			VALUES (gen_random_uuid(), now() - $1::interval, '{}', 'deny', 'reject')`, age); err != nil {
+			t.Fatal(err)
+		}
+	}
+	guestRule := map[string]any{"name": "bound-guest", "priority": 10, "enabled": true, "action": "allow", "segment": "guest",
+		"conditions": []map[string]any{{"field": "identity.bound", "operator": "eq", "values": []string{"true"}}}}
+	r := h.call("POST", "/api/v1/change-requests", "", map[string]any{"title": "guest",
+		"content": map[string]any{"rules": []any{guestRule}, "default_action": "deny"}})
+	base := "/api/v1/change-requests/" + r.body["id"].(string)
+	h.call("POST", base+"/validations", `"1"`, nil)
+	r = h.call("POST", base+"/simulations", `"1"`, nil)
+	if r.code != 201 {
+		t.Fatalf("simulate: %d %s", r.code, r.raw)
+	}
+	sim := r.body["simulation"].(map[string]any)
+	cov := sim["coverage"].(map[string]any)
+	skipped := cov["skipped"].([]any)
+	if sim["summary"].(map[string]any)["cases_replayed"] != float64(1) || len(skipped) != 1 {
+		t.Fatalf("coverage: %v", cov)
+	}
+	if s := skipped[0].(map[string]any); s["reason"] != "no_session" || s["count"] != float64(2) {
+		t.Fatalf("no_session must count the 2 sessionless decisions in the window (not the one outside it): %v", s)
+	}
+	simID := sim["id"].(string)
+	set := h.call("GET", base+"/simulations/"+simID+"/input-set", "", nil)
+	if set.body["skipped_no_session"] != float64(2) {
+		t.Fatalf("frozen input set skipped_no_session: %v", set.body["skipped_no_session"])
+	}
+	// Reproduction binds the frozen count (it is part of the digest).
+	if rep := h.call("GET", base+"/simulations/"+simID+"/reproduction", "", nil); rep.body["matches"] != true {
+		t.Fatalf("reproduction: %s", rep.raw)
+	}
+}

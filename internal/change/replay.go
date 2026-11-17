@@ -278,7 +278,7 @@ func Replay(set *InputSet, active *domain.PolicyVersion, content Content) (rows 
 	if set.SkippedNoSession > 0 {
 		n := set.SkippedNoSession
 		cov.Skipped = append(cov.Skipped, Skip{Reason: "no_session", Count: &n,
-			Note: "recorded decisions without a session cannot be replayed"})
+			Note: "recorded decisions in the window without a session (counted at capture) cannot be replayed"})
 	}
 	switch {
 	case set.Truncated:

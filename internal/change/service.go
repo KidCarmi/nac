@@ -27,6 +27,7 @@ type PolicyReader interface {
 	Active(ctx context.Context) (*domain.PolicyVersion, error)
 	Version(ctx context.Context, number int) (*domain.PolicyVersion, error)
 	RecordedCases(ctx context.Context, since time.Time, limit int) ([]policyver.RecordedCase, error)
+	SessionlessDecisions(ctx context.Context, since time.Time) (int, error)
 	PreviewWindow() time.Duration
 	Draft(ctx context.Context) (*policyver.Draft, error)
 	Environment(ctx context.Context) policyver.SegmentEnvironment
@@ -354,6 +355,13 @@ func (s *Service) Simulate(ctx context.Context, id uuid.UUID, revision int, acto
 		return nil, nil, err
 	}
 	cases, truncated, skipped := capture(recorded, CaseLimit)
+	// RecordedCases already excludes decisions without a session, so count
+	// them separately for the same window: coverage reports them exactly.
+	sessionless, err := s.policy.SessionlessDecisions(ctx, since)
+	if err != nil {
+		return nil, nil, err
+	}
+	skipped += sessionless
 	env := s.policy.Environment(ctx)
 	set := &InputSet{ID: uuid.New(), ChangeRequestID: id, Revision: revision, ContentDigest: rev.ContentDigest,
 		ActiveVersionID: active.ID, ActiveVersionNumber: active.Number, ActiveVersionDigest: active.Digest,

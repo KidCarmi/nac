@@ -17,7 +17,7 @@ import (
 // grow a publish, restore or activation method.
 func TestPolicyReaderCannotChangePolicy(t *testing.T) {
 	typ := reflect.TypeOf((*PolicyReader)(nil)).Elem()
-	allowed := map[string]bool{"Active": true, "Version": true, "RecordedCases": true, "PreviewWindow": true, "Draft": true,
+	allowed := map[string]bool{"Active": true, "Version": true, "RecordedCases": true, "SessionlessDecisions": true, "PreviewWindow": true, "Draft": true,
 		"Environment": true, "ValidateAgainst": true}
 	for i := 0; i < typ.NumMethod(); i++ {
 		if name := typ.Method(i).Name; !allowed[name] {

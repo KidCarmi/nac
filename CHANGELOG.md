@@ -24,6 +24,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   session than the limit, and it lists skip reasons (`no_session` with a
   count, `beyond_case_limit` with an unknown count). Fixed after ASTRA's
   review.
+- The `no_session` count was always 0 in production, because the case query
+  already excludes decisions without a session. Capture now counts those
+  decisions for the same window and freezes the count with the input set
+  (ASTRA's re-review).
 - `…/reproduction` re-runs the simulation from the stored input set only and
   compares the digests.
 - The change-request detail reports simulation drift: revision, active

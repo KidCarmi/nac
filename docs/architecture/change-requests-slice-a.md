@@ -67,7 +67,14 @@ Every mutation:
     nothing was omitted.
   - Sessions are chosen in session-ID order, not by age.
   - Coverage lists skipped decisions with reasons:
-    - `no_session`, with its exact count;
+    - `no_session`, with its exact count. The production case query already
+      excludes decisions without a session, so capture counts them
+      separately for the same window
+      (`policyver.SessionlessDecisions`, i.e. `auth_decisions` with no
+      `session_id` since the window start). The count is frozen and
+      digested with the input set. It comes from its own query at capture,
+      not from the same database snapshot as the cases. ASTRA's re-review
+      of `aec0051` caught that the count was always 0 before this;
     - `beyond_case_limit`, whose count is **unknown (at least one)**. The plan
       asked for counts, but counting the full overflow would need an extra
       query, and the plan's purpose is met by disclosing that the number is
@@ -140,7 +147,7 @@ corrections. Each row names the test that fails if the requirement breaks.
 | A7 | Canonical output is reproducible | `TestReplay_ReproducibleAndOrdered`; `TestCanonicalDigest_KeyOrderIndependent`; `…/reproduction` in the API test and the walkthrough | Repeated replays differ; key order changes the digest; a stored set fails to reproduce after the PostgreSQL round trip (this caught a real microsecond-truncation bug) |
 | A8 | A refresh creates a new simulation, never an update | `TestChangeAPI_SimulationFrozenReproducibleAndStale` | The refresh reuses the simulation ID or input-set digest; the first set's copied override changes |
 | A9 | Drift and staleness are reported, not hidden | `TestChangeAPI_FromDraftAndDrift`; `TestChangeAPI_SimulationFrozenReproducibleAndStale`; walkthrough (rebase marks the old simulation stale) | A mapping change, legacy publish or new revision leaves a validation or simulation shown as `current`, or the reasons are missing |
-| A10 | Missing and stale inputs and coverage are recorded, with no overstated omission | `TestReplay_ReproducibleAndOrdered` (stale count); `TestCapture_ExactLimitBoundary`, mutation-checked: the old `>=` logic fails it | Stale or missing evidence not counted; truncation claimed at exactly the limit or without an extra case; skip reasons and counts missing |
+| A10 | Missing and stale inputs and coverage are recorded, with no overstated omission | `TestReplay_ReproducibleAndOrdered` (stale count); `TestCapture_ExactLimitBoundary`, mutation-checked: the old `>=` logic fails it; `TestChangeAPI_SimulationCountsSessionlessDecisions` (real sessionless decisions: the count in the window, frozen, reproduced) | Stale or missing evidence not counted; truncation claimed at exactly the limit or without an extra case; skip reasons and counts missing |
 | A11 | Historical replay is never labelled live verification | API test and walkthrough assert the label | A simulation without "not live-network verification" |
 | A12 | One shared service behind API and UI | `TestChangeRoutes_*` (handlers only pass through; forbidden requests never reach the service); the console uses only `/api/v1` (walkthrough) | A handler holds workflow logic, or the console needs a private path |
 | A13 | Change-request endpoints cannot mutate policy, sessions or switches | `TestChangeAPI_NoSideEffects` (8 tables byte-identical, no CoA packet; checked by injecting a Quarantine); `TestPolicyReaderCannotChangePolicy`; `TestNoImportOfEnforcementPaths`; schema CHECKs | Any route changes policy activations, versions, draft rules or settings, sessions, CoAs, switches or decisions, or sends a CoA |
