@@ -20,4 +20,8 @@ var (
 	ErrForbidden = errors.New("forbidden")
 	// ErrInvalidInput indicates the caller supplied semantically invalid data.
 	ErrInvalidInput = errors.New("invalid input")
+	// ErrUnavailable indicates a dependency (e.g. the database) could not be
+	// reached, so the outcome of an operation could not be determined; the
+	// detail says what will resolve it.
+	ErrUnavailable = errors.New("temporarily unavailable")
 )

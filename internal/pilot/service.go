@@ -32,7 +32,6 @@ type Store interface {
 	GetEndpoint(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error)
 
 	GetSession(ctx context.Context, id uuid.UUID) (*domain.Session, error)
-	SetSessionOverride(ctx context.Context, id uuid.UUID, override, by string, at *time.Time) error
 	UpdateSessionObservation(ctx context.Context, id uuid.UUID, status, vlan string, at time.Time, source, detail string) error
 	ListSessions(ctx context.Context, f postgres.SessionFilter) ([]domain.Session, error)
 	ActiveSessionsOnSwitch(ctx context.Context, switchID uuid.UUID) ([]domain.Session, error)
@@ -43,7 +42,19 @@ type Store interface {
 	LastEvent(ctx context.Context, stage string) (*domain.AuthEvent, error)
 	InsertEvent(ctx context.Context, e *domain.AuthEvent) (bool, error)
 
-	InsertCoA(ctx context.Context, c *domain.CoARequest) error
+	// StartCoA commits an operator CoA, its override and its timeline
+	// event in one transaction (see postgres.StartCoA).
+	StartCoA(ctx context.Context, st *postgres.CoAStart) error
+	// CoAStartCommitted resolves an ambiguous StartCoA error by CoA ID.
+	CoAStartCommitted(ctx context.Context, id uuid.UUID) (bool, error)
+	// FailUnclaimedCoAs fails committed CoAs no sender claimed in time.
+	FailUnclaimedCoAs(ctx context.Context, olderThan, at time.Time, detail string) ([]postgres.StaleStart, error)
+	// FailAbandonedSentCoAs fails claimed CoAs whose sender's budget is over.
+	FailAbandonedSentCoAs(ctx context.Context, before, at time.Time, detail string) ([]postgres.StaleStart, error)
+	// UpdateCoAFrom is the conditional CoA update; ReadCoAForClaim re-reads
+	// a CoA to reconcile an ambiguous claim.
+	UpdateCoAFrom(ctx context.Context, c *domain.CoARequest, from []string) (bool, error)
+	ReadCoAForClaim(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error)
 	UpdateCoA(ctx context.Context, c *domain.CoARequest) error
 	GetCoA(ctx context.Context, id uuid.UUID) (*domain.CoARequest, error)
 	SessionCoAs(ctx context.Context, sessionID uuid.UUID) ([]domain.CoARequest, error)
@@ -53,6 +64,9 @@ type Store interface {
 // Auditor records operator actions (audit.Recorder satisfies it).
 type Auditor interface {
 	Record(ctx context.Context, action, resourceType, resourceID, outcome string, meta map[string]string)
+	// Event builds the audit event without persisting it, so a repository
+	// can write it in the same transaction as the action it records.
+	Event(ctx context.Context, action, resourceType, resourceID, outcome string, meta map[string]string) *domain.AuditEvent
 }
 
 // Config tunes the workflows.
@@ -66,6 +80,7 @@ type Config struct {
 	CoATimeout         time.Duration // per attempt
 	CoAAttempts        int           // total transmissions per CoA
 	CoAObserveWindow   time.Duration // how long to wait for the re-authentication
+	CoAStartGrace      time.Duration // a committed CoA no sender claimed within this is failed (not sent)
 	VerifyWindow       time.Duration // a verification needs an accept this recent
 	EAPIInsecureTLS    bool          // NAC_EAPI_INSECURE_SKIP_VERIFY
 	EAPIAllowRSAKex    bool          // NAC_EAPI_TLS_ALLOW_RSA_KEX
@@ -118,6 +133,9 @@ func New(store Store, rules *policyver.Service, eval *access.Service, auditor Au
 	if cfg.CoAAttempts <= 0 {
 		cfg.CoAAttempts = 3
 	}
+	if cfg.CoAStartGrace <= 0 {
+		cfg.CoAStartGrace = 30 * time.Second
+	}
 	if cfg.CoAObserveWindow <= 0 {
 		cfg.CoAObserveWindow = 60 * time.Second
 	}
@@ -166,6 +184,12 @@ func (s *Service) Start(ctx context.Context) {
 	}
 	go s.loop(ctx, s.cfg.ObservationEvery, func(ctx context.Context) { s.ObserveAll(ctx) })
 	go s.loop(ctx, s.cfg.OutageImportPeriod, func(ctx context.Context) { s.ImportOutageLog(ctx) })
+	go s.loop(ctx, s.cfg.CoAStartGrace/2, func(ctx context.Context) {
+		requestedBefore, sentBefore := s.SweepCutoffs(s.now().UTC())
+		if _, err := s.ReconcileStuckCoAs(ctx, requestedBefore, sentBefore); err != nil {
+			s.logger.Error("could not reconcile unclaimed CoA starts", "error", err)
+		}
+	})
 }
 
 func (s *Service) loop(ctx context.Context, every time.Duration, f func(context.Context)) {

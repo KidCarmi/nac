@@ -36,13 +36,20 @@ func NewRecorder(repo domain.AuditRepository) *Recorder {
 	return &Recorder{repo: repo, now: time.Now}
 }
 
-// Record persists an audit event derived from the request context. The actor,
-// request ID and remote address are pulled from context so call sites only
-// specify the action-specific fields.
-func (r *Recorder) Record(ctx context.Context, action, resourceType, resourceID, outcome string, meta map[string]string) {
+// Event builds an audit event from the request context (actor, request ID,
+// remote address) WITHOUT persisting it. Callers that must not commit a
+// mutation without its audit record pass the event to a repository that
+// writes both in one transaction (e.g. change requests); Record is the
+// best-effort path.
+func (r *Recorder) Event(ctx context.Context, action, resourceType, resourceID, outcome string, meta map[string]string) *domain.AuditEvent {
+	return NewEvent(ctx, r.now().UTC(), action, resourceType, resourceID, outcome, meta)
+}
+
+// NewEvent builds an audit event at time at from the request context.
+func NewEvent(ctx context.Context, at time.Time, action, resourceType, resourceID, outcome string, meta map[string]string) *domain.AuditEvent {
 	ev := &domain.AuditEvent{
 		ID:           uuid.New(),
-		OccurredAt:   r.now().UTC(),
+		OccurredAt:   at,
 		Action:       action,
 		ResourceType: resourceType,
 		ResourceID:   resourceID,
@@ -60,6 +67,15 @@ func (r *Recorder) Record(ctx context.Context, action, resourceType, resourceID,
 	if ra, ok := remoteAddrFrom(ctx); ok {
 		ev.RemoteAddr = ra
 	}
+	return ev
+}
+
+// Record persists an audit event derived from the request context. The actor,
+// request ID and remote address are pulled from context so call sites only
+// specify the action-specific fields. It is best-effort (see the package
+// comment).
+func (r *Recorder) Record(ctx context.Context, action, resourceType, resourceID, outcome string, meta map[string]string) {
+	ev := r.Event(ctx, action, resourceType, resourceID, outcome, meta)
 
 	log := observability.LoggerFrom(ctx)
 	if err := r.repo.Append(ctx, ev); err != nil {

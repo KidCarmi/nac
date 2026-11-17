@@ -6,6 +6,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Operator CoA start is atomic (W2; proposed on top of pilot-aruba-rc5; NOT a candidate)
+- Quarantine, Restore and Reauthenticate commit the CoA request, the
+  session override and the operator timeline event in ONE transaction,
+  re-checked under the session row lock. The CoA is sent only after that
+  commit.
+  - A failure between the CoA insert and the override write can no longer
+    leave a never-sent `requested` CoA that blocked every later action on
+    the session until nacd restarted.
+  - An action prepared from a session that changed before the lock is
+    prepared again. It is never recorded or sent from the stale read.
+  - Failure-injection (including a real connection kill) and concurrency
+    tests are in `test/integration/coa_start_test.go`; see
+    `docs/architecture/coa-start-atomicity.md`.
+  - No change to the CoA exchange, the attributes sent, the RADIUS path or
+    the schema.
+  - Review fixes (#7):
+    - **Lost acknowledgement.** A COMMIT whose acknowledgement was lost is
+      resolved by the CoA's own ID and dispatched once.
+    - **Unknown outcome.** It is reported as `503` and nothing is sent. A
+      background start sweeper later fails a committed but unclaimed CoA:
+      not sent, override kept, no restart needed.
+    - **One claim.** The sender's first step is a conditional claim, so a
+      command is acted on once.
+    - **Audit.** The operator audit record is written in the start
+      transaction.
+    - **Residual.** The re-check does not bind the policy version or the
+      role mapping used by prediction; this is documented as an existing
+      residual.
+  - Re-review fix (#7, R3):
+    - **Claim errors.** A claim (`requested → sent`) whose response is lost
+      is no longer treated as a rejection. Ownership is reconciled by CoA
+      ID: the row must show the sender's own `radius_id` and `sent_at`.
+    - **Abandoned `sent` rows.** A claimed CoA abandoned in `sent` is
+      failed as "outcome unknown". This happens only after the sender's
+      whole budget plus the grace, and it is not resent.
+    - **Configuration.** The grace is now set by `NAC_COA_START_GRACE`.
+    - **Wording.** The 503 and OpenAPI text now say "eligible after the
+      grace; resolved on a subsequent sweep".
+
 ### pilot-aruba-rc5 (proposed successor; NOT under qualification; rc4 stays frozen)
 - `pilot-aruba-rc4` plus the console wording fix **U2**, and nothing else.
   On a role switch the policy action is labelled "Apply active policy"

@@ -74,6 +74,10 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, domain.ErrUnauthorized):
 		problem.New(http.StatusUnauthorized, "Unauthorized", "Authentication is required.").
 			WithInstance(instance).Write(w)
+	case errors.Is(err, domain.ErrUnavailable):
+		// Our own message: says what happened and what will resolve it.
+		problem.New(http.StatusServiceUnavailable, "Service unavailable", err.Error()).
+			WithInstance(instance).Write(w)
 	case errors.Is(err, domain.ErrForbidden):
 		problem.New(http.StatusForbidden, "Forbidden", "You do not have permission to perform this action.").
 			WithInstance(instance).Write(w)

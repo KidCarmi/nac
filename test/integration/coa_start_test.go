@@ -1,0 +1,655 @@
+//go:build integration
+
+package integration
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kidcarmi/nac/internal/config"
+	"github.com/kidcarmi/nac/internal/domain"
+	"github.com/kidcarmi/nac/internal/radius"
+	"github.com/kidcarmi/nac/internal/storage/postgres"
+)
+
+// W2 (owner review of PR #5/#6): an operator CoA, the override it implies
+// and its timeline event must commit together, and nothing may be sent to
+// the switch before that commit. Before the fix, RequestCoA committed the
+// CoA ("requested") and then wrote the override in a second statement: a
+// failure in between left a requested CoA that was never sent and that
+// blocked every later CoA on the session until nacd restarted.
+//
+// postgres.WithCoAStartHook runs a callback at fixed points of StartCoA, so
+// failures and competing writers are injected deterministically.
+
+type coaRig struct {
+	h    *harness
+	veos *fakeVEOS
+	pool *pgxpool.Pool // separate pool: what other connections see
+	repo *postgres.PilotRepo
+	auth func(acctID string) string
+}
+
+func newCoARig(t *testing.T) *coaRig {
+	resetDB(t, dsn(t))
+	h := start(t, t.TempDir())
+	t.Cleanup(h.stop)
+	veos := newFakeVEOS(t)
+	pool, err := postgres.Connect(context.Background(), config.DBConfig{DSN: dsn(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	r := &coaRig{h: h, veos: veos, pool: pool, repo: postgres.NewPilotRepo(pool, nil)}
+	h.do("POST", "/api/v1/switches", map[string]any{"name": "veos", "radius_source_ip": "127.0.0.1", "radius_secret": swSecret,
+		"coa_port": veos.port(), "segment_vlans": map[string]int{"corp": 10, "quarantine": 20}, "access_ports": []string{"Ethernet1"}}, 201, nil, true)
+	var ep map[string]any
+	h.do("POST", "/api/v1/endpoints", map[string]any{"mac": endpointMAC, "hostname": "h1"}, 201, &ep, true)
+	h.do("POST", "/api/v1/identity-bindings", map[string]any{"endpoint_id": ep["id"], "issuer": caIssuer, "serial": certSerial}, 201, nil, true)
+	h.do("POST", "/api/v1/policies", map[string]any{"name": "bound-corp", "priority": 10, "enabled": true, "action": "allow", "segment": "corp",
+		"conditions": []map[string]any{{"field": "identity.bound", "operator": "eq", "values": []string{"true"}}}}, 201, nil, true)
+	var pv map[string]any
+	h.do("GET", "/api/v1/policy-draft/preview", nil, 200, &pv, true)
+	h.do("POST", "/api/v1/policy-draft/publish", map[string]any{"expected_digest": pv["draft_digest"]}, 201, nil, true)
+	r.auth = func(acctID string) string {
+		a := authAttrs()
+		a["Acct-Session-Id"] = acctID
+		return frVal(h.radiusCall("/api/v1/radius/authorize", "127.0.0.1", a, 200), "reply:Tunnel-Private-Group-Id")
+	}
+	return r
+}
+
+func (r *coaRig) session(t *testing.T) uuid.UUID {
+	t.Helper()
+	if v := r.auth("acct-1"); v != "10" {
+		t.Fatalf("baseline: VLAN %q", v)
+	}
+	var list struct{ Sessions []map[string]any }
+	r.h.do("GET", "/api/v1/sessions?state=active", nil, 200, &list, true)
+	return uuid.MustParse(list.Sessions[0]["id"].(string))
+}
+
+func (r *coaRig) packets() int {
+	r.veos.mu.Lock()
+	defer r.veos.mu.Unlock()
+	return len(r.veos.got)
+}
+
+// committed is what any other connection sees for the session.
+type committed struct {
+	override string
+	coas     int
+	opEvents int
+}
+
+func (r *coaRig) committed(t *testing.T, id uuid.UUID) committed {
+	t.Helper()
+	ctx := context.Background()
+	var c committed
+	if err := r.pool.QueryRow(ctx, `SELECT override FROM radius_sessions WHERE id=$1`, id).Scan(&c.override); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.pool.QueryRow(ctx, `SELECT count(*) FROM coa_requests WHERE session_id=$1`, id).Scan(&c.coas); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.pool.QueryRow(ctx, `SELECT count(*) FROM auth_events WHERE session_id=$1 AND stage=$2`, id, domain.StageOperator).Scan(&c.opEvents); err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+// A failure at any point of the start - injected, or a real connection loss
+// - leaves nothing: no CoA, no override, no event, no packet, and the next
+// operator action is not blocked.
+func TestCoAStart_FailureLeavesNothingAndNeverBlocks(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.silent = true
+	r.veos.mu.Unlock()
+
+	injected := errors.New("injected failure")
+	// killTx terminates the backend of the open StartCoA transaction (the
+	// only connection idle in a transaction while the hook runs): a real
+	// database failure, not a Go error.
+	killTx := func() error {
+		var n int
+		if err := r.pool.QueryRow(ctx, `SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+			WHERE datname = current_database() AND state LIKE 'idle in transaction%' AND pid <> pg_backend_pid()`).Scan(&n); err != nil {
+			return err
+		}
+		if n != 1 {
+			return errors.New("expected exactly one open transaction to terminate")
+		}
+		return nil
+	}
+	cases := []struct {
+		name, stage string
+		fault       func() error
+	}{
+		{"error after lock", "locked", func() error { return injected }},
+		{"error after CoA insert", "coa_inserted", func() error { return injected }},
+		{"error after override write", "override_set", func() error { return injected }},
+		{"error immediately before COMMIT", "event_inserted", func() error { return injected }},
+		{"connection killed after CoA insert", "coa_inserted", killTx},
+		{"connection killed before COMMIT", "event_inserted", killTx},
+	}
+	for _, tc := range cases {
+		hook := func(stage string) error {
+			if stage == tc.stage {
+				return tc.fault()
+			}
+			return nil
+		}
+		if _, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail); err == nil {
+			t.Fatalf("%s: RequestCoA succeeded", tc.name)
+		}
+		r.h.app.Pilot().Wait()
+		if got := r.committed(t, s1); got != (committed{}) {
+			t.Fatalf("%s: partial start committed: %+v", tc.name, got)
+		}
+		if n := r.packets(); n != 0 {
+			t.Fatalf("%s: %d CoA packet(s) sent for an uncommitted start", tc.name, n)
+		}
+	}
+
+	// Not stuck: the next action starts normally and is sent.
+	c, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatalf("after failed starts the session is blocked: %v", err)
+	}
+	waitFor(t, "CoA sent", func() bool { return r.packets() > 0 })
+	if got := r.committed(t, s1); got != (committed{override: "quarantine", coas: 1, opEvents: 1}) {
+		t.Fatalf("after a successful start: %+v", got)
+	}
+	r.h.app.Pilot().Wait()
+	if cur, _ := r.repo.GetCoA(ctx, c.ID); cur.State == domain.CoARequested {
+		t.Fatal("CoA left in requested")
+	}
+}
+
+// Nothing reaches the switch before COMMIT, and no other connection can see
+// the CoA or the override until then.
+func TestCoAStart_NothingSentOrVisibleBeforeCommit(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.silent = true // records the request without answering, so the CoA ends quickly
+	r.veos.mu.Unlock()
+	var atCommit committed
+	var sentBefore = -1
+	hook := func(stage string) error {
+		if stage == "event_inserted" {
+			atCommit = r.committed(t, s1)
+			time.Sleep(200 * time.Millisecond) // a sender racing the commit would have sent by now
+			sentBefore = r.packets()
+		}
+		return nil
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail); err != nil {
+		t.Fatal(err)
+	}
+	if sentBefore != 0 || atCommit != (committed{}) {
+		t.Fatalf("before COMMIT: %d packet(s) sent, visible to others %+v", sentBefore, atCommit)
+	}
+	waitFor(t, "CoA sent after commit", func() bool { return r.packets() >= 1 })
+	r.h.app.Pilot().Wait()
+}
+
+// Stale preparation: an operator action is prepared from the session, then a
+// competing Quarantine commits and completes before this action takes the
+// row lock. The action must be prepared again from the new state: it may
+// never record or send a CoA computed from the old one.
+func TestCoAStart_StalePreparationIsRedone(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+
+	var locked atomic.Int32
+	var competed sync.Once
+	hook := func(stage string) error {
+		switch stage {
+		case "prepared":
+			competed.Do(func() {
+				// Prepared as reauthenticate with no override: corp VLAN 10.
+				// Now another operator quarantines and the switch completes it.
+				if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, "other@nac.local"); err != nil {
+					t.Errorf("competing quarantine: %v", err)
+				}
+				r.h.app.Pilot().Wait()
+			})
+		case "locked":
+			locked.Add(1)
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAReauthenticate, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RequestedVLAN == nil || *c.RequestedVLAN != 20 || c.RequestedSegment != "quarantine" {
+		t.Fatalf("reauthenticate recorded from the stale session: segment %q VLAN %v", c.RequestedSegment, c.RequestedVLAN)
+	}
+	if locked.Load() != 2 {
+		t.Fatalf("the stale preparation was not detected under the lock (locked %d time(s))", locked.Load())
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" || got.coas != 2 || got.opEvents != 2 {
+		t.Fatalf("after both actions: %+v", got)
+	}
+	r.h.app.Pilot().Wait()
+}
+
+// Many operators at once: exactly one start wins, and the committed state is
+// exactly that one action (one CoA, its override, one event).
+func TestCoAStart_ConcurrentActionsOneWinner(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.silent = true // keep the winner in flight
+	r.veos.mu.Unlock()
+
+	const n = 8
+	var (
+		wg             sync.WaitGroup
+		gate           = make(chan struct{})
+		wins, conflict atomic.Int32
+	)
+	for i := 0; i < n; i++ {
+		kind := domain.CoAQuarantine
+		if i%2 == 1 {
+			kind = domain.CoAReauthenticate
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-gate
+			_, err := r.h.app.Pilot().RequestCoA(ctx, s1, kind, adminEmail)
+			switch {
+			case err == nil:
+				wins.Add(1)
+			case errors.Is(err, domain.ErrConflict):
+				conflict.Add(1)
+			default:
+				t.Errorf("unexpected error: %v", err)
+			}
+		}()
+	}
+	close(gate)
+	wg.Wait()
+	if wins.Load() != 1 || conflict.Load() != n-1 {
+		t.Fatalf("%d winner(s), %d conflict(s)", wins.Load(), conflict.Load())
+	}
+	got := r.committed(t, s1)
+	if got.coas != 1 || got.opEvents != 1 {
+		t.Fatalf("committed %+v, want exactly one action", got)
+	}
+	var kind string
+	if err := r.pool.QueryRow(ctx, `SELECT kind FROM coa_requests WHERE session_id=$1`, s1).Scan(&kind); err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]string{domain.CoAQuarantine: "quarantine", domain.CoAReauthenticate: ""}[kind]; got.override != want {
+		t.Fatalf("winner %s but override %q", kind, got.override)
+	}
+	r.h.app.Pilot().Wait()
+}
+
+// ---- Review of #7 (comment 6884896343) ----
+
+func (r *coaRig) auditRows(t *testing.T, coaID uuid.UUID) int {
+	t.Helper()
+	var n int
+	if err := r.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_events WHERE metadata->>'coa_id' = $1`,
+		coaID.String()).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// R1: COMMIT succeeded but its acknowledgement was lost (StartCoA returns an
+// error after the data committed). RequestCoA resolves it by the command's
+// own ID and dispatches that same command exactly once: one CoA row, one
+// packet, one audit record, and the session is not left blocked.
+func TestCoAStart_CommittedButAckLostIsDispatchedOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	lost := errors.New("connection reset after COMMIT")
+	hook := func(stage string) error {
+		if stage == "committed" {
+			return lost
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatalf("a committed start was reported as failed: %v", err)
+	}
+	waitFor(t, "the committed CoA is sent", func() bool { return r.packets() >= 1 })
+	r.h.app.Pilot().Wait()
+	if got := r.committed(t, s1); got != (committed{override: "quarantine", coas: 1, opEvents: 1}) {
+		t.Fatalf("after a lost acknowledgement: %+v", got)
+	}
+	if n := r.packets(); n != 1 {
+		t.Fatalf("%d packets: reconciliation caused a second dispatch", n)
+	}
+	if n := r.auditRows(t, c.ID); n != 1 {
+		t.Fatalf("%d audit records correlated to CoA %s, want 1", n, c.ID)
+	}
+	if cur, _ := r.repo.GetCoA(ctx, c.ID); cur.State == domain.CoARequested {
+		t.Fatal("CoA left requested")
+	}
+}
+
+// R1, outcome unknown: the acknowledgement is lost AND the lookup by ID
+// fails. RequestCoA says so (503: ErrUnavailable) and sends nothing; the
+// start sweeper later fails the committed command without a restart, without
+// sending it and without loosening the recorded override; a later action is
+// not blocked.
+func TestCoAStart_UnknownOutcomeIsReconciledWithoutRestart(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	hook := func(stage string) error {
+		switch stage {
+		case "committed":
+			return errors.New("connection reset after COMMIT")
+		case "reconcile_lookup":
+			return errors.New("database unavailable")
+		}
+		return nil
+	}
+	_, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatalf("unknown outcome must be reported as such, got %v", err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packets sent for a start whose outcome was unknown", n)
+	}
+	var coaID uuid.UUID
+	if err := r.pool.QueryRow(ctx, `SELECT id FROM coa_requests WHERE session_id=$1 AND state='requested'`, s1).Scan(&coaID); err != nil {
+		t.Fatalf("the start committed, so a requested CoA exists: %v", err)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAReauthenticate, adminEmail); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("before reconciliation the in-flight check holds: %v", err)
+	}
+
+	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second), time.Now().Add(-time.Hour))
+	if err != nil || n != 1 {
+		t.Fatalf("reconcile: %d, %v", n, err)
+	}
+	cur, _ := r.repo.GetCoA(ctx, coaID)
+	if cur.State != domain.CoAFailed || !strings.Contains(cur.Detail, "never sent") {
+		t.Fatalf("reconciled CoA: %s %q", cur.State, cur.Detail)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("reconciliation loosened the recorded override: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("reconciliation sent the unconfirmed command (%d packets)", n)
+	}
+	// Not blocked: the next permitted action starts and is sent.
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); err != nil {
+		t.Fatalf("after reconciliation the session is still blocked: %v", err)
+	}
+	waitFor(t, "the next action is sent", func() bool { return r.packets() == 1 })
+	r.h.app.Pilot().Wait()
+}
+
+// The sweeper and a sender can never both act on one command: the sender's
+// first transition is a conditional claim, so once the sweeper has failed
+// it, a late sender does not send.
+func TestCoAStart_SweeperAndSenderClaimOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	// Commit a start but hold the sender back: the hook blocks the request
+	// after COMMIT until the sweeper has run.
+	swept := make(chan struct{})
+	hook := func(stage string) error {
+		if stage == "committed" {
+			n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(time.Second), time.Now().Add(-time.Hour))
+			if err != nil || n != 1 {
+				t.Errorf("sweep: %d %v", n, err)
+			}
+			close(swept)
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	<-swept
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	if n := r.packets(); n != 0 {
+		t.Fatalf("the sender sent a command the sweeper had already failed (%d packets)", n)
+	}
+	if cur, _ := r.repo.GetCoA(ctx, c.ID); cur.State != domain.CoAFailed {
+		t.Fatalf("state %s, want failed (claimed once, by the sweeper)", cur.State)
+	}
+}
+
+// R2: the operator audit record is part of the start transaction. A real
+// database failure on the audit insert (a trigger) leaves no CoA, override,
+// timeline event or packet; once the audit store works, the success case has
+// exactly one audit record correlated by CoA ID.
+func TestCoAStart_AuditFailureLeavesNothing(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") } // re-authenticate: the CoA is observed, one packet
+	r.veos.mu.Unlock()
+	if _, err := r.pool.Exec(ctx, `CREATE FUNCTION test_fail_audit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'audit store down'; END $$ LANGUAGE plpgsql;
+		CREATE TRIGGER test_fail_audit BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION test_fail_audit();`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, adminEmail); err == nil {
+		t.Fatal("the action committed although its audit record could not be written")
+	}
+	r.h.app.Pilot().Wait()
+	if got := r.committed(t, s1); got != (committed{}) {
+		t.Fatalf("an action escaped without its audit record: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packets sent without an audit record", n)
+	}
+	if _, err := r.pool.Exec(ctx, `DROP TRIGGER test_fail_audit ON audit_events; DROP FUNCTION test_fail_audit();`); err != nil {
+		t.Fatal(err)
+	}
+	c, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := r.auditRows(t, c.ID); n != 1 {
+		t.Fatalf("%d audit records for CoA %s, want 1", n, c.ID)
+	}
+	r.h.app.Pilot().Wait()
+}
+
+// ---- Re-review of #7 at 5814a9b (comment 6954711430): R3 ----
+
+// once returns a hook that fails stage the first time it is reached.
+func failOnce(stage string, err error) func(string) error {
+	var o sync.Once
+	return func(s string) error {
+		var out error
+		if s == stage {
+			o.Do(func() { out = err })
+		}
+		return out
+	}
+}
+
+// R3: the sender's claim (requested -> sent) applied, but its response was
+// lost. The sender reconciles ownership by CoA ID (its own radius_id and
+// sent_at), finds the claim is its own and sends exactly once.
+func TestCoAClaim_AckLostIsReconciledAndSentOnce(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	hook := failOnce("coa_update_applied:sent", errors.New("connection reset after the claim UPDATE"))
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if n := r.packets(); n != 1 || cur.State != domain.CoAObserved {
+		t.Fatalf("after a lost claim acknowledgement: %d packet(s), state %s; want 1 packet, observed", n, cur.State)
+	}
+	if got := r.committed(t, s1); got != (committed{override: "quarantine", coas: 1, opEvents: 1}) {
+		t.Fatalf("committed: %+v", got)
+	}
+}
+
+// R3, reconciliation unavailable: the claim applied, its response was lost
+// and the re-read fails too. The sender does not send; the row is left in
+// `sent`; the sweep (past the sender's budget) fails it as "outcome unknown"
+// without resending or touching the override; a later action is not
+// blocked.
+func TestCoAClaim_AckLostAndUnreachableIsSweptNotResent(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	lostClaim := failOnce("coa_update_applied:sent", errors.New("connection reset after the claim UPDATE"))
+	hook := func(stage string) error {
+		if stage == "claim_reconcile" {
+			return errors.New("database unavailable")
+		}
+		return lostClaim(stage)
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if n := r.packets(); n != 0 || cur.State != domain.CoASent {
+		t.Fatalf("unknown claim outcome: %d packet(s), state %s; want no packet, row left sent", n, cur.State)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("before the sweep the in-flight check holds: %v", err)
+	}
+	// The sweep, with the sent cutoff past this row (in production: past
+	// the sender's whole budget plus the grace).
+	n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, time.Now().Add(-time.Hour), time.Now().Add(time.Second))
+	if err != nil || n != 1 {
+		t.Fatalf("sweep: %d %v", n, err)
+	}
+	cur, _ = r.repo.GetCoA(ctx, c.ID)
+	if cur.State != domain.CoAFailed || !strings.Contains(cur.Detail, "outcome unknown") || !strings.Contains(cur.Detail, "not resent") {
+		t.Fatalf("swept: %s %q", cur.State, cur.Detail)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("the sweep changed the override: %+v", got)
+	}
+	if n := r.packets(); n != 0 {
+		t.Fatalf("the sweep resent the command (%d packets)", n)
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(ctx, s1, domain.CoARestore, adminEmail); err != nil {
+		t.Fatalf("after the sweep the session is still blocked: %v", err)
+	}
+	waitFor(t, "the next action is sent", func() bool { return r.packets() == 1 })
+	r.h.app.Pilot().Wait()
+}
+
+// Reverse ordering: a legitimate sender wins the claim; a sweep with the
+// REAL background cutoffs (SweepCutoffs) runs right after the claim applied
+// and must leave it alone; the sender sends once.
+func TestCoAClaim_LegitimateClaimIsNotSwept(t *testing.T) {
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	r.veos.mu.Lock()
+	r.veos.onACK = func(*radius.Packet) { r.auth("acct-1") }
+	r.veos.mu.Unlock()
+	var swept = -1
+	var o sync.Once
+	hook := func(stage string) error {
+		if stage == "coa_update_applied:sent" {
+			o.Do(func() {
+				req, sent := r.h.app.Pilot().SweepCutoffs(time.Now().UTC())
+				n, err := r.h.app.Pilot().ReconcileStuckCoAs(ctx, req, sent)
+				if err != nil {
+					t.Errorf("sweep: %v", err)
+				}
+				swept = n
+			})
+		}
+		return nil
+	}
+	c, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.h.app.Pilot().Wait()
+	cur, _ := r.repo.GetCoA(ctx, c.ID)
+	if swept != 0 || r.packets() != 1 || cur.State != domain.CoAObserved {
+		t.Fatalf("sweep resolved %d, %d packet(s), state %s; want 0, 1, observed", swept, r.packets(), cur.State)
+	}
+}
+
+// The real background scheduler, with a short configured grace
+// (NAC_COA_START_GRACE=1s): an unknown-outcome start is marked failed by
+// the background sweep without any direct call, without a packet and
+// without loosening the override.
+func TestCoASweep_BackgroundSchedulerResolvesUnknownStart(t *testing.T) {
+	t.Setenv("NAC_COA_START_GRACE", "1s")
+	r := newCoARig(t)
+	ctx := context.Background()
+	s1 := r.session(t)
+	hook := func(stage string) error {
+		switch stage {
+		case "committed":
+			return errors.New("connection reset after COMMIT")
+		case "reconcile_lookup":
+			return errors.New("database unavailable")
+		}
+		return nil
+	}
+	if _, err := r.h.app.Pilot().RequestCoA(postgres.WithCoAStartHook(ctx, hook), s1, domain.CoAQuarantine, adminEmail); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatalf("want ErrUnavailable, got %v", err)
+	}
+	var id uuid.UUID
+	if err := r.pool.QueryRow(ctx, `SELECT id FROM coa_requests WHERE session_id=$1`, s1).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the background sweep resolves the unclaimed start", func() bool {
+		cur, err := r.repo.GetCoA(ctx, id)
+		return err == nil && cur.State == domain.CoAFailed
+	})
+	if n := r.packets(); n != 0 {
+		t.Fatalf("%d packet(s) for an unconfirmed start", n)
+	}
+	if got := r.committed(t, s1); got.override != "quarantine" {
+		t.Fatalf("override loosened: %+v", got)
+	}
+}
